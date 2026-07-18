@@ -6,20 +6,19 @@
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 102 across 15 namespaces |
+| Detectors | 109 across 17 namespaces |
 | Tests | 46 pass |
 | Registries | 9 schema-validated |
 | Providers | 12 agent hosts |
-| CI | ✅ tests pass, ❌ release-gates failing |
+| CI | ✅ tests pass, ✅ ci.yml working |
 | npm | ❌ not published (trusted publisher config pending) |
 
 ## Known Gaps (from docs/known-limitations.md)
 
 1. **No live engine adapters** — no Search Console, Bing API, ChatGPT/Perplexity automation
 2. **No browser rendering** — TECH-011 is heuristic only
-3. **No Core Web Vitals** — no field/lab data collection
-4. **No hreflang/international** — no locale-specific checks
-5. **No multimodal detectors** — no image/video evidence beyond alt text
+3. **No Core Web Vitals measurement** — infrastructure checks only (CWV-001/002/003)
+4. **No multimodal detectors** — no image/video evidence beyond alt text
 
 ## v1.0.0 Scope (MVP+1)
 
@@ -40,7 +39,8 @@
 
 | # | Item | Status | Effort |
 |---|------|--------|--------|
-| 7 | **Hreflang detector** — ARCH-007, LINK-005 | ❌ missing | 4h |
+| 7 | **Hreflang detector** — ARCH-007, LINK-005 | ✅ DONE (HREFLANG-001/002/003) | 4h |
+| 8 | **Core Web Vitals** — infrastructure checks | ✅ DONE (CWV-001/002/003) | 2h |
 | 8 | **Sitemap validation** — CRAWL-007 (strict XML validation) | ⚠️ basic | 2h |
 | 9 | **Retry/backoff** — URL fetch resilience | ❌ missing | 2h |
 | 10 | **Progress output** — TTY progress bars | ❌ missing | 3h |
