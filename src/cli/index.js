@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { init } from '../commands/init.js';
 import { audit } from '../commands/audit.js';
 import { validate } from '../commands/validate.js';
@@ -8,12 +9,19 @@ import { substantiate } from '../commands/substantiate.js';
 import { inspect } from '../commands/inspect.js';
 import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
+import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
 Usage: citable <command> [options]
 
 Commands
+  install                   Install the Citable skill into coding-agent harnesses
+  update                    Update managed Citable skill installations
+  check                     Report installed and available Citable versions
+  uninstall                 Remove managed Citable skill files
+  list                      List detected providers and installation state
+  doctor                    Diagnose installer, provider, and integrity problems
   init                      Initialize .citable/ context and registries (non-destructive)
   audit [scope]             Run detectors; scopes: technical seo aeo geo architecture entity
                             claims evidence schema lifecycle corroboration
@@ -54,11 +62,11 @@ function out(args, human, data) {
   else console.log(human);
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
+export async function main(argv = process.argv.slice(2), options = {}) {
   const cmd = argv[0];
+  if (isInstallerCommand(cmd)) return runInstallerCommand(cmd, argv.slice(1), options);
   const args = parseArgs(argv.slice(1));
-  const root = process.cwd();
+  const root = options.cwd ?? process.cwd();
 
   try {
     switch (cmd) {
@@ -108,8 +116,6 @@ async function main() {
         break;
       }
       case undefined:
-      case 'help':
-      case '--help':
         console.log(HELP);
         break;
       default:
@@ -123,4 +129,7 @@ async function main() {
   }
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const code = await main();
+  if (Number.isInteger(code)) process.exitCode = code;
+}

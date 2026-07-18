@@ -29,12 +29,84 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Multi-agent distribution**: Claude Code, Codex-compatible, Cursor, Gemini,
   generic — generated from one canonical `skill/` source.
 
+## Install
+
+Install Citable into detected coding agents:
+
+```bash
+npx citable install
+```
+
+Install into specific agents:
+
+```bash
+npx citable install --providers=claude,codex,cursor
+```
+
+Install globally:
+
+```bash
+npx citable install --global
+```
+
+Preview changes:
+
+```bash
+npx citable install --dry-run
+```
+
+Check installed versions:
+
+```bash
+npx citable check
+```
+
+Diagnose installation problems:
+
+```bash
+npx citable doctor
+```
+
+Supported provider ids are `claude`, `codex`, `cursor`, `gemini`, `github`,
+`opencode`, `kiro`, `pi`, `qoder`, `trae`, `trae-cn`, and `rovodev`. Project
+installs write to each provider's project skill directory, for example
+`.claude/skills/citable/`, `.agents/skills/citable/`,
+`.cursor/skills/citable/`, and `.gemini/skills/citable/`. Global installs use
+provider-specific home paths, including `~/.claude/skills/citable/`,
+`~/.agents/skills/citable/`, `~/.cursor/skills/citable/`, and
+`~/.gemini/skills/citable/`.
+
+Target resolution is deterministic: explicit `--providers` wins, then project
+harness directories, then user-home harness hints. `--providers=detected`
+selects every detected supported provider; `--providers=all` selects every
+supported provider layout for the requested scope. Unknown provider names fail
+non-zero. In non-interactive mode, use `--yes`; project scope is the default
+unless `--global`/`--user`/`--scope=global` is supplied. The installer never
+reports success when no install target was selected.
+
+Managed installs carry `manifest.json` with `managedBy: "citable-cli"` and
+SHA-256 hashes for the installed payload. Repeated installs validate the tree
+and report `already current`. `update` compares the complete managed tree, not
+only `SKILL.md` or the version string. `uninstall` removes managed files only
+and preserves unrelated files in the skill directory. Locally modified managed
+installs and unmanaged `citable/` collisions are refused unless `--force` is
+used.
+
+The initial installer installs the skill payload only. It does not install
+provider hooks, sidecar configuration, telemetry, or unrelated agent settings.
+The package ships `dist/universal/` for offline installation from the npm
+tarball; no Git checkout or npm cache files are required after installation.
+Windows PowerShell, Linux shells, and macOS shells are supported through Node's
+filesystem APIs, with platform-specific file-mode differences reported by
+`doctor` where relevant. Unsupported hosts can still use the generated
+`dist/universal/` payload manually, but they are not auto-mutated.
+
 ## Quick start
 
 ```bash
 npm install
-npm test                      # 33 tests
-node src/cli/index.js help
+npm test
+npx citable help
 
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)

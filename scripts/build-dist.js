@@ -1,111 +1,143 @@
 #!/usr/bin/env node
 /**
- * Build per-environment distribution packages from the canonical skill/ source.
- * Single source of truth: skill/. No manually maintained divergent copies.
+ * Build the universal provider bundle from canonical Citable sources.
+ *
+ * Canonical inputs:
+ *   - skill/
+ *   - schemas/
+ *
+ * Generated output:
+ *   - dist/universal/<provider skills dir>/citable/
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { PROVIDERS, PROVIDER_IDS } from '../src/installer/providers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'skill');
+const SCHEMAS = path.join(ROOT, 'schemas');
 const DIST = path.join(ROOT, 'dist');
+const UNIVERSAL = path.join(DIST, 'universal');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
-  for (const name of fs.readdirSync(src)) {
-    const s = path.join(src, name);
-    const d = path.join(dest, name);
-    if (fs.statSync(s).isDirectory()) copyDir(s, d);
-    else fs.copyFileSync(s, d);
+  for (const entry of fs.readdirSync(src, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const from = path.join(src, entry.name);
+    const to = path.join(dest, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`refusing to package symlink: ${from}`);
+    if (entry.isDirectory()) copyDir(from, to);
+    else if (entry.isFile()) fs.copyFileSync(from, to);
   }
 }
 
-function skillBody() {
-  // canonical SKILL.md without frontmatter
-  const raw = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8');
-  return raw.replace(/^---[\s\S]*?---\n/, '');
+function writeFile(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
 }
 
-const targets = {
-  'claude-code': (dir) => {
-    // Claude Code plugin-style skill: SKILL.md with frontmatter + support dirs
-    copyDir(SKILL, path.join(dir, 'skills', 'citable'));
-    fs.writeFileSync(path.join(dir, 'README.md'),
-`# Citable for Claude Code
+function hashFile(filePath) {
+  return `sha256:${crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')}`;
+}
 
-Install: copy \`skills/citable/\` into \`.claude/skills/\` (project) or \`~/.claude/skills/\` (user),
-and ensure the citable CLI is on PATH (\`npm install -g\` from the repo root, or \`npx citable\`).
+function toPosix(value) {
+  return value.split(path.sep).join('/');
+}
 
-Invocation: Claude loads the skill automatically for SEO/AEO/GEO tasks, or explicitly via /citable.
-Requires: Node >= 20. Permissions: file read/write in the project, optional network for URL audits.
-`);
-  },
-  codex: (dir) => {
-    copyDir(SKILL, path.join(dir, 'citable'));
-    fs.writeFileSync(path.join(dir, 'AGENTS.md'),
-`# Citable — agent instructions (Codex-compatible)
+function assertSafeRel(rel) {
+  const normalized = path.posix.normalize(rel.replace(/\\/g, '/'));
+  if (!normalized || normalized === '.' || normalized.startsWith('../') || normalized.includes('/../') || path.isAbsolute(normalized)) {
+    throw new Error(`unsafe generated path: ${rel}`);
+  }
+  return normalized;
+}
 
-Read \`citable/SKILL.md\` before any SEO/AEO/GEO task; follow its premises and
-the command contracts in \`citable/commands/\`. Run the deterministic core via
-the \`citable\` CLI (Node >= 20). Never fabricate facts, citations, evidence,
-or corroboration; fail closed per the templates in \`citable/templates/\`.
-`);
-  },
-  cursor: (dir) => {
-    fs.mkdirSync(path.join(dir, '.cursor', 'rules'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.cursor', 'rules', 'citable.mdc'),
-`---
-description: Citable — SEO/AEO/GEO governance skill. Applies to discoverability, structured data, claims, and crawler-policy work.
-alwaysApply: false
----
-${skillBody()}
-`);
-    copyDir(SKILL, path.join(dir, 'citable-skill'));
-  },
-  gemini: (dir) => {
-    copyDir(SKILL, path.join(dir, 'citable'));
-    fs.writeFileSync(path.join(dir, 'GEMINI.md'),
-`# Citable — Gemini CLI instructions
+function walkFiles(dir, base = dir, out = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const abs = path.join(dir, entry.name);
+    const rel = assertSafeRel(toPosix(path.relative(base, abs)));
+    if (entry.isSymbolicLink()) throw new Error(`refusing to hash symlink: ${rel}`);
+    if (entry.isDirectory()) walkFiles(abs, base, out);
+    else if (entry.isFile()) out.push(rel);
+  }
+  return out;
+}
 
-${skillBody()}
-`);
-  },
-  generic: (dir) => {
-    copyDir(SKILL, path.join(dir, 'skill'));
-    fs.writeFileSync(path.join(dir, 'INSTALL.md'),
-`# Citable — generic agent-skill package
+function hashTree(dir, exclude = new Set()) {
+  const files = {};
+  for (const rel of walkFiles(dir)) {
+    if (exclude.has(rel)) continue;
+    files[rel] = hashFile(path.join(dir, rel));
+  }
+  const treeHash = `sha256:${crypto.createHash('sha256').update(
+    Object.entries(files).map(([rel, hash]) => `${rel}\0${hash}`).join('\n'),
+  ).digest('hex')}`;
+  return { files, treeHash };
+}
 
-1. Make \`skill/SKILL.md\` available to your agent as a system/tool instruction.
-2. Install the CLI: \`npm install -g citable\` (Node >= 20) or vendor this repo.
-3. Wire the command contracts in \`skill/commands/\` to your agent's command system.
-Version: ${pkg.version}
+function buildSkillTree(providerId) {
+  const provider = PROVIDERS[providerId];
+  const skillDir = path.join(UNIVERSAL, provider.projectSkillsDir, 'citable');
+  copyDir(SKILL, skillDir);
+  copyDir(SCHEMAS, path.join(skillDir, 'schemas'));
+  writeFile(path.join(skillDir, 'scripts', 'README.md'), `# Citable skill scripts
+
+This directory is part of the installed Citable skill payload. The initial
+installer does not add provider hooks or sidecar configuration.
 `);
-  },
-};
+  writeFile(path.join(skillDir, 'VERSION'), `${pkg.version}\n`);
+  writeFile(path.join(skillDir, 'manifest.json'), `${JSON.stringify({
+    name: 'citable',
+    version: pkg.version,
+    managedBy: 'citable-cli',
+    provider: providerId,
+    providerName: provider.displayName,
+    scope: 'bundle',
+    sourcePackage: `${pkg.name}@${pkg.version}`,
+    files: {},
+    treeHash: null,
+  }, null, 2)}\n`);
+  const tree = hashTree(skillDir, new Set(['manifest.json']));
+  writeFile(path.join(skillDir, 'manifest.json'), `${JSON.stringify({
+    name: 'citable',
+    version: pkg.version,
+    managedBy: 'citable-cli',
+    provider: providerId,
+    providerName: provider.displayName,
+    scope: 'bundle',
+    sourcePackage: `${pkg.name}@${pkg.version}`,
+    variantPath: toPosix(path.relative(UNIVERSAL, skillDir)),
+    files: tree.files,
+    treeHash: tree.treeHash,
+  }, null, 2)}\n`);
+  return {
+    provider: providerId,
+    providerName: provider.displayName,
+    path: toPosix(path.relative(UNIVERSAL, skillDir)),
+    files: Object.keys(tree.files).length,
+    treeHash: tree.treeHash,
+  };
+}
 
 fs.rmSync(DIST, { recursive: true, force: true });
-const manifest = { version: pkg.version, built_at: new Date().toISOString(), targets: {} };
-for (const [name, build] of Object.entries(targets)) {
-  const dir = path.join(DIST, name);
-  build(dir);
-  // reproducibility: content hash over sorted file list
-  const hashes = [];
-  const walk = (d) => {
-    for (const f of fs.readdirSync(d).sort()) {
-      const p = path.join(d, f);
-      if (fs.statSync(p).isDirectory()) walk(p);
-      else hashes.push(`${path.relative(dir, p)}:${crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex')}`);
-    }
-  };
-  walk(dir);
-  manifest.targets[name] = {
-    files: hashes.length,
-    content_hash: crypto.createHash('sha256').update(hashes.join('\n')).digest('hex'),
-  };
-  console.log(`built dist/${name} (${hashes.length} files)`);
+fs.mkdirSync(UNIVERSAL, { recursive: true });
+
+const providers = {};
+for (const providerId of PROVIDER_IDS) {
+  providers[providerId] = buildSkillTree(providerId);
+  console.log(`built dist/universal/${providers[providerId].path} (${providers[providerId].files} files)`);
 }
-fs.writeFileSync(path.join(DIST, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-console.log('dist/manifest.json written');
+
+const bundleTree = hashTree(UNIVERSAL, new Set(['manifest.json']));
+writeFile(path.join(UNIVERSAL, 'manifest.json'), `${JSON.stringify({
+  name: 'citable-universal-bundle',
+  version: pkg.version,
+  sourcePackage: `${pkg.name}@${pkg.version}`,
+  providers,
+  files: bundleTree.files,
+  treeHash: bundleTree.treeHash,
+}, null, 2)}\n`);
+
+console.log('dist/universal/manifest.json written');

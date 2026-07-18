@@ -1,0 +1,50 @@
+name: release-gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  npm-package:
+    name: npm package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm pack --dry-run
+
+      - run: npm pack
+
+      - name: Install from packed tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          home="$tmp/home"
+          mkdir -p "$home"
+          cp citable-0.1.0.tgz "$tmp/"
+          cd "$tmp"
+          HOME="$home" npx ./citable-0.1.0.tgz install --providers=claude,codex,cursor --project --yes
+          test -f .claude/skills/citable/SKILL.md
+          test -f .agents/skills/citable/SKILL.md
+          test -f .cursor/skills/citable/SKILL.md
+          HOME="$home" npx ./citable-0.1.0.tgz install --providers=claude,codex,cursor --project --yes
