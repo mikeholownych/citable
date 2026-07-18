@@ -127,7 +127,7 @@ fs.mkdirSync(UNIVERSAL, { recursive: true });
 const providers = {};
 for (const providerId of PROVIDER_IDS) {
   providers[providerId] = buildSkillTree(providerId);
-  console.log(`built dist/universal/${providers[providerId].path} (${providers[providerId].files} files)`);
+  console.error(`built dist/universal/${providers[providerId].path} (${providers[providerId].files} files)`);
 }
 
 const bundleTree = hashTree(UNIVERSAL, new Set(['manifest.json']));
@@ -140,4 +140,4 @@ writeFile(path.join(UNIVERSAL, 'manifest.json'), `${JSON.stringify({
   treeHash: bundleTree.treeHash,
 }, null, 2)}\n`);
 
-console.log('dist/universal/manifest.json written');
+console.error('dist/universal/manifest.json written');

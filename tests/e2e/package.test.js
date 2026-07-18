@@ -9,9 +9,33 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function parsePackJson(output) {
-  const start = output.indexOf('[');
-  assert.notEqual(start, -1, output);
-  return JSON.parse(output.slice(start));
+  for (let start = output.indexOf('['); start !== -1; start = output.indexOf('[', start + 1)) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < output.length; index += 1) {
+      const char = output[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+
+      if (char === '"') inString = true;
+      else if (char === '[') depth += 1;
+      else if (char === ']') {
+        depth -= 1;
+        if (depth === 0) {
+          const parsed = JSON.parse(output.slice(start, index + 1));
+          if (Array.isArray(parsed)) return parsed;
+        }
+      }
+    }
+  }
+
+  assert.fail(`npm pack did not emit a JSON array:\n${output}`);
 }
 
 test('packed npm artifact contains runtime files and installs with npx', () => {
