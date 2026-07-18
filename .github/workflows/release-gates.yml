@@ -34,11 +34,9 @@ jobs:
       - name: Build dist (required for installer integration tests)
         run: npm run build:dist
 
-      - name: Integration tests
+      - name: Full test suite (unit + integration)
         shell: bash
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          node --test --test-concurrency=1 --test-reporter=spec tests/integration/commands.test.js tests/integration/installer.test.js 2>&1
+        run: node --test --test-concurrency=1 tests/unit/**/*.test.js tests/integration/**/*.test.js
 
       - name: E2E package test
         shell: bash
