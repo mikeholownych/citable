@@ -1,0 +1,28 @@
+{
+  "provider_ranges": {
+    "PerplexityBot": ["203.0.113.0/24"]
+  },
+  "requests": [
+    {
+      "timestamp": "2026-07-18T10:00:00Z",
+      "url": "https://example.test/products/gatekeeper/",
+      "user_agent": "PerplexityBot",
+      "source_ip": "203.0.113.10",
+      "status": 200,
+      "bytes": 4200,
+      "latency_ms": 84,
+      "cache_status": "HIT",
+      "region": "us-east",
+      "identity_verified": true,
+      "verification_method": "owner-supplied provider CIDR match"
+    },
+    {
+      "timestamp": "2026-07-18T10:01:00Z",
+      "url": "https://example.test/",
+      "user_agent": "GPTBot",
+      "source_ip": "198.51.100.20",
+      "status": 403,
+      "identity_verified": false
+    }
+  ]
+}

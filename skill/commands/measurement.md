@@ -1,14 +1,14 @@
 ---
 command: /citable measure seo|aeo|geo, test-prompts, monitor-crawlers, monitor-contradictions
-purpose: Observation and measurement workflows. Citable records and validates observations; it does not claim live engine adapters it does not have.
+purpose: Observation and measurement workflows with exact collector and product-mode boundaries.
 ---
 
 # Honest capability statement
 
-This MVP ships **no external engine adapters** (no Search Console API client,
-no ChatGPT/Perplexity automation). Measurement commands therefore operate on
-*operator-supplied observations*, validated against the data contracts, plus
-registry-side integrity checks (MEAS-001/002/003). Do not imply otherwise.
+Citable ships Google URL Inspection, CrUX field collection, normalized owner
+imports, and a disclosed custom citation-adapter protocol. It does not claim
+Bing AI Performance automation or equivalence between an API adapter and a
+consumer answer product. Preserve collector and product mode on every result.
 
 # measure seo
 Inputs the operator exports (Search Console/Bing/analytics CSV or JSON).

@@ -54,11 +54,11 @@ root) are the source of controls.
    `skill/` is canonical; `scripts/build-dist.js` renders per-environment
    packages (claude-code, codex, cursor, gemini, generic) from it. No manually
    divergent command copies (§18).
-9. **No fabricated engine adapters.** Measurement commands validate
-   operator-supplied observations against contracts; MEAS detectors enforce
-   statistical caution. Claiming live ChatGPT/Perplexity/GSC adapters without
-   reliable implementations would violate §20 phase 6 ("do not claim external
-   engine support where no reliable adapter exists").
+9. **No fabricated engine adapters.** Measurement commands validate owner
+   imports and collector outputs against contracts; MEAS detectors enforce
+   statistical caution. Google URL Inspection, CrUX, and custom citation
+   adapters retain their exact interface labels. No API is presented as
+   equivalent to a consumer answer product without evidence.
 
 ## Consequences
 

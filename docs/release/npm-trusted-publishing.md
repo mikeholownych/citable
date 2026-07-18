@@ -51,8 +51,8 @@ same environment name.
 Publish from a version tag:
 
 ```bash
-git tag -a v1.3.1 -m "v1.3.1"
-git push origin v1.3.1
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 Or dispatch the workflow manually and enter the package version from

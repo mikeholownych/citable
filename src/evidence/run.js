@@ -61,7 +61,7 @@ export function createRun(root, { command, argv = [], target, locale = process.e
     writeArtifact(relPath, data) {
       const file = path.join(dir, relPath);
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      if (typeof data === 'string') fs.writeFileSync(file, data);
+      if (typeof data === 'string' || Buffer.isBuffer(data)) fs.writeFileSync(file, data);
       else writeJson(file, data);
       manifest.output_hashes[relPath] = sha256File(file);
       return file;

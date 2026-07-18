@@ -6,18 +6,18 @@ Use the narrowest supported state. Never promote evidence across rows.
 | --- | --- | --- |
 | Allowed by policy | Implemented | Effective robots rule plus crawler-purpose registry decision |
 | Synthetic fetch succeeded | Partial | Captured status, redirects, headers, body from the declared user agent; label identity simulated |
-| Verified crawler reached edge | Operator supplied | Request log plus provider-published IP verification where supported |
-| Observed in production logs | Operator supplied | Timestamped server/CDN log with URL, status, bytes, latency, cache result, UA, and verification result |
-| Indexed | Operator supplied | Search Console/Bing Webmaster/API or timestamped engine observation |
+| Verified crawler reached edge | Imported evidence | `observe logs` record plus provider-published IP verification where supported |
+| Observed in production logs | Imported evidence | Timestamped `observe logs` artifact with URL, status, bytes, latency, cache result, UA, and verification result |
+| Indexed | Google API or imported evidence | `observe index`; Google inspection covers the indexed version, other engines require owner exports |
 | Returned by retrieval | Operator supplied | Provider observation containing retrieved source URL |
-| Cited | Operator supplied | Complete answer observation with citation URL |
-| Materially supports answer | Human review required | Answer claim mapped to a passage that entails it |
+| Cited | Import or disclosed adapter | Complete `observe citations` answer with citation URL and product/adapter mode |
+| Materially supports answer | Human review required | `citation_review` maps answer claim to source passage and names the reviewer |
 | Recommended | Operator supplied + review | Explicit recommendation, constraints, provider/mode/locale/time |
 
-Current CLI URL mode does not prove crawler identity, WAF allowlisting,
+URL audit mode alone does not prove crawler identity, WAF allowlisting,
 production-log access, index presence, selected canonical, rendered DOM parity,
-or provider citation behavior. Record those states as `not_evidenced` unless the
-specified evidence is supplied.
+or provider citation behavior. Observation collectors can supply narrower
+evidence for these states; unavailable inputs remain `not_evidenced`.
 
 Primary-source lineage for these boundaries:
 

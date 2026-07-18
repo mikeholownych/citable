@@ -1,0 +1,10 @@
+{
+  "provider": "CrUX export",
+  "url": "https://example.test/products/gatekeeper/",
+  "period": "2026-06-20/2026-07-17",
+  "metrics": {
+    "largest_contentful_paint_p75_ms": 2100,
+    "interaction_to_next_paint_p75_ms": 180,
+    "cumulative_layout_shift_p75": 0.08
+  }
+}

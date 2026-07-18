@@ -21,11 +21,14 @@ intent, not executability, so statuses are strict:
 | /citable validate, validate-claims, validate-evidence, validate-schema, validate-links | implemented |
 | /citable compare-snapshots / validate-regression | implemented |
 | /citable action-plan | implemented — writes ordered, source-run-bound action artifacts outside immutable evidence packages |
+| /citable observe | implemented — render, index, citation, crawler-log, passage, consensus, performance, and corroboration evidence |
+| /citable apply | implemented — reviewed, hash-locked source replacements; dry run by default |
+| /citable monitor | implemented — compares immutable observation runs and emits evidence-linked alerts |
 | /citable ingest, map-site, map-queries, map-prompts, map-entities, map-evidence | specified (ingest.md) |
 | /citable optimize-page | specified (optimize-page.md) — requires source-to-render mapping, claim-preserving rewrites, build execution, rollback; none of that is proven yet |
 | /citable create-page, answer-block, architect, interlink, consolidate, metadata | specified (page-work.md) |
-| /citable validate-render | specified (validate-render.md) — blocked on the rendered-truth phase (docs/detectors/render-phase-plan.md) |
-| /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | specified (measurement.md) — no external engine adapters exist or are claimed |
+| /citable validate-render | partially implemented by `observe render`; mobile/cross-browser and interaction exploration remain |
+| /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by observation imports, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
 
 Shared refusal conditions (all commands): any action that would fabricate
 facts, citations, evidence, authorship, reviews, corroboration, or hidden

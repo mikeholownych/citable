@@ -124,6 +124,15 @@ cd your-site/
 citable init                  # creates .citable/ (non-destructive)
 citable audit --target ./dist --base-url https://example.com
 citable action-plan <run-id> # ordered actions, blockers, review gates, verification
+citable observe passages --target ./dist --base-url https://example.com
+citable observe index --input search-console-export.json
+citable observe citations --input prompt-results.json --target https://example.com
+citable observe logs --input edge-logs.json
+citable observe consensus --target ./dist --base-url https://example.com
+citable observe performance --target https://example.com # CRUX_API_KEY
+citable apply --input remediation-spec.json          # dry run
+citable apply --input remediation-spec.json --write  # reviewed + hash-locked
+citable monitor [runA runB]
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -134,7 +143,7 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 9 registries + finding + run + config + prompt-result |
+| `schemas/` | JSON Schemas: 9 registries plus findings, runs, observations, remediation, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |
@@ -153,9 +162,12 @@ citable validate              # registry schema + referential integrity
 
 ## Requirements
 
-Node >= 22.22.2. Network access only for URL-mode audits. Supported frameworks for
-auto-detection: Next.js, Astro, Nuxt, SvelteKit, Gatsby (other stacks: audit
-their built HTML output).
+Node >= 22.22.2. Network access is used for URL audits and explicitly selected
+live collectors. Render collection requires the optional `playwright` peer and
+an installed Chromium browser. Google index inspection uses `GSC_ACCESS_TOKEN`
+and `--site-url`; CrUX uses `CRUX_API_KEY`. Missing dependencies or credentials
+produce incomplete evidence. Supported frameworks for auto-detection: Next.js,
+Astro, Nuxt, SvelteKit, Gatsby (other stacks: audit their built HTML output).
 
 ## License
 

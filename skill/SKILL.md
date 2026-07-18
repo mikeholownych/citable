@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.3.1
+version: 1.4.0
 ---
 
 # Citable — search & generative discoverability governance
@@ -85,6 +85,9 @@ citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
+citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
+citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
+citable monitor [runA runB]           # observation regression alerts
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -126,6 +129,9 @@ mandatory semantic reviews make the relevant posture `not_established`.
 Consult `references/capability-boundaries.md` before claiming any observation;
 it identifies which states the current CLI can collect and which require
 operator data or future adapters.
+Use `commands/observe-and-act.md` for collector prerequisites, evidence labels,
+the controlled citation adapter protocol, remediation refusal conditions, and
+monitoring interpretation.
 
 ## Command workflows
 

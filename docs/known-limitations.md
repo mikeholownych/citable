@@ -5,27 +5,28 @@ surface.
 
 ## Not implemented (documented gaps)
 
-- **No live engine adapters.** No Search Console/Bing API clients, no
-  ChatGPT/Perplexity/Copilot automation. `measure`/`test-prompts` validate and
-  govern operator-supplied observations; they do not collect them.
+- **Provider coverage is uneven.** Google URL Inspection and CrUX have live API
+  paths. Bing index evidence and consumer answer-product observations still
+  require owner exports or a disclosed custom adapter. An API adapter is not
+  presumed equivalent to ChatGPT, Perplexity, Copilot, or another consumer mode.
 - **No verified crawler or edge matrix.** URL mode captures a synthetic request
   using Citable's audit user agent. It does not prove that a declared crawler's
   current published IP reached the edge, classify WAF/CAPTCHA decisions across
   regions, or replace production server logs.
-- **No search-index presence adapter.** Index inclusion, engine-selected
-  canonical, and last crawl remain operator-supplied observations.
-- **No browser rendering.** TECH-011 is a heuristic on initial HTML; true
-  rendered-vs-initial diffing and mobile/desktop parity need a headless
-  browser the CLI does not bundle. validate-render documents the manual path.
-- **No passage corpus or main-content segmentation.** Paragraph-level checks do
-  not yet prove that a coherent 100-300-word answer passage can be extracted,
-  nor quantify navigation/CTA/footer noise.
-- **No automated citation-correctness verdict.** Prompt-result observations can
-  record citations, but material support and attribution accuracy still require
-  claim-to-passage human review.
-- **No Core Web Vitals measurement.** CWV-001..003 check infrastructure
-  readiness (render-blocking resources, preconnect hints, image optimization);
-  no field or lab data collection. Performance budgets are governance items only.
+- **Search-index coverage is partial.** Google inspection is live; Bing and
+  other engines require normalized owner exports.
+- **Browser rendering is optional and desktop-only.** `observe render` captures
+  Chromium DOM, text, screenshot, and failed requests when Playwright and its
+  browser are installed. Mobile parity, interaction exploration, and
+  cross-browser comparison remain.
+- **Passage analysis is heuristic.** `observe passages` creates candidates and
+  noise ratios, but semantic independence and support still require review.
+- **Citation correctness remains human-authoritative.** Citable normalizes
+  claim/passage review records and missing reviews; automated inference never
+  silently becomes a confirmed support verdict.
+- **Performance collection is partial.** CrUX field data or owner exports can be
+  collected. Lighthouse lab execution is not bundled; CWV-001..003 remain
+  infrastructure-readiness checks.
 - **No multimodal detectors.** Image/video/transcript evidence surfaces are
   un-audited beyond alt text (PAGE-007).
 - **Screenshots/rendered directories** in the evidence package layout are

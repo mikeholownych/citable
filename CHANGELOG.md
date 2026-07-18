@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.0 — 2026-07-18
+
+### Added
+
+- Governed observation envelopes and evidence collectors for rendered DOM,
+  search-index exports/live Google inspection, controlled citation experiments,
+  citation support review, production crawler logs, answer passages,
+  canonical/freshness consensus, CrUX or imported performance data, and external
+  corroboration.
+- `citable apply` for reviewed, source-run-bound, hash-locked source changes;
+  dry-run is the default and stale or ambiguous operations fail closed.
+- `citable monitor` for observation-state, index, canonical, and citation
+  regressions across immutable runs.
+- Optional Playwright peer integration and a disclosed HTTP adapter protocol
+  for repeatable provider/prompt experiments.
+
 ## 1.3.1 — 2026-07-18
 
 ### Fixed

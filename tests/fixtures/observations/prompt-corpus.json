@@ -1,0 +1,9 @@
+{
+  "locale": "en-US",
+  "prompts": [
+    {
+      "prompt_id": "PROMPT-GATE",
+      "prompt_text": "What enforces runtime tool authorization?"
+    }
+  ]
+}

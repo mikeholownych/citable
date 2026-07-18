@@ -10,4 +10,7 @@ test('top-level help exposes audit-to-action commands', () => {
   const output = execFileSync(process.execPath, ['cli/bin/citable.js', 'help'], { cwd: ROOT, encoding: 'utf8' });
   assert.match(output, /audit \[scope\]/);
   assert.match(output, /action-plan \[run\]/);
+  assert.match(output, /observe <mode>/);
+  assert.match(output, /apply\s+Apply a reviewed/);
+  assert.match(output, /monitor \[runA runB\]/);
 });

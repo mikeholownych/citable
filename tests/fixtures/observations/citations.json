@@ -1,0 +1,24 @@
+{
+  "target_origin": "https://example.test",
+  "observations": [
+    {
+      "prompt_id": "PROMPT-GATE",
+      "prompt_text": "What enforces runtime tool authorization?",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Gatekeeper rejects execution without a valid permit.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Gatekeeper rejects execution without a valid permit.",
+          "source_passage": "The control plane rejects execution when no valid permit exists.",
+          "support_status": "supported",
+          "reviewer": "Fixture Reviewer"
+        },
+        "https://competitor.test/overview"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "mentions": [
+    {
+      "url": "https://standards.example/report",
+      "publisher": "Independent Standards Group",
+      "entity": "Gatekeeper",
+      "independent": true,
+      "observed_at": "2026-07-18T12:00:00Z"
+    }
+  ]
+}

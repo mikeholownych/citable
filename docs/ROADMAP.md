@@ -4,15 +4,15 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.3.1)
+## Current State (v1.4.0)
 
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 104 pass |
+| Tests | 110 pass |
 | Registries | 9 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 45 canonical skill files per provider |
+| Distribution | 48 canonical skill files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -32,28 +32,32 @@ audited property or claiming that a recommendation was implemented.
 - Prompt-to-page, entity, claim, and evidence mapping checks.
 - Source-run-bound action plans with blockers, owners, semantic review gates,
   unsafe-shortcut warnings, and verification commands.
+- Immutable observation collectors for optional browser rendering, Google or
+  imported index evidence, controlled citation cohorts, crawler logs, passages,
+  canonical/freshness consensus, CrUX/imported performance, and corroboration.
+- Reviewed hash-locked remediation plus longitudinal evidence monitoring.
 
 ## Next Priorities
 
 ### Retrieval Evidence
 
-- Verified crawler-IP and server-log ingestion, preserving the distinction
-  between simulated user-agent fetches and observed production access.
-- Search Console and Bing Webmaster integrations for index presence and
-  engine-selected canonical evidence.
+- Provider-maintained IP-range retrieval and verification beyond imported
+  owner verification results.
+- Bing index and AI Performance adapters when supported export/API contracts
+  can be captured defensibly.
 - Multi-region and bot-specific reliability sampling.
 
 ### Extraction Evidence
 
-- Browser-rendered DOM capture and raw-versus-rendered extraction comparison.
-- Reader-mode, main-content, passage-integrity, and content-to-noise analysis.
+- Mobile/cross-browser rendered comparison and interaction-hidden inventory.
+- Stronger main-content segmentation and reviewed passage-integrity workflows.
 - Canonical consensus matrices spanning redirects, markup, sitemaps, internal
   links, and observed search-engine selections.
 
 ### Observed Citation Testing
 
-- Versioned provider/prompt matrices with repeated runs, locale and product-mode
-  metadata, citation capture, and evidence-package hashes.
+- First-party adapters for provider products whose supported interfaces expose
+  complete answer and citation evidence; custom adapters already preserve mode.
 - Citation correctness, first-party selection, canonical citation, attribution
   accuracy, stability, and provider-variance metrics.
 - Competitive retrieval-set comparison without collapsing outcomes into a
@@ -61,8 +65,8 @@ audited property or claiming that a recommendation was implemented.
 
 ### Measurement Extensions
 
-- Lighthouse and CrUX adapters for measured Core Web Vitals; existing CWV
-  detectors remain infrastructure-readiness checks.
+- Lighthouse lab execution; CrUX field collection is implemented while existing
+  CWV detectors remain infrastructure-readiness checks.
 - Multimodal extraction for images, video, audio, and PDFs with explicit
   provenance and confidence.
 - Optional analytics integrations using aggregate data and documented consent

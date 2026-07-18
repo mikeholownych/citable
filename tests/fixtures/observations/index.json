@@ -1,0 +1,11 @@
+[
+  {
+    "engine": "google",
+    "url": "https://example.test/products/gatekeeper/",
+    "verdict": "PASS",
+    "googleCanonical": "https://example.test/products/gatekeeper/",
+    "userCanonical": "https://example.test/products/gatekeeper/",
+    "lastCrawlTime": "2026-07-17T10:00:00Z",
+    "pageFetchState": "SUCCESSFUL"
+  }
+]

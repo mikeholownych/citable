@@ -12,6 +12,9 @@ import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
 import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
 import { actionPlan } from '../commands/actionPlan.js';
+import { observe } from '../commands/observe.js';
+import { applyRemediation } from '../commands/applyRemediation.js';
+import { monitor } from '../commands/monitor.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -34,12 +37,23 @@ Commands
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
+  observe <mode>            Collect render, index, citation, log, passage,
+                            consensus, performance, or corroboration evidence
+  apply                     Apply a reviewed, hash-locked remediation spec
+  monitor [runA runB]       Compare observation runs and emit regression alerts
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
   --target <dir|url>        Built output directory or deployed URL to audit
   --base-url <url>          Base URL for path resolution of a built output dir
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
+  --input <file>            Import file or remediation specification
+  --provider <name>         Provider label for imported observations
+  --api-key <key>           API key (prefer provider environment variables)
+  --site-url <property>     Search Console property for live URL inspection
+  --access-token <token>    OAuth token (prefer provider environment variables)
+  --endpoint <url>          Controlled citation adapter endpoint
+  --repeat <count>          Repetitions per prompt for citation experiments
   --write                   Persist registry changes (map-claims, substantiate)
   --json                    Machine-readable output only
 
@@ -55,6 +69,14 @@ function parseArgs(argv) {
     else if (a === '--target') args.target = argv[++i];
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
+    else if (a === '--input') args.input = argv[++i];
+    else if (a === '--provider') args.provider = argv[++i];
+    else if (a === '--api-key') args.apiKey = argv[++i];
+    else if (a === '--site-url') args.siteUrl = argv[++i];
+    else if (a === '--access-token') args.accessToken = argv[++i];
+    else if (a === '--endpoint') args.endpoint = argv[++i];
+    else if (a === '--repeat') args.repeat = Number(argv[++i]);
+    else if (a === '--timeout') args.timeout = Number(argv[++i]);
     else if (a === '--force') args.force = true;
     else args._.push(a);
   }
@@ -126,6 +148,23 @@ export async function main(argv = process.argv.slice(2), options = {}) {
       case 'action-plan': {
         const r = actionPlan(root, { runId: args._[0] });
         out(args, `action-plan: ${r.summary.total_actions} action(s) [ready:${r.summary.ready} blocked:${r.summary.blocked}]\nPlan: ${path.join(r.dir, 'action-plan.md')}\nSource audit: ${r.source_run_id}`, r);
+        break;
+      }
+      case 'observe': {
+        const mode = args._[0];
+        const r = await observe(root, mode, args);
+        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
+        break;
+      }
+      case 'apply': {
+        const r = applyRemediation(root, args);
+        out(args, `apply: ${r.operations.length} operation(s) ${r.write ? 'applied' : 'proposed (dry run)'}\nEvidence package: ${r.dir}\nSource audit: ${r.source_run_id}`, r);
+        break;
+      }
+      case 'monitor': {
+        const r = monitor(root, { runA: args._[0], runB: args._[1] });
+        out(args, `monitor ${r.run_a} → ${r.run_b}: ${r.summary.alerts} alert(s), ${r.summary.critical_or_high} critical/high\nReport: ${path.join(r.dir, 'latest.json')}`, r);
+        if (r.summary.critical_or_high > 0) process.exitCode = 1;
         break;
       }
       case 'self-upgrade': {

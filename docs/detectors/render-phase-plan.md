@@ -1,15 +1,15 @@
 # Rendered-truth phase plan (RENDER namespace)
 
-Status: **specified, not implemented.** The `RENDER` namespace is reserved in
-the detector framework; no RENDER detectors ship until a real browser renderer
-backs them. Shipping them earlier would violate the honesty rule that findings
-require captured evidence.
+Status: **collector partially implemented; detector phase pending.** `observe
+render` uses optional Playwright to capture Chromium DOM, text, screenshots, and
+failed requests. The `RENDER` namespace remains reserved until mobile and
+cross-browser parity plus raw-versus-rendered detector inputs are complete.
 
 ## Phase objective
 
 Establish whether the content Citable evaluates in source or initial HTML is
 the content a browser, crawler, and user actually receive after rendering.
-Rendering is a separate processing and failure stage (SEO source §2); today
+Rendering is a separate processing and failure stage (SEO source §2); the next phase
 TECH-011 approximates it heuristically and acceptance criterion 6 remains
 PARTIAL until this phase lands.
 
