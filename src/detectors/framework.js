@@ -3,7 +3,7 @@ import { sha256 } from '../shared/io.js';
 const REQUIRED = ['id', 'name', 'namespace', 'description', 'discipline', 'severity', 'deterministic', 'remediation', 'verification', 'check'];
 // RENDER (browser-rendered truth / source-render divergence) is reserved for the
 // rendered-truth phase; no RENDER detectors ship until a real renderer backs them.
-const NAMESPACES = ['TECH', 'CRAWL', 'ARCH', 'PAGE', 'ANS', 'ENTITY', 'CLAIM', 'EVD', 'SCHEMA', 'LINK', 'EXT', 'GEO', 'RECO', 'LIFE', 'MEAS', 'RENDER', 'HREFLANG', 'CWV'];
+const NAMESPACES = ['TECH', 'CRAWL', 'ARCH', 'PAGE', 'ANS', 'ENTITY', 'CLAIM', 'EVD', 'SCHEMA', 'LINK', 'EXT', 'GEO', 'RECO', 'LIFE', 'MEAS', 'RENDER', 'HREFLANG', 'CWV', 'AGENT'];
 
 /**
  * Detector definition contract. `check(ctx)` returns raw hits:

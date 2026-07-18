@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.1.0 — 2026-07-18
+
+### Added
+
+- **AGENT namespace** — 10 agent-readiness detectors based on [isitagentready.com](https://isitagentready.com/) checks:
+  - **AGENT-001** `AI bot rules absent from robots.txt` — checks for GPTBot, ClaudeBot, PerplexityBot, anthropic-ai, and other AI crawler rules
+  - **AGENT-002** `Link response headers absent` — HTTP Link headers for agent discovery (sitemap, MCP, API catalog)
+  - **AGENT-003** `llms.txt missing` — llmstxt.org structured Markdown for LLM consumption
+  - **AGENT-004** `MCP Server Card not discoverable` — `/.well-known/mcp` for Model Context Protocol server auto-discovery (API sites only)
+  - **AGENT-005** `A2A Agent Card not discoverable` — `/.well-known/agent.json` for Google A2A inter-agent discovery (agent sites only)
+  - **AGENT-006** `Markdown content negotiation not supported` — `Accept: text/markdown` / Cloudflare Markdown for Agents
+  - **AGENT-007** `Web Bot Auth not declared` — Cloudflare Web Bot Auth for authenticated bot access
+  - **AGENT-008** `Content-Signals header absent` — Cloudflare Content Signals for AI usage permissions
+  - **AGENT-009** `auth.md not present` — `/auth.md` authentication documentation for agent consumers (API/auth sites only)
+  - **AGENT-010** `Agentic commerce protocols not declared` — x402, MPP, UCP, ACP payment protocol signals (commerce sites only)
+- **38 new tests** for AGENT detectors
+- **`agent-readiness` discipline** added to finding schema
+- **`file` subject type** added to finding schema
+
+### Changed
+
+- Detector count: 109 → 119 across 18 namespaces
+- Test count: 46 → 84
+
 ## 1.0.0 — 2026-07-18
 
 **First production release.**

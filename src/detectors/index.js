@@ -12,8 +12,9 @@ import geoReco from './geoReco.js';
 import lifeMeas from './lifeMeas.js';
 import { hreflangDetectors } from './hreflang.js';
 import { cwvDetectors } from './cwv.js';
+import { AGENT_DETECTORS } from './agent.js';
 
-export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas, ...hreflangDetectors, ...cwvDetectors];
+export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas, ...hreflangDetectors, ...cwvDetectors, ...AGENT_DETECTORS];
 
 const ids = new Set();
 for (const d of ALL_DETECTORS) {
