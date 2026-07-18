@@ -14,10 +14,12 @@ import {
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-release-'));
   fs.mkdirSync(path.join(root, 'docs'));
+  fs.mkdirSync(path.join(root, 'skill'));
   fs.writeFileSync(path.join(root, 'package.json'), '{"name":"citable","version":"1.4.0"}\n');
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{"version":"1.4.0","packages":{"":{"version":"1.4.0"}}}\n');
   fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## Unreleased\n\n### Added\n\n- Managed release process.\n\n## 1.4.0 — 2026-07-18\n');
   fs.writeFileSync(path.join(root, 'docs', 'ROADMAP.md'), '# Roadmap\n\n## Current State (v1.4.0)\n');
+  fs.writeFileSync(path.join(root, 'skill', 'SKILL.md'), '---\nname: citable\nversion: 1.4.0\n---\n');
   return root;
 }
 
@@ -34,6 +36,7 @@ test('prepareRelease promotes Unreleased notes and updates version contracts', (
   assert.equal(result.previousVersion, '1.4.0');
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'))).version, '1.5.0');
   assert.match(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), /## 1\.5\.0 — 2026-07-19/);
+  assert.match(fs.readFileSync(path.join(root, 'skill', 'SKILL.md'), 'utf8'), /version: 1\.5\.0/);
   assert.equal(validateRelease(root, '1.5.0'), true);
   assert.match(releaseNotes(root, '1.5.0'), /Managed release process/);
 });

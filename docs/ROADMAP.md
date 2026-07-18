@@ -10,9 +10,9 @@ guarantee retrieval, ranking, citation, or model prioritization.
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
 | Tests | 121 pass |
-| Registries | 9 schema-validated |
+| Registries | 13 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 48 canonical skill files per provider |
+| Distribution | 52 canonical skill files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and

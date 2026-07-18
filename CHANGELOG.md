@@ -24,6 +24,8 @@
 
 - `citable install --all` now selects every supported provider in addition to
   confirming non-interactively.
+- Release preparation now updates and validates the canonical skill version in
+  addition to package, lockfile, changelog, and roadmap versions.
 
 ## 1.4.0 — 2026-07-18
 
