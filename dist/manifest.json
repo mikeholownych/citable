@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "built_at": "2026-07-18T08:18:54.954Z",
+  "targets": {
+    "claude-code": {
+      "files": 24,
+      "content_hash": "689111016acc5988ad548c18d9b5d24c1fddf6a25ee3e03cab6e408c658a9111"
+    },
+    "codex": {
+      "files": 24,
+      "content_hash": "bc4c3c5928a5598adfe84ee41aa1c0052fd1caa07e87f18edfa36c8c110aa8d0"
+    },
+    "cursor": {
+      "files": 24,
+      "content_hash": "821493e4777d1e8411ff456c671c04286845b4dfefc79931e4aad352a6eafdf9"
+    },
+    "gemini": {
+      "files": 24,
+      "content_hash": "9c63c23e8a93957581e8b41a64f9510d4458b5a3741e3e286c112b756e0aba5e"
+    },
+    "generic": {
+      "files": 24,
+      "content_hash": "c47b80f4b7f8f13b334d66ea4148ffa3d8386d1a5f52da81c11a7337b7fbc96c"
+    }
+  }
+}

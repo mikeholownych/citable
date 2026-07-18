@@ -1,0 +1,22 @@
+version: 1
+initialized_at: '2026-07-18T08:19:49.108Z'
+repository_root: /home/mike/Projects/citable/examples/demo
+detected:
+  framework: null
+  rendering_model: null
+  package_manager: null
+  build_commands: []
+  test_commands: []
+  robots_files:
+    - site/robots.txt
+  sitemap_sources:
+    - site/sitemap.xml
+  schema_sources:
+    - site/index.html
+    - site/products/gatekeeper/index.html
+  metadata_systems: []
+  analytics: []
+  content_collections: []
+unresolved_assumptions:
+  - No package manifest found; framework, build, and test commands unknown.
+  - Rendering model could not be determined from manifests.

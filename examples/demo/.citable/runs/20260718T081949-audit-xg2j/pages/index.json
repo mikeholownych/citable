@@ -1,0 +1,50 @@
+[
+  {
+    "url": "https://example.test/",
+    "status": 200,
+    "title": "Example Governance — AI execution governance platform",
+    "canonicals": [
+      "https://example.test/"
+    ],
+    "noindex": false,
+    "wordCount": 64,
+    "sourceFile": "site/index.html",
+    "contentHash": "617438e5eeb989f49597e7bd1cc0752a9f8fba024fb277fe660df808672cdf58"
+  },
+  {
+    "url": "https://example.test/learn/execution-governance/",
+    "status": 200,
+    "title": "What is AI execution governance? Definition and scope",
+    "canonicals": [
+      "https://example.test/learn/execution-governance/"
+    ],
+    "noindex": false,
+    "wordCount": 122,
+    "sourceFile": "site/learn/execution-governance/index.html",
+    "contentHash": "1ecceb3ea693464e393b4e72fd1ed350c15742d6ca1eab6b3c5d689d991eda0b"
+  },
+  {
+    "url": "https://example.test/pricing/",
+    "status": 200,
+    "title": "Pricing — Gatekeeper plans and deployment options",
+    "canonicals": [
+      "https://example.test/pricing/"
+    ],
+    "noindex": false,
+    "wordCount": 41,
+    "sourceFile": "site/pricing/index.html",
+    "contentHash": "904b693d06bbd6d3d356d07178e67bc8400ef99d6b598ed76f920b5fa1b312ed"
+  },
+  {
+    "url": "https://example.test/products/gatekeeper/",
+    "status": 200,
+    "title": "Gatekeeper — runtime authorization for AI agents",
+    "canonicals": [
+      "https://example.test/products/gatekeeper/"
+    ],
+    "noindex": false,
+    "wordCount": 115,
+    "sourceFile": "site/products/gatekeeper/index.html",
+    "contentHash": "e85e0145ec23bd4d0f4858a4a7be21cae2ad9574755bb11f0deacc4403e90313"
+  }
+]

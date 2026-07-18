@@ -1,0 +1,28 @@
+{
+  "inbound": {
+    "https://example.test/products/gatekeeper/": 3,
+    "https://example.test/learn/execution-governance/": 2,
+    "https://example.test/pricing/": 2,
+    "https://example.test/": 3
+  },
+  "outbound": {
+    "https://example.test/": [
+      "https://example.test/products/gatekeeper/",
+      "https://example.test/learn/execution-governance/",
+      "https://example.test/pricing/"
+    ],
+    "https://example.test/learn/execution-governance/": [
+      "https://example.test/products/gatekeeper/",
+      "https://example.test/"
+    ],
+    "https://example.test/pricing/": [
+      "https://example.test/products/gatekeeper/",
+      "https://example.test/"
+    ],
+    "https://example.test/products/gatekeeper/": [
+      "https://example.test/learn/execution-governance/",
+      "https://example.test/pricing/",
+      "https://example.test/"
+    ]
+  }
+}

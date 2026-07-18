@@ -1,0 +1,237 @@
+[
+  {
+    "finding_id": "F-b90e892c0380",
+    "detector_id": "CRAWL-002",
+    "run_id": "20260718T081949-audit-xg2j",
+    "timestamp": "2026-07-18T08:19:49.862Z",
+    "discipline": [
+      "geo"
+    ],
+    "subject": {
+      "type": "crawler",
+      "identifier": "Google"
+    },
+    "observation": {
+      "summary": "Vendor \"Google\" has search-crawler access allowed but no recorded model-training decision",
+      "evidence": [
+        "crawlers registry contains no purpose=model_training entry for vendor Google"
+      ],
+      "captured_value": null,
+      "expected_value": null
+    },
+    "classification": {
+      "finding_type": "deterministic_observation",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "deterministic": true,
+      "impact": {
+        "legal": "high",
+        "representation": "low"
+      }
+    },
+    "reasoning": {
+      "applicable_requirement": "Premise 3.3: crawler access for search is not permission for model training; GEO §2 access layers must not be conflated",
+      "explanation": "A vendor has an allow decision for search discovery, but no separate recorded decision for its model-training crawler.",
+      "assumptions": [],
+      "limitations": []
+    },
+    "remediation": {
+      "preferred": "Record an explicit allow/block decision, owner, and legal rationale for each training-purpose crawler of vendors whose search crawlers are allowed.",
+      "alternatives": [],
+      "unsafe_shortcuts": [],
+      "owner": null,
+      "review_required": false
+    },
+    "verification": {
+      "method": "Confirm a crawler registry entry with purpose model_training exists for the vendor.",
+      "expected_result": "detector no longer reports this subject",
+      "detector_to_rerun": "CRAWL-002"
+    },
+    "status": {
+      "state": "open",
+      "first_seen": "2026-07-18T08:19:49.862Z",
+      "last_seen": "2026-07-18T08:19:49.862Z",
+      "resolved_at": null
+    }
+  },
+  {
+    "finding_id": "F-c9149d79a54a",
+    "detector_id": "PAGE-008",
+    "run_id": "20260718T081949-audit-xg2j",
+    "timestamp": "2026-07-18T08:19:49.862Z",
+    "discipline": [
+      "seo",
+      "aeo"
+    ],
+    "subject": {
+      "type": "page",
+      "identifier": "https://example.test/",
+      "url": "https://example.test/",
+      "source_file": "site/index.html"
+    },
+    "observation": {
+      "summary": "Index-target page has only ~64 words (threshold 120)",
+      "evidence": [
+        "extracted word count: 64"
+      ],
+      "captured_value": null,
+      "expected_value": null
+    },
+    "classification": {
+      "finding_type": "probabilistic_inference",
+      "severity": "medium",
+      "confidence": "high",
+      "deterministic": false,
+      "impact": {
+        "ranking": "medium",
+        "citation": "medium"
+      }
+    },
+    "reasoning": {
+      "applicable_requirement": "SEO §2 meaningful main content; §4 sufficient depth",
+      "explanation": "An index-target page has very little primary text.",
+      "assumptions": [],
+      "limitations": [
+        "heuristic detection; verify manually before acting"
+      ]
+    },
+    "remediation": {
+      "preferred": "Either add substantive content for the intent or remove the page from the index target set.",
+      "alternatives": [],
+      "unsafe_shortcuts": [],
+      "owner": null,
+      "review_required": true
+    },
+    "verification": {
+      "method": "Re-measure extracted word count after revision.",
+      "expected_result": "detector no longer reports this subject",
+      "detector_to_rerun": "PAGE-008"
+    },
+    "status": {
+      "state": "open",
+      "first_seen": "2026-07-18T08:19:49.862Z",
+      "last_seen": "2026-07-18T08:19:49.862Z",
+      "resolved_at": null
+    }
+  },
+  {
+    "finding_id": "F-c408e3d38961",
+    "detector_id": "PAGE-008",
+    "run_id": "20260718T081949-audit-xg2j",
+    "timestamp": "2026-07-18T08:19:49.862Z",
+    "discipline": [
+      "seo",
+      "aeo"
+    ],
+    "subject": {
+      "type": "page",
+      "identifier": "https://example.test/pricing/",
+      "url": "https://example.test/pricing/",
+      "source_file": "site/pricing/index.html"
+    },
+    "observation": {
+      "summary": "Index-target page has only ~41 words (threshold 120)",
+      "evidence": [
+        "extracted word count: 41"
+      ],
+      "captured_value": null,
+      "expected_value": null
+    },
+    "classification": {
+      "finding_type": "probabilistic_inference",
+      "severity": "medium",
+      "confidence": "high",
+      "deterministic": false,
+      "impact": {
+        "ranking": "medium",
+        "citation": "medium"
+      }
+    },
+    "reasoning": {
+      "applicable_requirement": "SEO §2 meaningful main content; §4 sufficient depth",
+      "explanation": "An index-target page has very little primary text.",
+      "assumptions": [],
+      "limitations": [
+        "heuristic detection; verify manually before acting"
+      ]
+    },
+    "remediation": {
+      "preferred": "Either add substantive content for the intent or remove the page from the index target set.",
+      "alternatives": [],
+      "unsafe_shortcuts": [],
+      "owner": null,
+      "review_required": true
+    },
+    "verification": {
+      "method": "Re-measure extracted word count after revision.",
+      "expected_result": "detector no longer reports this subject",
+      "detector_to_rerun": "PAGE-008"
+    },
+    "status": {
+      "state": "open",
+      "first_seen": "2026-07-18T08:19:49.862Z",
+      "last_seen": "2026-07-18T08:19:49.862Z",
+      "resolved_at": null
+    }
+  },
+  {
+    "finding_id": "F-d568f5fb15e8",
+    "detector_id": "PAGE-008",
+    "run_id": "20260718T081949-audit-xg2j",
+    "timestamp": "2026-07-18T08:19:49.862Z",
+    "discipline": [
+      "seo",
+      "aeo"
+    ],
+    "subject": {
+      "type": "page",
+      "identifier": "https://example.test/products/gatekeeper/",
+      "url": "https://example.test/products/gatekeeper/",
+      "source_file": "site/products/gatekeeper/index.html"
+    },
+    "observation": {
+      "summary": "Index-target page has only ~115 words (threshold 120)",
+      "evidence": [
+        "extracted word count: 115"
+      ],
+      "captured_value": null,
+      "expected_value": null
+    },
+    "classification": {
+      "finding_type": "probabilistic_inference",
+      "severity": "medium",
+      "confidence": "high",
+      "deterministic": false,
+      "impact": {
+        "ranking": "medium",
+        "citation": "medium"
+      }
+    },
+    "reasoning": {
+      "applicable_requirement": "SEO §2 meaningful main content; §4 sufficient depth",
+      "explanation": "An index-target page has very little primary text.",
+      "assumptions": [],
+      "limitations": [
+        "heuristic detection; verify manually before acting"
+      ]
+    },
+    "remediation": {
+      "preferred": "Either add substantive content for the intent or remove the page from the index target set.",
+      "alternatives": [],
+      "unsafe_shortcuts": [],
+      "owner": null,
+      "review_required": true
+    },
+    "verification": {
+      "method": "Re-measure extracted word count after revision.",
+      "expected_result": "detector no longer reports this subject",
+      "detector_to_rerun": "PAGE-008"
+    },
+    "status": {
+      "state": "open",
+      "first_seen": "2026-07-18T08:19:49.862Z",
+      "last_seen": "2026-07-18T08:19:49.862Z",
+      "resolved_at": null
+    }
+  }
+]

@@ -1,3 +1,2 @@
 node_modules/
-.citable/
-dist/*/build/
+/.citable/

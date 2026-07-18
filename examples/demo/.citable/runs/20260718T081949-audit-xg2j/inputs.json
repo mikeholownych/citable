@@ -1,0 +1,20 @@
+{
+  "target": {
+    "kind": "built_output",
+    "location": "./site",
+    "environment": "local"
+  },
+  "scope": "all",
+  "registry_counts": {
+    "queries": 1,
+    "prompts": 1,
+    "entities": 2,
+    "claims": 1,
+    "evidence": 1,
+    "pages": 4,
+    "crawlers": 3,
+    "competitors": 0,
+    "experiments": 0
+  },
+  "pages_audited": 4
+}

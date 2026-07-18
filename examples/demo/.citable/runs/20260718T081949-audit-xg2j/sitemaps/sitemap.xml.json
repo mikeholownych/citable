@@ -1,0 +1,23 @@
+{
+  "isIndex": false,
+  "urls": [
+    {
+      "loc": "https://example.test/",
+      "lastmod": "2026-07-01"
+    },
+    {
+      "loc": "https://example.test/products/gatekeeper/",
+      "lastmod": "2026-07-01"
+    },
+    {
+      "loc": "https://example.test/learn/execution-governance/",
+      "lastmod": "2026-07-01"
+    },
+    {
+      "loc": "https://example.test/pricing/",
+      "lastmod": "2026-07-01"
+    }
+  ],
+  "children": [],
+  "errors": []
+}

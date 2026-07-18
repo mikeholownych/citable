@@ -1,0 +1,31 @@
+[
+  {
+    "url": "https://example.test/",
+    "parseError": null,
+    "blocks": [
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://example.test/#organization",
+        "name": "Example Governance",
+        "url": "https://example.test/"
+      }
+    ]
+  },
+  {
+    "url": "https://example.test/products/gatekeeper/",
+    "parseError": null,
+    "blocks": [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "@id": "https://example.test/products/gatekeeper/#product",
+        "name": "Gatekeeper",
+        "url": "https://example.test/products/gatekeeper/",
+        "publisher": {
+          "@id": "https://example.test/#organization"
+        }
+      }
+    ]
+  }
+]

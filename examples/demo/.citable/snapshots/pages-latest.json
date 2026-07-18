@@ -1,0 +1,26 @@
+{
+  "taken_at": "2026-07-18T08:19:49.862Z",
+  "run_id": "20260718T081949-audit-xg2j",
+  "pages": {
+    "https://example.test/": {
+      "contentHash": "617438e5eeb989f49597e7bd1cc0752a9f8fba024fb277fe660df808672cdf58",
+      "dateModified": null,
+      "status": 200
+    },
+    "https://example.test/learn/execution-governance/": {
+      "contentHash": "1ecceb3ea693464e393b4e72fd1ed350c15742d6ca1eab6b3c5d689d991eda0b",
+      "dateModified": null,
+      "status": 200
+    },
+    "https://example.test/pricing/": {
+      "contentHash": "904b693d06bbd6d3d356d07178e67bc8400ef99d6b598ed76f920b5fa1b312ed",
+      "dateModified": null,
+      "status": 200
+    },
+    "https://example.test/products/gatekeeper/": {
+      "contentHash": "e85e0145ec23bd4d0f4858a4a7be21cae2ad9574755bb11f0deacc4403e90313",
+      "dateModified": null,
+      "status": 200
+    }
+  }
+}

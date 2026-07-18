@@ -1,0 +1,17 @@
+{
+  "total": 4,
+  "deterministic_observations": 1,
+  "semantic_or_heuristic": 3,
+  "by_severity": {
+    "medium": 4
+  },
+  "by_namespace": {
+    "CRAWL": 1,
+    "PAGE": 3
+  },
+  "by_discipline": {
+    "seo": 3,
+    "aeo": 3,
+    "geo": 1
+  }
+}
