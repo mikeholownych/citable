@@ -698,8 +698,13 @@ function installOrUpdateTarget(target, args, options = {}, command = 'install') 
 }
 
 function ensureTargetInsideScope(targetPath, scopeRoot) {
-  const resolvedTarget = path.resolve(targetPath);
-  const resolvedScope = path.resolve(scopeRoot);
+  // Use realpathSync when possible to resolve symlinks (e.g. /tmp → /private/tmp on macOS)
+  // so that cross-symlink paths compare correctly.
+  function realOrResolve(p) {
+    try { return fs.realpathSync(p); } catch { return path.resolve(p); }
+  }
+  const resolvedTarget = realOrResolve(targetPath);
+  const resolvedScope = realOrResolve(scopeRoot);
   const rel = path.relative(resolvedScope, resolvedTarget);
   if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) return;
   throw new CitableInstallerError(`refusing to write outside selected scope: ${resolvedTarget}`, EXIT_CODES.integrityFailure);
