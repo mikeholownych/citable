@@ -10,6 +10,7 @@
   "definitions": {
     "entity": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["entity_id", "canonical_name", "entity_type", "status"],
       "properties": {
         "entity_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
@@ -26,7 +27,7 @@
         "secondary_categories": { "type": "array", "items": { "type": "string" } },
         "definition": { "type": "string" },
         "exclusions": { "type": "array", "items": { "type": "string" } },
-        "relationships": { "type": "array", "items": { "type": "object", "required": ["type", "entity"], "properties": { "type": { "type": "string" }, "entity": { "type": "string" } } } },
+        "relationships": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["type", "entity"], "properties": { "type": { "type": "string" }, "entity": { "type": "string" } } } },
         "evidence": { "type": "array", "items": { "type": "string" } },
         "schema_types": { "type": "array", "items": { "type": "string" } },
         "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },

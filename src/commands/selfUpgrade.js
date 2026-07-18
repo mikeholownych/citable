@@ -144,3 +144,12 @@ export async function selfUpgradeCommand(args) {
     `Manual upgrade:  npx ${PACKAGE_NAME}@${latestVersion} <command>`,
   ].join('\n');
 }
+
+export function selfUpgradeExitCode(output) {
+  try {
+    const parsed = JSON.parse(output);
+    return parsed.ok === false ? 1 : 0;
+  } catch {
+    return /^(error:|Upgrade attempt failed)/.test(output) ? 1 : 0;
+  }
+}

@@ -117,6 +117,15 @@ test('substantiate preserves legitimately verified claims (good fixture)', () =>
   assert.equal(a.outcome, 'verified');
 });
 
+test('invalid reference dates are rejected before claim or audit evaluation', async () => {
+  const dir = project('registries-good');
+  assert.throws(() => substantiate(dir, { refDate: 'not-a-date' }), /ref-date.*YYYY-MM-DD/i);
+  await assert.rejects(
+    audit(dir, { target: path.join(FIX, 'site-clean'), refDate: '2026-02-31' }),
+    /ref-date.*YYYY-MM-DD/i,
+  );
+});
+
 test('inspect profiles a single page with intent, entities, claims, ambiguity', async () => {
   const dir = project('registries-good');
   const r = await inspect(dir, '/products/gatekeeper/', { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', refDate: '2026-07-18' });

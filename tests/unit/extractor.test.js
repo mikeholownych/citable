@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { extractPage } from '../../src/extractor/page.js';
 import { parseRobots, isAllowed } from '../../src/crawler/robots.js';
 import { parseSitemap } from '../../src/crawler/sitemap.js';
+import { fetchUrl } from '../../src/crawler/fetch.js';
 
 test('extractPage captures title, canonical, robots, headings, links, jsonld', () => {
   const html = `<!doctype html><html lang="en"><head><title>T</title>
@@ -60,4 +61,58 @@ test('sitemap parser: urlset and index', () => {
   const i = parseSitemap(`<sitemapindex><sitemap><loc>https://x.test/a.xml</loc></sitemap></sitemapindex>`);
   assert.equal(i.isIndex, true);
   assert.equal(i.children.length, 1);
+});
+
+const publicLookup = async () => [{ address: '203.0.113.10', family: 4 }];
+
+test('fetchUrl refuses redirects outside the audited origin', async () => {
+  const fetchImpl = async () => new Response(null, {
+    status: 302,
+    headers: { location: 'https://other.example/next' },
+  });
+  await assert.rejects(
+    fetchUrl('https://audit.example/', { fetchImpl, lookup: publicLookup }),
+    /redirect.*origin/i,
+  );
+});
+
+test('fetchUrl refuses private and loopback destinations', async () => {
+  await assert.rejects(
+    fetchUrl('http://127.0.0.1/private', { fetchImpl: globalThis.fetch }),
+    /private|loopback/i,
+  );
+  await assert.rejects(
+    fetchUrl('http://[::1]/private', { fetchImpl: globalThis.fetch }),
+    /private|loopback/i,
+  );
+});
+
+test('fetchUrl rejects response bodies above the configured byte limit', async () => {
+  const fetchImpl = async () => new Response('x'.repeat(32));
+  await assert.rejects(
+    fetchUrl('https://audit.example/', { fetchImpl, lookup: publicLookup, maxBodyBytes: 16 }),
+    /body.*16 bytes/i,
+  );
+});
+
+test('fetchUrl applies a fresh timeout to every retry attempt', async () => {
+  let attempts = 0;
+  const fetchImpl = async (_url, { signal }) => {
+    attempts += 1;
+    if (attempts === 1) throw new TypeError('transient network failure');
+    return await new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+  };
+  await assert.rejects(
+    fetchUrl('https://audit.example/', {
+      fetchImpl,
+      lookup: publicLookup,
+      maxRetries: 2,
+      retryDelayMs: 0,
+      timeoutMs: 10,
+    }),
+    /abort|timeout/i,
+  );
+  assert.equal(attempts, 2);
 });

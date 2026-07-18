@@ -10,6 +10,7 @@
   "definitions": {
     "experiment": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["experiment_id", "hypothesis", "primary_metric", "status"],
       "properties": {
         "experiment_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

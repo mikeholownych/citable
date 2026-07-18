@@ -10,6 +10,7 @@
   "definitions": {
     "prompt": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["prompt_id", "canonical_prompt", "prompt_class", "status"],
       "properties": {
         "prompt_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

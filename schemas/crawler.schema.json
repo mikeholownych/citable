@@ -10,6 +10,7 @@
   "definitions": {
     "crawler": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["crawler_id", "user_agent", "purpose", "decision", "status"],
       "properties": {
         "crawler_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

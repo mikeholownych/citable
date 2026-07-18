@@ -10,7 +10,7 @@ import { inspect } from '../commands/inspect.js';
 import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
-import { selfUpgradeCommand } from '../commands/selfUpgrade.js';
+import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -120,6 +120,7 @@ export async function main(argv = process.argv.slice(2), options = {}) {
       case 'self-upgrade': {
         const output = await selfUpgradeCommand(argv.slice(1));
         console.log(output);
+        process.exitCode = selfUpgradeExitCode(output);
         break;
       }
       case undefined:

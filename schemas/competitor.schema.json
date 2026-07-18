@@ -10,6 +10,7 @@
   "definitions": {
     "competitor": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["competitor_id", "name", "status"],
       "properties": {
         "competitor_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

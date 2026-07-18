@@ -10,6 +10,7 @@
   "definitions": {
     "page": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["page_id", "url", "page_type", "status"],
       "properties": {
         "page_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

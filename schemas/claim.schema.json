@@ -10,6 +10,7 @@
   "definitions": {
     "claim": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["claim_id", "claim", "claim_type", "status"],
       "properties": {
         "claim_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
@@ -34,6 +35,7 @@
         "source_location": { "type": "string" },
         "support_assessment": {
           "type": "object",
+          "additionalProperties": false,
           "required": ["status"],
           "properties": {
             "status": { "type": "string", "enum": ["directly_supported", "partially_supported", "inferred", "contradicted", "not_assessed"] },

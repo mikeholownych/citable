@@ -5,38 +5,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { parsePackJson } from '../../scripts/pack-json.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-function parsePackJson(output) {
-  for (let start = output.indexOf('['); start !== -1; start = output.indexOf('[', start + 1)) {
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-
-    for (let index = start; index < output.length; index += 1) {
-      const char = output[index];
-      if (inString) {
-        if (escaped) escaped = false;
-        else if (char === '\\') escaped = true;
-        else if (char === '"') inString = false;
-        continue;
-      }
-
-      if (char === '"') inString = true;
-      else if (char === '[') depth += 1;
-      else if (char === ']') {
-        depth -= 1;
-        if (depth === 0) {
-          const parsed = JSON.parse(output.slice(start, index + 1));
-          if (Array.isArray(parsed)) return parsed;
-        }
-      }
-    }
-  }
-
-  assert.fail(`npm pack did not emit a JSON array:\n${output}`);
-}
 
 test('packed npm artifact contains runtime files and installs with npx', { timeout: 120_000 }, () => {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-pack-'));

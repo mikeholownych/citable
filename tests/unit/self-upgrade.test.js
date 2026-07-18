@@ -1,6 +1,6 @@
 import { test, describe, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { selfUpgradeCommand } from '../../src/commands/selfUpgrade.js';
+import { selfUpgradeCommand, selfUpgradeExitCode } from '../../src/commands/selfUpgrade.js';
 
 // Helper: mock globalThis.fetch
 function mockFetch(response) {
@@ -94,6 +94,16 @@ describe('selfUpgradeCommand', () => {
       const parsed = JSON.parse(out);
       assert.equal(parsed.ok, false);
       assert.ok(parsed.error);
+      assert.equal(selfUpgradeExitCode(out), 1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('successful checks produce a zero exit code', async () => {
+    const restore = mockFetch({ ok: true, json: async () => ({ version: '0.0.1' }) });
+    try {
+      assert.equal(selfUpgradeExitCode(await selfUpgradeCommand(['--check', '--json'])), 0);
     } finally {
       restore();
     }

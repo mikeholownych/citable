@@ -37,6 +37,18 @@ export function nowIso() {
   return new Date().toISOString();
 }
 
+export function parseRefDate(value) {
+  if (value == null) return new Date();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error('ref-date must be a valid date in YYYY-MM-DD format');
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new Error('ref-date must be a valid date in YYYY-MM-DD format');
+  }
+  return date;
+}
+
 export function isPastDate(isoDate, ref = new Date()) {
   if (!isoDate) return false;
   const d = new Date(String(isoDate).slice(0, 10) + 'T23:59:59Z');

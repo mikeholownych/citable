@@ -10,6 +10,7 @@
   "definitions": {
     "query": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["query_id", "canonical_query", "intent", "status"],
       "properties": {
         "query_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

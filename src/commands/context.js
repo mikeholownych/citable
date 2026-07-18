@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { readYaml, readJson, sha256 } from '../shared/io.js';
+import { readYaml, readJson, sha256, parseRefDate } from '../shared/io.js';
 import { loadRegistries } from '../registries/index.js';
 import { buildSiteFromDir, buildSiteFromUrl } from '../extractor/site.js';
 
@@ -55,7 +55,7 @@ export async function buildContext(root, { target, baseUrl, refDate } = {}) {
     site,
     promptResults: promptResults.length ? promptResults : null,
     snapshots,
-    refDate: refDate ? new Date(refDate) : new Date(),
+    refDate: parseRefDate(refDate),
     hashPage: (p) => sha256(p.text),
     warnings,
   };

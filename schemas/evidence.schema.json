@@ -10,6 +10,7 @@
   "definitions": {
     "evidence": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["evidence_id", "title", "evidence_type", "verification_status"],
       "properties": {
         "evidence_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },

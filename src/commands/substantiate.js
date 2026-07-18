@@ -1,5 +1,5 @@
 import { loadRegistries, saveRegistry, diffRegistries } from '../registries/index.js';
-import { isPastDate, nowIso } from '../shared/io.js';
+import { isPastDate, nowIso, parseRefDate } from '../shared/io.js';
 
 const REGULATED = new Set(['legal_regulatory', 'security', 'commercial']);
 
@@ -17,7 +17,7 @@ const REGULATED = new Set(['legal_regulatory', 'security', 'commercial']);
  */
 export function substantiate(root, { write = false, refDate } = {}) {
   const { registries, problems } = loadRegistries(root);
-  const ref = refDate ? new Date(refDate) : new Date();
+  const ref = parseRefDate(refDate);
   const evidence = new Map(registries.evidence.entries.map((e) => [e.evidence_id, e]));
   const before = JSON.parse(JSON.stringify(registries.claims));
   const assessments = [];

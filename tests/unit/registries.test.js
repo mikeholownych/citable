@@ -45,6 +45,28 @@ test('schema validation rejects invalid claim entries', () => {
   assert.ok(errors.length > 0);
 });
 
+test('registry schemas reject unknown fields instead of ignoring typos', () => {
+  const claim = {
+    version: 1,
+    kind: 'claims',
+    entries: [{ claim_id: 'CLAIM-X', claim: 'Supported statement', claim_type: 'factual', status: 'candidate', evidnce: [] }],
+  };
+  const evidence = {
+    version: 1,
+    kind: 'evidence',
+    entries: [{ evidence_id: 'EVD-X', title: 'Source', evidence_type: 'test_result', verification_status: 'reviewed', valid_untl: '2026-07-18' }],
+  };
+  assert.equal(validateAgainst('claim.schema.json', claim).valid, false);
+  assert.equal(validateAgainst('evidence.schema.json', evidence).valid, false);
+  const topLevelTypo = {
+    version: 1,
+    kind: 'claims',
+    entries: [{ claim_id: 'CLAIM-X', claim: 'Supported statement', claim_type: 'factual', status: 'candidate' }],
+    entrys: [],
+  };
+  assert.equal(validateAgainst('claim.schema.json', topLevelTypo).valid, false);
+});
+
 test('saveRegistry preserves prior content in history and refuses invalid data', () => {
   const root = tmpProject('registries-good');
   const { registries } = loadRegistries(root);

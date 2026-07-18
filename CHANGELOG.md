@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Registry entry schemas now reject unknown properties so misspelled governance fields fail validation instead of being ignored. This is a stricter contract; existing registries with extension fields must migrate those fields into the documented schema before validation.
+- Remote audits now restrict redirects to the audited origin, reject private-network destinations, enforce per-attempt timeouts, and cap response bodies at 5 MiB.
+
+### Fixed
+
+- Invalid `--ref-date` values now fail closed before expiry or evidence evaluation.
+- `self-upgrade` reports a nonzero process exit status when registry checks or cache refreshes fail.
+- Release packaging supports both array-shaped and package-keyed `npm pack --json` metadata through a shared parser.
+
 ## 1.2.0 — 2026-07-18
 
 ### Added
