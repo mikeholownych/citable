@@ -31,6 +31,9 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Build dist (required for installer integration tests)
+        run: npm run build:dist
+
       - name: Integration tests
         run: npm run test:integration
 
