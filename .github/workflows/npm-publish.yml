@@ -23,13 +23,12 @@ jobs:
   publish:
     name: Publish citable to npm
     runs-on: ubuntu-latest
-    environment: npm-publish
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Verify versions
@@ -68,7 +67,6 @@ jobs:
             cat /tmp/npm-view-version.json
             exit 1
           fi
-          # For new packages, npm view will fail with E404 or no version found
           echo "Package ${package_name}@${package_version} not yet published - OK to publish"
 
       - name: Test
