@@ -13,4 +13,7 @@ test('top-level help exposes audit-to-action commands', () => {
   assert.match(output, /observe <mode>/);
   assert.match(output, /apply\s+Apply a reviewed/);
   assert.match(output, /monitor \[runA runB\]/);
+  assert.match(output, /metrics import/);
+  assert.match(output, /objectives init/);
+  assert.match(output, /evaluate \[objective-id\]/);
 });

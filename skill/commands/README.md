@@ -24,11 +24,14 @@ intent, not executability, so statuses are strict:
 | /citable observe | implemented — render, index, citation, crawler-log, passage, consensus, performance, and corroboration evidence |
 | /citable apply | implemented — reviewed, hash-locked source replacements; dry run by default |
 | /citable monitor | implemented — compares immutable observation runs and emits evidence-linked alerts |
+| /citable metrics import | implemented — validates declared CSV/JSON metrics and writes immutable observations |
+| /citable objectives init / validate | implemented — user-owned metric selection, cohorts, windows, and guardrails |
+| /citable evaluate | implemented — independent baseline/evaluation comparisons with inconclusive handling |
 | /citable ingest, map-site, map-queries, map-prompts, map-entities, map-evidence | specified (ingest.md) |
 | /citable optimize-page | specified (optimize-page.md) — requires source-to-render mapping, claim-preserving rewrites, build execution, rollback; none of that is proven yet |
 | /citable create-page, answer-block, architect, interlink, consolidate, metadata | specified (page-work.md) |
 | /citable validate-render | partially implemented by `observe render`; mobile/cross-browser and interaction exploration remain |
-| /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by observation imports, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
+| /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by metric/observation imports, objective evaluation, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
 
 Shared refusal conditions (all commands): any action that would fabricate
 facts, citations, evidence, authorship, reviews, corroboration, or hidden

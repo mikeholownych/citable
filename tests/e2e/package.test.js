@@ -20,6 +20,8 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
   assert.ok(dryFiles.has('cli/bin/citable.js'));
   assert.ok(dryFiles.has('dist/universal/.claude/skills/citable/SKILL.md'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/SKILL.md'));
+  assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/schemas/metric.schema.json'));
+  assert.ok(dryFiles.has('schemas/objective.schema.json'));
   assert.ok(dryFiles.has('README.md'));
   assert.ok(dryFiles.has('LICENSE'));
 
@@ -38,6 +40,15 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
 
   const modes = execFileSync('tar', ['-tvf', tarball, 'package/cli/bin/citable.js'], { encoding: 'utf8' });
   assert.match(modes, /^-rwxr-xr-x/, modes);
+
+  const help = execFileSync('npx', [`--package=${tarball}`, 'citable', 'help'], {
+    cwd: packDir,
+    env: { ...process.env, npm_config_yes: 'true' },
+    encoding: 'utf8',
+  });
+  assert.match(help, /metrics import/);
+  assert.match(help, /objectives init/);
+  assert.match(help, /evaluate \[objective-id\]/);
 
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-npx-project-'));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-npx-home-'));

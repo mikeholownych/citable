@@ -15,6 +15,7 @@ import { actionPlan } from '../commands/actionPlan.js';
 import { observe } from '../commands/observe.js';
 import { applyRemediation } from '../commands/applyRemediation.js';
 import { monitor } from '../commands/monitor.js';
+import { evaluateObjective, importMetrics, initializeObjective, validateObjectives } from '../commands/measurement.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -41,6 +42,10 @@ Commands
                             consensus, performance, or corroboration evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
+  metrics import            Import declared metric observations from CSV/JSON
+  objectives init           Validate/add one objective from --input (--write to save)
+  objectives validate       Validate objective contracts and metric references
+  evaluate [objective-id]   Compare objective baseline and evaluation windows
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
@@ -165,6 +170,29 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const r = monitor(root, { runA: args._[0], runB: args._[1] });
         out(args, `monitor ${r.run_a} → ${r.run_b}: ${r.summary.alerts} alert(s), ${r.summary.critical_or_high} critical/high\nReport: ${path.join(r.dir, 'latest.json')}`, r);
         if (r.summary.critical_or_high > 0) process.exitCode = 1;
+        break;
+      }
+      case 'metrics': {
+        if (args._[0] !== 'import') throw new Error('usage: citable metrics import --provider <name> --input <csv|json>');
+        const r = importMetrics(root, { input: args.input, provider: args.provider });
+        out(args, `metrics import: ${r.summary.total} observation(s) from ${args.provider}\nEvidence package: ${r.dir}`, r);
+        break;
+      }
+      case 'objectives': {
+        const mode = args._[0];
+        if (mode === 'init') {
+          const r = initializeObjective(root, { input: args.input, write: args.write });
+          out(args, `objectives init: ${r.objective.objective_id} ${r.written ? 'written' : 'valid (dry run; use --write to save)'}`, r);
+        } else if (mode === 'validate') {
+          const r = validateObjectives(root);
+          out(args, `objectives validate: ${r.ok ? 'OK' : 'PROBLEMS'} (${r.count} objective(s))${r.problems.length ? `\n${r.problems.map((problem) => `  - ${problem}`).join('\n')}` : ''}`, r);
+          if (!r.ok) process.exitCode = 1;
+        } else throw new Error('usage: citable objectives <init|validate> [--input <json|yaml>] [--write]');
+        break;
+      }
+      case 'evaluate': {
+        const r = evaluateObjective(root, { objectiveId: args._[0], refDate: args.refDate });
+        out(args, `evaluate ${r.objective_id}: ${r.status}\n` + r.metrics.map((metric) => `  ${metric.metric_id}: ${metric.state}${metric.state === 'observed' ? ` (${metric.baseline} → ${metric.evaluation})` : ''}`).join('\n') + `\n${r.interpretation}`, r);
         break;
       }
       case 'self-upgrade': {

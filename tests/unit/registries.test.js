@@ -67,6 +67,19 @@ test('registry schemas reject unknown fields instead of ignoring typos', () => {
   assert.equal(validateAgainst('claim.schema.json', topLevelTypo).valid, false);
 });
 
+test('measurement schemas reject unknown fields and invalid connection states', () => {
+  const metricRegistry = {
+    version: 1, kind: 'metrics', updated: '2026-07-18T00:00:00Z',
+    entries: [{ metric_id: 'METRIC-X', name: 'X', provider: 'manual', external_name: 'x', unit: 'count', value_type: 'integer', aggregation: 'sum', direction: 'increase', dimensions: [], limitations: [], typo: true }],
+  };
+  const connections = {
+    version: 1, kind: 'connections', updated: '2026-07-18T00:00:00Z',
+    entries: [{ connection_id: 'CONNECTION-X', provider: 'x', state: 'configured', authentication: 'environment', scopes: ['read'], limitations: [], access_token: 'must-not-be-stored' }],
+  };
+  assert.equal(validateAgainst('metric.schema.json', metricRegistry).valid, false);
+  assert.equal(validateAgainst('connection.schema.json', connections).valid, false);
+});
+
 test('saveRegistry preserves prior content in history and refuses invalid data', () => {
   const root = tmpProject('registries-good');
   const { registries } = loadRegistries(root);

@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 116 pass |
+| Tests | 121 pass |
 | Registries | 9 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 48 canonical skill files per provider |
@@ -65,6 +65,9 @@ audited property or claiming that a recommendation was implemented.
 
 ### Measurement Extensions
 
+- Release `v1.5.0` gates provider-neutral metric declarations, optional owner
+  imports, user-defined objectives, cohorts, windows, and guardrails before live
+  connector work begins.
 - Lighthouse lab execution; CrUX field collection is implemented while existing
   CWV detectors remain infrastructure-readiness checks.
 - Multimodal extraction for images, video, audio, and PDFs with explicit

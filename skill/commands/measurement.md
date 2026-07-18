@@ -10,6 +10,23 @@ imports, and a disclosed custom citation-adapter protocol. It does not claim
 Bing AI Performance automation or equivalence between an API adapter and a
 consumer answer product. Preserve collector and product mode on every result.
 
+# implemented metric and objective workflow
+
+`citable metrics import --provider <name> --input <csv|json>` validates every
+row against a declared entry in `metrics.yaml` and writes immutable metric
+observations. `citable objectives init --input <json|yaml>` is dry-run by
+default; `--write` adds the validated objective with registry history.
+`citable objectives validate` checks contracts and metric references.
+`citable evaluate [objective-id]` compares independent baseline and evaluation
+windows, deduplicates repeated evidence, and reports each metric and guardrail
+separately. Insufficient data is `inconclusive`, never zero. Results describe
+temporal association and do not establish causation.
+
+Metrics, objectives, interventions, and connection state are optional. The
+absence of provider credentials is `not_configured`, not a finding and not
+evidence of zero activity. Credentials must never enter registries or evidence
+packages.
+
 # measure seo
 Inputs the operator exports (Search Console/Bing/analytics CSV or JSON).
 Workflow: validate segmentation (brand vs non-brand, intent, page type,

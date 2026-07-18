@@ -1,0 +1,5 @@
+metric_id,value,observed_at,url,query,label
+METRIC-GSC_IMPRESSIONS,10,2026-07-07T00:00:00Z,https://example.test/product/a,alpha,product
+METRIC-GSC_IMPRESSIONS,15,2026-07-10T00:00:00Z,https://example.test/product/a,alpha,product
+METRIC-GSC_IMPRESSIONS,20,2026-07-13T00:00:00Z,https://example.test/product/a,alpha,product
+METRIC-GSC_IMPRESSIONS,30,2026-07-17T00:00:00Z,https://example.test/product/a,alpha,product
