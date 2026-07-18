@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.5.1 — 2026-07-18
+
 ### Fixed
 
 - `Ship release` now explicitly dispatches trusted npm publishing at the newly
