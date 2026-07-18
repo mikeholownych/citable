@@ -10,6 +10,7 @@ import { inspect } from '../commands/inspect.js';
 import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
+import { selfUpgradeCommand } from '../commands/selfUpgrade.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -31,6 +32,7 @@ Commands
   schema                    Validate deployed JSON-LD and propose registry-derived schema
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
+  self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
   --target <dir|url>        Built output directory or deployed URL to audit
@@ -113,6 +115,11 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const r = compareSnapshots(root, { runA: args._[0], runB: args._[1] });
         out(args, `compare ${r.runA} → ${r.runB}\n  new: ${r.summary.new_findings} (critical/high: ${r.summary.regression_critical_or_high})\n  resolved: ${r.summary.resolved_findings}\n  persisting: ${r.summary.persisting_findings}`, r);
         if (r.summary.regression_critical_or_high > 0) process.exitCode = 1;
+        break;
+      }
+      case 'self-upgrade': {
+        const output = await selfUpgradeCommand(argv.slice(1));
+        console.log(output);
         break;
       }
       case undefined:

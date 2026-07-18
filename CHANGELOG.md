@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0 — 2026-07-18
+
+### Added
+
+- **`self-upgrade` command** — checks npm registry for the latest version and upgrades the npx cache if a newer version is available:
+  - `npx @nebulacomponents/citable self-upgrade` — check and upgrade
+  - `npx @nebulacomponents/citable self-upgrade --check` — check only, no upgrade
+  - `npx @nebulacomponents/citable self-upgrade --json` — machine-readable output
+  - Uses Node's built-in `fetch` (no extra deps), 10s timeout, graceful offline error
+- **6 new tests** for self-upgrade (current, update-available, registry failure × 2 each for human/JSON output)
+
+### Changed
+
+- Test count: 84 → 90
+
 ## 1.1.0 — 2026-07-18
 
 ### Added
