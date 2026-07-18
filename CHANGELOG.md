@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.0.0 — 2026-07-18
+
+**First production release.**
+
+### Added
+
+- **HREFLANG namespace** — 3 detectors for international SEO validation:
+  - HREFLANG-001: hreflang link validation (valid hreflang values)
+  - HREFLANG-002: self-reference check (page should reference itself)
+  - HREFLANG-003: x-default presence (missing default language fallback)
+- **CWV namespace** — 3 infrastructure detectors for Core Web Vitals readiness:
+  - CWV-001: LCP potential blockers (render-blocking scripts, images without dimensions)
+  - CWV-002: preconnect hints for fonts
+  - CWV-003: image optimization checks (format, dimensions, lazy loading)
+- **URL fetch resilience** — retry with exponential backoff + jitter, 5xx handling
+- **CI workflow** — GitHub Actions for Node 22 matrix testing
+
+### Changed
+
+- **Detector count** — now 109 detectors across 17 namespaces
+- **Documentation** — fixed test count (33 → 46), updated README/CLAUDE.md/AGENTS.md
+
+### Fixed
+
+- CI workflow compatibility — use actions@v4, Node 22 (not v6, Node 24)
+- npm-publish workflow — fixed version check for new packages
+
 ## 0.1.0 — 2026-07-18
 
 Initial MVP.
