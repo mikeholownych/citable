@@ -1,0 +1,52 @@
+version: 1
+kind: crawlers
+updated: '2026-07-18T17:03:51.729Z'
+entries:
+  - crawler_id: CRAWLER-GOOGLEBOT
+    user_agent: Googlebot
+    vendor: Google
+    purpose: search_indexing
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-BINGBOT
+    user_agent: Bingbot
+    vendor: Microsoft
+    purpose: search_indexing
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-OAI-SEARCHBOT
+    user_agent: OAI-SearchBot
+    vendor: OpenAI
+    purpose: ai_search_discovery
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-GPTBOT
+    user_agent: GPTBot
+    vendor: OpenAI
+    purpose: model_training
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-CHATGPT-USER
+    user_agent: ChatGPT-User
+    vendor: OpenAI
+    purpose: user_initiated_retrieval
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-PERPLEXITYBOT
+    user_agent: PerplexityBot
+    vendor: Perplexity
+    purpose: ai_search_discovery
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-PERPLEXITY-USER
+    user_agent: Perplexity-User
+    vendor: Perplexity
+    purpose: user_initiated_retrieval
+    decision: undecided
+    status: active
+  - crawler_id: CRAWLER-CLAUDEBOT
+    user_agent: ClaudeBot
+    vendor: Anthropic
+    purpose: model_training
+    decision: undecided
+    status: active

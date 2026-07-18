@@ -1,0 +1,18 @@
+version: 1
+site:
+  base_url: null
+  built_output_dir: null
+  source_dirs: []
+  default_locale: en
+  default_jurisdiction: null
+framework:
+  name: null
+  rendering_model: null
+  package_manager: npm
+  build_command: null
+  test_command: npm test
+audit:
+  index_target_default: true
+  max_crawl_depth: 4
+  thin_content_words: 120
+  fetch_external: false
