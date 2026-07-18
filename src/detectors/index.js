@@ -10,8 +10,10 @@ import schemaData from './schemaData.js';
 import link from './link.js';
 import geoReco from './geoReco.js';
 import lifeMeas from './lifeMeas.js';
+import { hreflangDetectors } from './hreflang.js';
+import { cwvDetectors } from './cwv.js';
 
-export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas];
+export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas, ...hreflangDetectors, ...cwvDetectors];
 
 const ids = new Set();
 for (const d of ALL_DETECTORS) {
