@@ -35,8 +35,7 @@ jobs:
         run: npm run build:dist
 
       - name: Full test suite (unit + integration)
-        shell: bash
-        run: node --test --test-concurrency=1 tests/unit/**/*.test.js tests/integration/**/*.test.js
+        run: npm test
 
       - name: E2E package test
         shell: bash
