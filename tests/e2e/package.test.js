@@ -38,7 +38,7 @@ function parsePackJson(output) {
   assert.fail(`npm pack did not emit a JSON array:\n${output}`);
 }
 
-test('packed npm artifact contains runtime files and installs with npx', () => {
+test('packed npm artifact contains runtime files and installs with npx', { timeout: 120_000 }, () => {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-pack-'));
   const dryOutput = execFileSync('npm', ['pack', '--dry-run', '--json', '--pack-destination', packDir], {
     cwd: ROOT,
