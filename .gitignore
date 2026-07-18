@@ -6,6 +6,8 @@ dist/
 coverage/
 .citable/runs/
 .citable/snapshots/
+.citable/
+*.tgz
 *.log
 .DS_Store
 Thumbs.db
