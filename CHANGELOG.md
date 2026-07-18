@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Installer aliases compatible with the common `skills` CLI interface:
+  repeatable `--agent`/`-a`, `--skill`/`-s`, `--copy`, `-p`, `-g`, and `*`
+  provider selection.
+- Explicit copy-only integrity policy and actionable rejection of unsupported
+  symlink installs.
+- Structured pull request controls with code ownership, a required PR contract,
+  Conventional Commits title validation, and release-note enforcement.
+- Review-gated release preparation and shipping workflows with semantic-version
+  consistency checks, changelog-derived GitHub releases, protected tagging, and
+  npm trusted publishing handoff.
+
+### Fixed
+
+- `citable install --all` now selects every supported provider in addition to
+  confirming non-interactively.
+
 ## 1.4.0 — 2026-07-18
 
 ### Added

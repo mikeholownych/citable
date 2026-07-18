@@ -26,6 +26,8 @@ jobs:
     environment: npm-publish
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -51,6 +53,17 @@ jobs:
           fi
           if [[ "${package_version}" != "${expected}" ]]; then
             echo "::error::package.json version ${package_version} does not match requested release ${expected}"
+            exit 1
+          fi
+          node scripts/release-process.js validate "${expected}"
+
+      - name: Verify tag is based on main
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::release tag is not based on origin/main"
             exit 1
           fi
 

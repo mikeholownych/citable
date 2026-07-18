@@ -1,0 +1,65 @@
+name: Ship release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Merged release version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ship-release
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    name: Tag and release v${{ inputs.version }}
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Validate merged release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "main"
+          node scripts/release-process.js validate "${RELEASE_VERSION}"
+          if git rev-parse "v${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "::error::tag v${RELEASE_VERSION} already exists"
+            exit 1
+          fi
+          npm test
+          npm pack --dry-run --json >/tmp/npm-pack.json
+          node scripts/release-process.js notes "${RELEASE_VERSION}" /tmp/release-notes.md
+
+      - name: Create protected release reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -a "v${RELEASE_VERSION}" -m "v${RELEASE_VERSION}"
+          git push origin "v${RELEASE_VERSION}"
+          gh release create "v${RELEASE_VERSION}" \
+            --verify-tag \
+            --title "v${RELEASE_VERSION}" \
+            --notes-file /tmp/release-notes.md

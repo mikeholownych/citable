@@ -130,7 +130,7 @@ export function parseProviderList(value) {
   if (!raw) return { kind: 'explicit', providers: [], unknown: [] };
   const lowered = raw.toLowerCase();
   if (lowered === 'detected') return { kind: 'detected', providers: [], unknown: [] };
-  if (lowered === 'all') return { kind: 'all', providers: PROVIDER_IDS, unknown: [] };
+  if (lowered === 'all' || lowered === '*') return { kind: 'all', providers: PROVIDER_IDS, unknown: [] };
 
   const providers = [];
   const unknown = [];

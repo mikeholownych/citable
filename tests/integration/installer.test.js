@@ -49,6 +49,24 @@ test('install into Claude, Codex, and Cursor project locations, then rerun idemp
   assert.deepEqual(check.providers.map((row) => row.state), ['current', 'current', 'current']);
 });
 
+test('skills ecosystem flags install each selected managed copy', async () => {
+  const { project, home, options } = tmpProject('citable-skills-flags-');
+  const args = parseInstallerArgs([
+    '--agent', 'claude-code',
+    '--agent', 'codex',
+    '--skill', '*',
+    '--copy',
+    '--project',
+    '--yes',
+  ]);
+
+  const result = await installCommand(args, options);
+  assert.deepEqual(result.results.map((row) => row.status), ['installed', 'installed']);
+  assert.ok(fs.existsSync(path.join(project, '.claude', 'skills', 'citable', 'manifest.json')));
+  assert.ok(fs.existsSync(path.join(project, '.agents', 'skills', 'citable', 'manifest.json')));
+  assert.equal(fs.existsSync(path.join(home, '.agents', 'skills', 'citable')), false);
+});
+
 test('dry-run install makes no filesystem changes', async () => {
   const { project, options } = tmpProject('citable-dry-');
   const result = await installCommand(parseInstallerArgs(['--providers=claude', '--project', '--yes', '--dry-run']), options);

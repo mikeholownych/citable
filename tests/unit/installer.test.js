@@ -21,10 +21,26 @@ test('provider aliases normalize and unknown providers are actionable errors', (
   assert.deepEqual(parseProviderList('claude-code,openai-codex,copilot').providers, ['claude', 'codex', 'github']);
   assert.deepEqual(parseProviderList('all').providers.includes('claude'), true);
   assert.deepEqual(parseProviderList('detected').kind, 'detected');
+  assert.deepEqual(parseProviderList('*').kind, 'all');
   assert.throws(
     () => parseInstallerArgs(['--providers=claud,codex']),
     (err) => err.exitCode === EXIT_CODES.invalidArguments && err.message.includes('unknown provider'),
   );
+});
+
+test('skills ecosystem flags map to Citable provider and copy semantics', () => {
+  const repeated = parseInstallerArgs(['--agent', 'claude-code', '-a', 'codex', '--skill', 'citable', '--copy', '-p', '-y']);
+  assert.deepEqual(repeated.providerSelection.providers, ['claude', 'codex']);
+  assert.equal(repeated.skillSelection, 'citable');
+  assert.equal(repeated.installMode, 'copy');
+  assert.equal(repeated.scope, 'project');
+  const all = parseInstallerArgs(['--all', '-g']);
+  assert.equal(all.providerSelection.kind, 'all');
+  assert.equal(all.yes, true);
+  assert.equal(all.scope, 'global');
+  assert.throws(() => parseInstallerArgs(['--skill', 'other']), /only the citable skill/);
+  assert.throws(() => parseInstallerArgs(['--symlink']), /not supported/);
+  assert.throws(() => parseInstallerArgs(['--all', '--agent', 'codex']), /cannot be combined/);
 });
 
 test('scope flags normalize and conflicting scopes fail closed', () => {

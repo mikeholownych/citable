@@ -52,6 +52,20 @@ Install into specific agents:
 npx @nebulacomponents/citable install --providers=claude,codex,cursor
 ```
 
+The installer also accepts the common `skills` CLI conventions. `--agent` is
+repeatable, `--skill` accepts `citable` or `*`, and `--copy` explicitly selects
+Citable's default managed-copy mode:
+
+```bash
+npx @nebulacomponents/citable install --agent claude-code --agent codex --skill citable --copy -p -y
+```
+
+Install into every supported provider layout without prompting:
+
+```bash
+npx @nebulacomponents/citable install --all --project
+```
+
 Install globally:
 
 ```bash
@@ -91,10 +105,13 @@ provider-specific home paths, including `~/.claude/skills/citable/`,
 Target resolution is deterministic: explicit `--providers` wins, then project
 harness directories, then user-home harness hints. `--providers=detected`
 selects every detected supported provider; `--providers=all` selects every
-supported provider layout for the requested scope. Unknown provider names fail
-non-zero. In non-interactive mode, use `--yes`; project scope is the default
-unless `--global`/`--user`/`--scope=global` is supplied. The installer never
-reports success when no install target was selected.
+supported provider layout for the requested scope. `--providers=*` and `--all`
+are equivalent provider selections; `--all` also confirms non-interactively.
+Repeatable `--agent`/`-a`, `--skill`/`-s`, `--copy`, `-p`, and `-g` follow the
+familiar `skills` CLI interface. Unknown provider or skill names fail non-zero.
+Project scope is the default unless `--global`/`--user`/`--scope=global` is
+supplied. The installer never reports success when no install target was
+selected.
 
 Managed installs carry `manifest.json` with `managedBy: "citable-cli"` and
 SHA-256 hashes for the installed payload. Repeated installs validate the tree
@@ -102,7 +119,9 @@ and report `already current`. `update` compares the complete managed tree, not
 only `SKILL.md` or the version string. `uninstall` removes managed files only
 and preserves unrelated files in the skill directory. Locally modified managed
 installs and unmanaged `citable/` collisions are refused unless `--force` is
-used.
+used. Symlink mode is intentionally unsupported: provider-specific payloads and
+their manifests must remain an atomic managed unit so validation and uninstall
+do not cross ownership boundaries.
 
 The initial installer installs the skill payload only. It does not install
 provider hooks, sidecar configuration, telemetry, or unrelated agent settings.

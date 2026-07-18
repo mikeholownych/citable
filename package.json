@@ -52,6 +52,8 @@
     "test:integration": "node --test --test-concurrency=1 --test-reporter=spec 'tests/integration/**/*.test.js'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.js'",
     "build:dist": "node scripts/build-dist.js",
+    "release:prepare": "node scripts/release-process.js prepare",
+    "release:validate": "node scripts/release-process.js validate",
     "prepack": "npm run build:dist"
   },
   "bin": {

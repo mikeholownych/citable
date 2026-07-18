@@ -1,0 +1,64 @@
+name: Prepare release branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable semantic version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare v${{ inputs.version }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prepare version files and changelog
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/release-process.js prepare "${RELEASE_VERSION}"
+          npm run build:dist
+          node scripts/release-process.js validate "${RELEASE_VERSION}"
+          npm test
+          git diff --check
+
+      - name: Create release branch
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          branch="release/v${RELEASE_VERSION}"
+          if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+            echo "::error::${branch} already exists"
+            exit 1
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git switch -c "${branch}"
+          git add package.json package-lock.json CHANGELOG.md docs/ROADMAP.md
+          git commit -m "release: v${RELEASE_VERSION}"
+          git push origin "${branch}"
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+          echo "Open the release PR as a maintainer: ${url}" | tee -a "${GITHUB_STEP_SUMMARY}"
+          echo "Use title: release: v${RELEASE_VERSION}" | tee -a "${GITHUB_STEP_SUMMARY}"

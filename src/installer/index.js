@@ -105,6 +105,8 @@ export function parseInstallerArgs(argv) {
     help: false,
     version: false,
     failOnUpdate: false,
+    installMode: 'copy',
+    skillSelection: null,
     _: [],
   };
 
@@ -118,17 +120,29 @@ export function parseInstallerArgs(argv) {
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--force') args.force = true;
     else if (arg === '--json') args.json = true;
-    else if (arg === '--all') args.all = true;
+    else if (arg === '--all') { args.all = true; args.yes = true; }
     else if (arg === '--help' || arg === '-h') args.help = true;
     else if (arg === '--version' || arg === '-v') args.version = true;
-    else if (arg === '--project' || arg === '--local') args.scope = mergeScope(args.scope, 'project');
-    else if (arg === '--global' || arg === '--user') args.scope = mergeScope(args.scope, 'global');
+    else if (arg === '--project' || arg === '--local' || arg === '-p') args.scope = mergeScope(args.scope, 'project');
+    else if (arg === '--global' || arg === '--user' || arg === '-g') args.scope = mergeScope(args.scope, 'global');
+    else if (arg === '--copy') args.installMode = 'copy';
+    else if (arg === '--symlink') throw new CitableInstallerError('--symlink is not supported: Citable uses hashed managed copies for atomic validation and safe uninstall', EXIT_CODES.invalidArguments);
     else if (arg === '--fail-on-update') args.failOnUpdate = true;
     else if (arg === '--providers') {
       if (i + 1 >= argv.length) throw new CitableInstallerError('--providers requires a value', EXIT_CODES.invalidArguments);
       args.providersRaw = argv[++i];
     } else if (arg.startsWith('--providers=')) {
       args.providersRaw = arg.slice('--providers='.length);
+    } else if (arg === '--agent' || arg === '-a') {
+      if (i + 1 >= argv.length) throw new CitableInstallerError(`${arg} requires a value`, EXIT_CODES.invalidArguments);
+      args.providersRaw = [args.providersRaw, argv[++i]].filter(Boolean).join(',');
+    } else if (arg.startsWith('--agent=')) {
+      args.providersRaw = [args.providersRaw, arg.slice('--agent='.length)].filter(Boolean).join(',');
+    } else if (arg === '--skill' || arg === '-s') {
+      if (i + 1 >= argv.length) throw new CitableInstallerError(`${arg} requires a value`, EXIT_CODES.invalidArguments);
+      args.skillSelection = argv[++i];
+    } else if (arg.startsWith('--skill=')) {
+      args.skillSelection = arg.slice('--skill='.length);
     } else if (arg === '--scope') {
       if (i + 1 >= argv.length) throw new CitableInstallerError('--scope requires a value', EXIT_CODES.invalidArguments);
       args.scope = mergeScope(args.scope, normalizeScopeValue(argv[++i]));
@@ -141,7 +155,16 @@ export function parseInstallerArgs(argv) {
     }
   }
 
-  if (args.providersRaw !== null) {
+  if (args.skillSelection !== null && !['citable', '*'].includes(String(args.skillSelection).trim().toLowerCase())) {
+    throw new CitableInstallerError(`this package contains only the citable skill; unsupported --skill value: ${args.skillSelection}`, EXIT_CODES.invalidArguments);
+  }
+
+  if (args.all) {
+    if (args.providersRaw !== null) throw new CitableInstallerError('--all cannot be combined with --providers or --agent', EXIT_CODES.invalidArguments);
+    args.providerSelection = { kind: 'all', providers: PROVIDER_IDS, unknown: [] };
+  }
+
+  if (args.providersRaw !== null && !args.providerSelection) {
     const parsed = parseProviderList(args.providersRaw);
     if (parsed.unknown.length) {
       const supported = PROVIDER_IDS.join(', ');
@@ -1102,12 +1125,17 @@ Install examples
   npx @nebulacomponents/citable install
   npx @nebulacomponents/citable install --yes
   npx @nebulacomponents/citable install --providers=claude,codex,cursor --project --yes
+  npx @nebulacomponents/citable install --agent claude-code --agent codex --skill citable --copy -p -y
   npx @nebulacomponents/citable install --providers=all --global --dry-run
 
 Options
-  --providers=<list>        Provider ids, detected, or all
-  --project, --local        Install/check project-local skill locations
-  --global, --user          Install/check user-global skill locations
+  --providers=<list>        Provider ids, detected, all, or *
+  --agent=<id>, -a <id>     Repeatable provider alias compatible with skills CLI
+  --skill=<name>, -s <name> Select citable or * (this package contains one skill)
+  --all                     Select every provider and confirm non-interactively
+  --copy                    Use managed copies (default and only install mode)
+  --project, --local, -p    Install/check project-local skill locations
+  --global, --user, -g      Install/check user-global skill locations
   --scope=<project|global>  Scope equivalent
   --yes, -y                 Confirm non-interactively
   --dry-run                 Preview filesystem changes without mutation

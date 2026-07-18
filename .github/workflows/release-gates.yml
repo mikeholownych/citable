@@ -59,8 +59,8 @@ jobs:
           tarball="$(cat npm-pack-filename.txt)"
           cp "$tarball" "$tmp/"
           cd "$tmp"
-          HOME="$home" npx "./$tarball" install --providers=claude,codex,cursor --project --yes
+          HOME="$home" npx --package "./$tarball" citable install --agent claude-code --agent codex --agent cursor --skill '*' --copy --project --yes
           test -f .claude/skills/citable/SKILL.md
           test -f .agents/skills/citable/SKILL.md
           test -f .cursor/skills/citable/SKILL.md
-          HOME="$home" npx "./$tarball" install --providers=claude,codex,cursor --project --yes
+          HOME="$home" npx --package "./$tarball" citable install --agent claude-code --agent codex --agent cursor --skill '*' --copy --project --yes

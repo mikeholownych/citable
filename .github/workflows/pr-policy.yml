@@ -1,0 +1,37 @@
+name: PR policy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: PR structure and release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Collect changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" > changed-files.txt
+
+      - name: Validate PR contract
+        run: node scripts/validate-pr.js changed-files.txt
+
+      - name: Validate release PR version
+        if: startsWith(github.head_ref, 'release/v')
+        env:
+          RELEASE_BRANCH: ${{ github.head_ref }}
+        run: node scripts/release-process.js validate "${RELEASE_BRANCH#release/v}"
