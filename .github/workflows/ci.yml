@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build distribution
+        run: npm run build:dist
+      
+      - name: Verify distribution
+        run: |
+          test -d dist/universal
+          test -f dist/universal/manifest.json
+          node -e "require('./dist/universal/manifest.json')"
+      
+      - name: Test CLI
+        run: |
+          node cli/bin/citable.js --version
+          node cli/bin/citable.js help
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check schemas
+        run: |
+          for schema in schemas/*.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$schema'))"
+          done
+      
+      - name: Check documentation
+        run: |
+          test -f README.md
+          test -f CHANGELOG.md
+          test -f docs/architecture/adr-001-architecture.md
+          test -f docs/architecture/traceability-matrix.md
+          test -f docs/known-limitations.md
