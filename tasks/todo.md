@@ -37,4 +37,16 @@
 - [ ] Acceptance criteria assessment (25 criteria)
 
 ## Review
-(to be completed at end)
+
+Completed 2026-07-18. All phases delivered except live-engine adapters
+(documented as out of MVP scope in docs/known-limitations.md, per §20 phase 6
+"do not claim external engine support where no reliable adapter exists").
+
+- 102 detectors / 15 namespaces, 33 tests green, positive+negative fixtures
+- 8 CLI commands + agent-workflow contracts for the rest
+- Evidence packages with checksums; reproducible dist builds (verified twice)
+- Traceability matrix maps all three source docs to controls
+- Example run committed under examples/demo/.citable/runs/
+
+Follow-ups (highest value first): rendered-vs-initial HTML comparison via
+headless browser; Search Console/Bing export adapters; hreflang detectors.
