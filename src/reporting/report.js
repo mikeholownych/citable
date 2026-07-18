@@ -1,6 +1,45 @@
 const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, informational: 4, experimental: 5 };
 
-export function summarize(findings) {
+const RETRIEVAL_NAMESPACES = new Set(['TECH', 'CRAWL', 'LINK', 'HREFLANG']);
+const SOURCE_NAMESPACES = new Set(['PAGE', 'ANS', 'ENTITY', 'CLAIM', 'EVD', 'SCHEMA', 'ARCH', 'GEO', 'RECO', 'LIFE', 'EXT']);
+
+function namespace(detectorId) {
+  return detectorId.split('-')[0];
+}
+
+function readinessPosture(findings, detectorsRun, detectorsSkipped, namespaces) {
+  const relevant = findings.filter((finding) => namespaces.has(namespace(finding.detector_id)));
+  const skipped = detectorsSkipped.filter((check) => namespaces.has(namespace(check.detector_id)));
+  const ran = detectorsRun.some((detectorId) => namespaces.has(namespace(detectorId)));
+  let result;
+  if (!ran || skipped.length) result = 'not_established';
+  else if (relevant.some((finding) => ['critical', 'high'].includes(finding.classification.severity))) result = 'fail';
+  else if (relevant.length) result = 'partial';
+  else result = 'pass';
+  return {
+    result,
+    finding_count: relevant.length,
+    skipped_checks: skipped.map((check) => check.detector_id),
+  };
+}
+
+function citationPosture(promptResults, targetOrigin) {
+  if (!promptResults.length) {
+    return { result: 'not_evidenced', finding_count: 0, observations: 0, property_citations: 0, citation_presence_rate: null };
+  }
+  const cited = promptResults.filter((observation) => (observation.citations || []).some((citation) => {
+    try { return targetOrigin && new URL(citation).origin === targetOrigin; } catch { return false; }
+  })).length;
+  return {
+    result: 'observed',
+    finding_count: 0,
+    observations: promptResults.length,
+    property_citations: cited,
+    citation_presence_rate: cited / promptResults.length,
+  };
+}
+
+export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], promptResults = [], targetOrigin = null } = {}) {
   const bySeverity = {};
   const byNamespace = {};
   const byDiscipline = { seo: 0, aeo: 0, geo: 0 };
@@ -19,6 +58,11 @@ export function summarize(findings) {
     by_severity: bySeverity,
     by_namespace: byNamespace,
     by_discipline: byDiscipline,
+    posture: {
+      retrieval_eligibility: readinessPosture(findings, detectorsRun, detectorsSkipped, RETRIEVAL_NAMESPACES),
+      source_extraction_and_support: readinessPosture(findings, detectorsRun, detectorsSkipped, SOURCE_NAMESPACES),
+      observed_citation_behavior: citationPosture(promptResults, targetOrigin),
+    },
   };
 }
 
@@ -44,6 +88,19 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
   for (const [sev, n] of Object.entries(summary.by_severity).sort((a, b) => SEV_ORDER[a[0]] - SEV_ORDER[b[0]])) {
     lines.push(`| ${sev} | ${n} |`);
   }
+  lines.push('');
+  lines.push('## Separate eligibility and observation states');
+  lines.push('');
+  lines.push('| Dimension | Result | Evidence |');
+  lines.push('| --- | --- | --- |');
+  const retrieval = summary.posture.retrieval_eligibility;
+  const source = summary.posture.source_extraction_and_support;
+  const citation = summary.posture.observed_citation_behavior;
+  lines.push(`| Retrieval eligibility | ${retrieval.result} | ${retrieval.finding_count} finding(s); ${retrieval.skipped_checks.length} skipped check(s) |`);
+  lines.push(`| Source extraction and support | ${source.result} | ${source.finding_count} finding(s); ${source.skipped_checks.length} skipped check(s) |`);
+  lines.push(`| Observed citation behavior | ${citation.result} | ${citation.observations} controlled observation(s); property citation rate: ${citation.citation_presence_rate == null ? 'not evidenced' : `${(citation.citation_presence_rate * 100).toFixed(1)}%`} |`);
+  lines.push('');
+  lines.push('These states are not combined into an AI visibility score. Readiness does not establish retrieval selection or citation behavior.');
   lines.push('');
   if (detectorsSkipped.length) {
     lines.push(`## Skipped checks`);

@@ -5,17 +5,9 @@ Citable publishes to npm as `@nebulacomponents/citable`.
 Trusted publishing uses GitHub Actions OIDC instead of a long-lived npm publish
 token. The repository workflow is `.github/workflows/npm-publish.yml`.
 
-## First Publish
-
-npm trusted publisher configuration is package-scoped. If
-`@nebulacomponents/citable` does not exist on npm yet, publish the first version
-manually with an npm account that has 2FA enabled:
-
-```bash
-npm publish --access public --otp=<current-otp>
-```
-
-After the package exists, configure trusted publishing for future releases.
+The package is published. Releases use the tag-triggered workflow and the
+package-scoped trusted-publisher binding described below; maintainers should not
+add a long-lived npm token to repository or environment secrets.
 
 ## npm Settings
 
@@ -59,8 +51,8 @@ same environment name.
 Publish from a version tag:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag -a v1.3.0 -m "v1.3.0"
+git push origin v1.3.0
 ```
 
 Or dispatch the workflow manually and enter the package version from
@@ -74,16 +66,15 @@ The workflow fails closed if:
 - the package dry-run fails
 - GitHub cannot mint an OIDC token for npm
 
-## CLI Alternative
+## Configuration Audit
 
-After the package exists, npm CLI 11.15.0+ can configure the publisher:
+An authorized maintainer can inspect the active package-scoped binding with:
 
 ```bash
-npm trust github @nebulacomponents/citable \
-  --repo mikeholownych/citable \
-  --file npm-publish.yml \
-  --env npm-publish \
-  --allow-publish
+npm trust list @nebulacomponents/citable
 ```
 
-The command requires package write access and account-level 2FA.
+The command requires package write access and may require an interactive npm
+OTP. A successful release workflow proves that npm accepted the workflow's
+OIDC identity for that publication; it does not prove that the binding will
+remain unchanged for future releases.

@@ -1,0 +1,7 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-ENFORCE
+    claim: Gatekeeper evaluates AI actions before execution.
+    claim_type: capability
+    status: candidate

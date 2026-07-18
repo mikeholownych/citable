@@ -216,4 +216,47 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'ANS-009', name: 'Answer-target page has no prompt coverage', namespace: 'ANS',
+  description: 'An answer-bearing page is intended for discovery but is not mapped to any prompt in the governed prompt corpus.',
+  discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
+  impact: { citation: 'high', representation: 'medium', maintainability: 'medium' },
+  applicable_requirement: 'AEO §1 governed question corpus and §13 page acceptance; GEO §1 prompt registry and §19 page acceptance',
+  remediation: 'Map the page to at least one reviewed prompt via target_prompts, then verify that the page answers the prompt without broadening registered claims.',
+  verification: 'Page registry target_prompts is non-empty and every referenced prompt exists.',
+  check(ctx) {
+    const answerTypes = new Set(['definition', 'problem', 'solution', 'comparison', 'recommendation', 'implementation', 'evidence', 'faq', 'glossary', 'documentation', 'article', 'product']);
+    return indexTargets(ctx).flatMap((p) => {
+      const reg = registryPageFor(ctx, p);
+      if (!reg || !answerTypes.has(reg.page_type) || (reg.target_prompts || []).length > 0) return [];
+      return [{
+        subject: pageSubject(p),
+        summary: `${reg.page_type} page ${reg.page_id} has no governed target prompt`,
+        evidence: ['target_prompts is empty or absent'],
+      }];
+    });
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-010', name: 'Published claims lack page evidence mapping', namespace: 'ANS',
+  description: 'A page publishes governed claims but records no page-level evidence references, preventing evidence-adjacency review.',
+  discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
+  impact: { citation: 'high', representation: 'high', legal: 'medium', reputational: 'medium' },
+  applicable_requirement: 'AEO §4 evidence adjacency and atomic claims; GEO §4 claim registry and §5 claim-evidence proximity',
+  remediation: 'Map supporting evidence in evidence_references and place the relevant source or methodology adjacent to each material claim.',
+  verification: 'Page registry contains evidence_references and claim/evidence referential integrity passes.',
+  check(ctx) {
+    return indexTargets(ctx).flatMap((p) => {
+      const reg = registryPageFor(ctx, p);
+      if (!reg || !(reg.published_claims || []).length || (reg.evidence_references || []).length) return [];
+      return [{
+        subject: pageSubject(p),
+        summary: `Page ${reg.page_id} publishes claims without page-level evidence references`,
+        evidence: [`published_claims: ${reg.published_claims.join(', ')}`, 'evidence_references is empty or absent'],
+      }];
+    });
+  },
+}));
+
 export default D;

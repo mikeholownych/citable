@@ -1,0 +1,16 @@
+version: 1
+kind: pages
+entries:
+  - page_id: PAGE-DEFN
+    url: /learn/execution-governance/
+    page_type: definition
+    primary_intent: define AI execution governance
+    indexing_intent: index
+    status: active
+  - page_id: PAGE-GATEKEEPER
+    url: /products/gatekeeper/
+    page_type: product
+    primary_intent: vendor evaluation
+    published_claims: [CLAIM-ENFORCE]
+    indexing_intent: index
+    status: active

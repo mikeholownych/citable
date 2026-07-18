@@ -11,6 +11,7 @@ import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
 import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
+import { actionPlan } from '../commands/actionPlan.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -32,6 +33,7 @@ Commands
   schema                    Validate deployed JSON-LD and propose registry-derived schema
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
+  action-plan [run]         Turn audit findings into ordered remediation work
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
@@ -66,6 +68,10 @@ function out(args, human, data) {
 
 export async function main(argv = process.argv.slice(2), options = {}) {
   const cmd = argv[0];
+  if (['help', '--help', '-h'].includes(cmd)) {
+    console.log(HELP);
+    return 0;
+  }
   if (isInstallerCommand(cmd)) return runInstallerCommand(cmd, argv.slice(1), options);
   const args = parseArgs(argv.slice(1));
   const root = options.cwd ?? process.cwd();
@@ -115,6 +121,11 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const r = compareSnapshots(root, { runA: args._[0], runB: args._[1] });
         out(args, `compare ${r.runA} → ${r.runB}\n  new: ${r.summary.new_findings} (critical/high: ${r.summary.regression_critical_or_high})\n  resolved: ${r.summary.resolved_findings}\n  persisting: ${r.summary.persisting_findings}`, r);
         if (r.summary.regression_critical_or_high > 0) process.exitCode = 1;
+        break;
+      }
+      case 'action-plan': {
+        const r = actionPlan(root, { runId: args._[0] });
+        out(args, `action-plan: ${r.summary.total_actions} action(s) [ready:${r.summary.ready} blocked:${r.summary.blocked}]\nPlan: ${path.join(r.dir, 'action-plan.md')}\nSource audit: ${r.source_run_id}`, r);
         break;
       }
       case 'self-upgrade': {

@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 0.1.0
+version: 1.3.0
 ---
 
 # Citable — search & generative discoverability governance
@@ -57,6 +57,19 @@ recommendation would require invented facts.
 Report posture per dimension (e.g. `retrieval_eligibility: strong`,
 `answer_extractability: weak`) — never one opaque 0–100 "AI visibility score".
 
+Every report must keep these top-level states separate:
+
+1. **Retrieval eligibility** — policy and captured technical conditions.
+2. **Source extraction and support suitability** — passage, entity, claim,
+   evidence, freshness, and structured-data conditions.
+3. **Observed citation behavior** — only controlled, timestamped provider
+   observations; absent observations are `not_evidenced`, never inferred.
+
+Within retrieval, distinguish `allowed_by_policy`, `synthetic_fetch_succeeded`,
+`observed_in_production_logs`, `indexed`, and `returned_by_retrieval`. Within
+citation testing, distinguish mention, citation, material support, canonical
+source selection, and recommendation. These states are not interchangeable.
+
 ## Tooling
 
 The `citable` CLI in this repository performs the deterministic work. Always
@@ -71,6 +84,7 @@ citable substantiate [--write]
 citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
+citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -78,6 +92,40 @@ lifecycle corroboration`. Every audit writes an evidence package to
 `.citable/runs/<run-id>/` (manifest, findings.json, report.md, headers, robots,
 sitemaps, schema, link graph, checksums). A report without its evidence package
 is not a deliverable.
+
+## Finding-to-action protocol
+
+Detection is the start of the workflow, not the deliverable. For every audit:
+
+1. Run `citable action-plan <run-id>`. Use the generated files under
+   `.citable/actions/<run-id>/`; never edit the immutable source run.
+2. Work phases in order: **unblock** retrieval/security failures,
+   **governance** for owners/entities/claims/evidence, **content** for page and
+   answer changes, then **optimization**. Within a phase, critical/high precede
+   lower-severity work. Severity never substitutes for confidence.
+3. Before editing, assign an accountable owner and satisfy every
+   `required_input`. A blocked action stays blocked; do not write around missing
+   facts, evidence, legal review, or source-to-render mapping.
+4. Apply the listed semantic gates. AEO changes require intent alignment and
+   answer-extractability review. GEO changes require entity clarity,
+   recommendation eligibility, and narrative-accuracy review. Claim/evidence
+   changes additionally require claim-boundedness and evidence-strength review.
+5. Make the smallest source or registry change that addresses the evidence.
+   Reject every listed unsafe shortcut and every matching anti-pattern.
+6. Run the repository build/test commands, then the action's verification
+   command. Re-audit the affected scope and run `compare-snapshots` against the
+   source run. A finding is resolved only when its detector no longer reports
+   the same subject and no new critical/high regression appears.
+7. Report resolved, persisting, blocked, accepted-risk, and newly introduced
+   findings separately. Preserve run IDs, diffs, owners, review evidence, and
+   residual risk. Never translate "detector absent" into an outcome guarantee.
+
+For the complete AEO/GEO acceptance profile, follow
+`references/aeo-geo-validation.md`. Skipped deterministic checks or incomplete
+mandatory semantic reviews make the relevant posture `not_established`.
+Consult `references/capability-boundaries.md` before claiming any observation;
+it identifies which states the current CLI can collect and which require
+operator data or future adapters.
 
 ## Command workflows
 

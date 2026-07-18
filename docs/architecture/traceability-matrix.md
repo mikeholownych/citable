@@ -68,6 +68,7 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Governance roles + provenance register (§11) | R: claims/evidence registries; D: CLAIM-006, LIFE-002 |
 | Automation limits: publication gating, unsafe pattern (§12) | I: map-claims/create-page contracts (candidate-only writes); T: map-claims test |
 | Page acceptance checklist (§13) | D: aggregate; P: posture template |
+| Findings proceed through owned remediation and verification | C: action-plan; I: finding-to-action protocol; V: source-run hash + before/after audit |
 
 ## GEO — "Requirements for a Top-Tier GEO System"
 
@@ -97,6 +98,7 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Automation controls; unsafe workflow (§17) | I: command refusal conditions; T: candidate-only write tests |
 | Incident management SEV classes + runbook (§18) | I: measurement.md; U: narrative-accuracy |
 | Page/site acceptance standards (§19–20) | D: aggregate; P: posture |
+| Prompt/page/entity/evidence readiness before optimization | D: ANS-009/010, GEO-005/006; C: action-plan; U: AEO/GEO validation profile |
 
 ## Cross-cutting build-prompt requirements
 

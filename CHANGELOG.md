@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 — 2026-07-18
+
+### Added
+
+- `citable action-plan [run-id]` converts immutable audit findings into ordered remediation artifacts with owners, blockers, unsafe shortcuts, semantic review gates, and detector-specific verification commands.
+- ANS-009/010 and GEO-005/006 validate prompt-to-page coverage, page-level claim/evidence mapping, primary entity mapping, and complete prompt evaluation briefs.
+- Canonical finding-to-action and AEO/GEO acceptance workflows for installed agent skills.
+- Separate audit posture states for retrieval eligibility, source extraction/support suitability, and observed citation behavior; no aggregate AI visibility score.
+- Capability-boundary and gap-analysis references covering crawler identity, index presence, rendered extraction, passage integrity, canonical consensus, and controlled citation evidence.
 
 ### Changed
 

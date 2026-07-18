@@ -18,7 +18,9 @@ entries:
     page_type: product
     primary_intent: vendor evaluation of runtime authorization
     primary_entities: [ENT-GATEKEEPER]
+    target_prompts: [P-RECO]
     published_claims: [CLAIM-ENFORCE]
+    evidence_references: [EVD-ARCH-SPEC]
     content_owner: Content Owner
     factual_reviewer: SME Reviewer
     lifecycle_class: product_capability
@@ -32,6 +34,7 @@ entries:
     page_type: definition
     primary_intent: define AI execution governance
     primary_entities: [ENT-ORG]
+    target_prompts: [P-DEF]
     content_owner: Content Owner
     factual_reviewer: SME Reviewer
     lifecycle_class: foundational

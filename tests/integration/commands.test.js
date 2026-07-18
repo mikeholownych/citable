@@ -195,3 +195,29 @@ test('CLAIM-009 + substantiate entailment gate: verified requires semantic suppo
   r = substantiate(dir, { refDate: '2026-07-18' });
   assert.equal(r.assessments.find((x) => x.claim_id === 'CLAIM-ENFORCE').outcome, 'contradicted');
 });
+
+test('action-plan turns audit findings into ordered, traceable remediation work', async () => {
+  const actionModule = await import('../../src/commands/actionPlan.js').catch(() => null);
+  assert.ok(actionModule?.actionPlan, 'actionPlan command must be implemented');
+  const dir = project('registries-bad');
+  const auditRun = await audit(dir, {
+    target: path.join(FIX, 'site-broken'),
+    baseUrl: 'https://broken.test',
+    refDate: '2026-07-18',
+  });
+  const plan = actionModule.actionPlan(dir, { runId: auditRun.runId });
+  assert.equal(plan.source_run_id, auditRun.runId);
+  assert.equal(plan.summary.total_actions, auditRun.findings.length);
+  assert.ok(plan.actions.every((a) => a.finding_ids.length >= 1));
+  assert.ok(plan.actions.every((a) => a.verification.command));
+  assert.ok(plan.actions.some((a) => a.semantic_gates.includes('answer-extractability')));
+  assert.ok(plan.actions.some((a) => a.semantic_gates.includes('entity-clarity')));
+  assert.ok(plan.actions.some((a) => a.status === 'blocked' && a.required_input.includes('accountable owner')));
+  const phaseOrder = { unblock: 0, governance: 1, content: 2, optimization: 3 };
+  assert.deepEqual(
+    plan.actions.map((a) => phaseOrder[a.phase]),
+    [...plan.actions.map((a) => phaseOrder[a.phase])].sort((a, b) => a - b),
+  );
+  assert.ok(fs.existsSync(path.join(plan.dir, 'action-plan.json')));
+  assert.ok(fs.existsSync(path.join(plan.dir, 'action-plan.md')));
+});

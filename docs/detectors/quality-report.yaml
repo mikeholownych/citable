@@ -1,4 +1,4 @@
-generated_at: '2026-07-18T08:38:11.064Z'
+generated_at: '2026-07-18T21:39:15.750Z'
 corpus:
   positive_fixtures:
     - tests/fixtures/site-broken
@@ -583,6 +583,30 @@ detectors:
     recall: null
     known_blind_spots:
       - limitations expressed with vocabulary outside the matched set
+  - detector_id: ANS-009
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: ANS-010
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
   - detector_id: ENTITY-001
     deterministic: true
     fixtures_positive: 0
@@ -766,6 +790,18 @@ detectors:
     recall: null
     known_blind_spots:
       - legitimate paraphrase beyond token-overlap detection
+  - detector_id: CLAIM-009
+    deterministic: true
+    fixtures_positive: 5
+    fixtures_negative: 0
+    exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
   - detector_id: EVD-001
     deterministic: true
     fixtures_positive: 1
@@ -1068,6 +1104,30 @@ detectors:
     recall: null
     known_blind_spots:
       - descriptive llms.txt files that merely index documentation
+  - detector_id: GEO-005
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: GEO-006
+    deterministic: true
+    fixtures_positive: 1
+    fixtures_negative: 0
+    exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
   - detector_id: RECO-001
     deterministic: false
     fixtures_positive: 0
@@ -1247,6 +1307,198 @@ detectors:
     fixtures_positive: 1
     fixtures_negative: 0
     exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: HREFLANG-001
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: HREFLANG-002
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: HREFLANG-003
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: CWV-001
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: CWV-002
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: CWV-003
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-001
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-002
+    deterministic: false
+    fixtures_positive: 1
+    fixtures_negative: 1
+    exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-003
+    deterministic: false
+    fixtures_positive: 1
+    fixtures_negative: 1
+    exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-004
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-005
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-006
+    deterministic: false
+    fixtures_positive: 1
+    fixtures_negative: 1
+    exercised_by_fixtures: true
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-007
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-008
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-009
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: AGENT-010
+    deterministic: false
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
     production_pages_evaluated: 0
     true_positives: null
     false_positives: null

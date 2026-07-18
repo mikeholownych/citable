@@ -1,115 +1,78 @@
-# Citable v1.0.0 Roadmap
+# Citable Roadmap
 
-**Goal:** Production-grade SEO/AEO/GEO governance tool suitable for npm public release with semantic versioning guarantees.
+**Goal:** Build a defensible SEO/AEO/GEO evidence and governance tool. Citable
+reports observable readiness and controlled citation outcomes; it does not
+guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v0.1.0)
+## Current State (v1.3.0)
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 109 across 17 namespaces |
-| Tests | 46 pass |
+| Detectors | 123 across 18 namespaces |
+| Tests | 104 pass |
 | Registries | 9 schema-validated |
 | Providers | 12 agent hosts |
-| CI | ✅ tests pass, ✅ ci.yml working |
-| npm | ❌ not published (trusted publisher config pending) |
+| Distribution | 45 canonical skill files per provider |
+| Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
-## Known Gaps (from docs/known-limitations.md)
+The current release separates retrieval eligibility, source extraction and
+support suitability, and observed citation behavior. `action-plan` converts
+immutable findings into owned, ordered remediation work without mutating the
+audited property or claiming that a recommendation was implemented.
 
-1. **No live engine adapters** — no Search Console, Bing API, ChatGPT/Perplexity automation
-2. **No browser rendering** — TECH-011 is heuristic only
-3. **No Core Web Vitals measurement** — infrastructure checks only (CWV-001/002/003)
-4. **No multimodal detectors** — no image/video evidence beyond alt text
+## Delivered
 
-## v1.0.0 Scope (MVP+1)
+- Public npm package and provider-specific skill installation.
+- Immutable audit evidence, checksums, snapshot comparison, and fail-closed
+  registry validation.
+- Retry-bounded remote fetches with same-origin redirect enforcement,
+  private-network rejection, timeouts, and response-size limits.
+- SEO, AEO, GEO, crawler, structured-data, hreflang, CWV-readiness, and
+  agent-readiness detectors.
+- Prompt-to-page, entity, claim, and evidence mapping checks.
+- Source-run-bound action plans with blockers, owners, semantic review gates,
+  unsafe-shortcut warnings, and verification commands.
 
-### Must Have (Release Blockers)
+## Next Priorities
 
-| # | Item | Status | Effort |
-|---|------|--------|--------|
-| 1 | **npm trusted publisher** — fix npm-publish workflow | ❌ failing | 1h |
-| 2 | **release-gates CI** — fix Windows/macOS tests | ❌ failing | 2h |
-| 3 | **Schema validation coverage** — 100% of detectors have JSON-Schema | ⚠️ partial | 4h |
-| 4 | **Error boundaries** — graceful failure, not crash | ⚠️ partial | 3h |
-| 5 | **Documentation audit** — README, CHANGELOG, CLAUDE.md consistent | ⚠️ partial | 2h |
-| 6 | **Version stability** — API contract compatibility guarantee | ❌ missing | 2h |
+### Retrieval Evidence
 
-**Total: ~14h**
+- Verified crawler-IP and server-log ingestion, preserving the distinction
+  between simulated user-agent fetches and observed production access.
+- Search Console and Bing Webmaster integrations for index presence and
+  engine-selected canonical evidence.
+- Multi-region and bot-specific reliability sampling.
 
-### Should Have (Quality)
+### Extraction Evidence
 
-| # | Item | Status | Effort |
-|---|------|--------|--------|
-| 7 | **Hreflang detector** — ARCH-007, LINK-005 | ✅ DONE (HREFLANG-001/002/003) | 4h |
-| 8 | **Core Web Vitals** — infrastructure checks | ✅ DONE (CWV-001/002/003) | 2h |
-| 8 | **Sitemap validation** — CRAWL-007 (strict XML validation) | ⚠️ basic | 2h |
-| 9 | **Retry/backoff** — URL fetch resilience | ❌ missing | 2h |
-| 10 | **Progress output** — TTY progress bars | ❌ missing | 3h |
-| 11 | **Config file** — `.citable/config.yaml` support | ✅ exists | 0h |
-| 12 | **Exit codes** — POSIX-compliant exit codes | ⚠️ partial | 1h |
+- Browser-rendered DOM capture and raw-versus-rendered extraction comparison.
+- Reader-mode, main-content, passage-integrity, and content-to-noise analysis.
+- Canonical consensus matrices spanning redirects, markup, sitemaps, internal
+  links, and observed search-engine selections.
 
-**Total: ~12h**
+### Observed Citation Testing
 
-### Nice to Have (v1.1+)
+- Versioned provider/prompt matrices with repeated runs, locale and product-mode
+  metadata, citation capture, and evidence-package hashes.
+- Citation correctness, first-party selection, canonical citation, attribution
+  accuracy, stability, and provider-variance metrics.
+- Competitive retrieval-set comparison without collapsing outcomes into a
+  single visibility or authority score.
 
-- **Browser rendering** — Playwright/Puppeteer integration
-- **Core Web Vitals** — lighthouse CLI integration
-- **Live engine adapters** — Search Console API, Bing Webmaster API
-- **Multimodal detectors** — image OCR, video transcript analysis
+### Measurement Extensions
 
-## Release Criteria
+- Lighthouse and CrUX adapters for measured Core Web Vitals; existing CWV
+  detectors remain infrastructure-readiness checks.
+- Multimodal extraction for images, video, audio, and PDFs with explicit
+  provenance and confidence.
+- Optional analytics integrations using aggregate data and documented consent
+  boundaries.
 
-### v1.0.0 Definition of Done
+## Release Policy
 
-1. ✅ All tests pass on CI (Linux, macOS, Windows)
-2. ✅ `npm install -g @nebulacomponents/citable` works
-3. ✅ `npx @nebulacomponents/citable install` works globally
-4. ✅ `npx @nebulacomponents/citable install --providers=claude` works in project
-5. ✅ `npx @neculacomponents/citable audit` produces evidence package
-6. ✅ CHANGELOG documents breaking changes
-7. ✅ No crashing on invalid input (graceful error messages)
-8. ✅ Semantic versioning: MAJOR.MINOR.PATCH
-   - MAJOR: breaking API changes
-   - MINOR: new detectors, new commands, backwards-compatible
-   - PATCH: bug fixes, documentation
+- **MAJOR:** breaking command, schema, registry, or artifact contract changes.
+- **MINOR:** backward-compatible commands, detectors, adapters, or report fields.
+- **PATCH:** backward-compatible fixes and documentation corrections.
 
-## Timeline
-
-| Phase | Scope | Duration |
-|-------|-------|----------|
-| **Phase 1** | Fix CI, fix npm publish | 1 day |
-| **Phase 2** | Error boundaries, exit codes, docs | 1 day |
-| **Phase 3** | Schema validation, hreflang, sitemap | 2 days |
-| **Phase 4** | Polish, release prep, v1.0.0 tag | 1 day |
-
-**Total: ~5 days**
-
----
-
-## Post-v1.0.0 Backlog
-
-### v1.1.0 — Live Engine Integration
-
-- Search Console API adapter (query performance, indexing status)
-- Bing Webmaster API adapter
-- GA4 integration for conversion tracking
-- Real-time ranking position check (with rate limiting)
-
-### v1.2.0 — Browser Rendering
-
-- Playwright integration for SSR verification
-- Mobile/desktop parity checks
-- JavaScript execution timing
-- Screenshot evidence capture
-
-### v1.3.0 — Core Web Vitals
-
-- Lighthouse CLI integration
-- Performance budget gates in CI
-- Field data integration (CrUX API)
-
-### v2.0.0 — Multimodal
-
-- Image OCR for text-in-image evidence
-- Video transcript extraction
-- Audio file transcription
-- PDF evidence extraction
+Every release must pass `npm test`, rebuild distributions from `skill/`, validate
+the packed tarball, and record user-visible changes in `CHANGELOG.md`.

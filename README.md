@@ -16,11 +16,14 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
   evidence, pages, crawler policies, competitors, experiments — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **119 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
+- **123 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
   remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
   robots/sitemaps/headers/schema/link graph, checksums.
+- **Separate state reporting** for retrieval eligibility, source extraction and
+  support suitability, and observed citation behavior. These are never merged
+  into an "AI visibility score."
 - **Fail-closed governance**: claims can't become verified without evidence,
   expired evidence invalidates claims, schema is never fabricated, missing
   facts return `blocked` with `required_input`.
@@ -120,6 +123,7 @@ npx @nebulacomponents/citable help
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)
 citable audit --target ./dist --base-url https://example.com
+citable action-plan <run-id> # ordered actions, blockers, review gates, verification
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -144,6 +148,8 @@ citable validate              # registry schema + referential integrity
   workflow and trusted publisher setup
 - [Known limitations](docs/known-limitations.md) — read this before relying on
   any coverage claim
+- [Capability gap analysis](docs/capability-gap-analysis.md) — implemented,
+  partial, operator-supplied, and missing evidence boundaries
 
 ## Requirements
 

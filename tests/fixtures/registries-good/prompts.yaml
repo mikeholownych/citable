@@ -5,7 +5,19 @@ entries:
     canonical_prompt: What platforms provide runtime authorization for AI agents?
     prompt_class: category
     desired_outcome: mention
+    expected_answer_components: [category definition, target user, limitations, evidence]
+    risk_classification: commercial
     target_entities: [ENT-GATEKEEPER]
     accuracy_status: not_observed
     owner: GEO Owner
+    status: active
+  - prompt_id: P-DEF
+    canonical_prompt: What is AI execution governance?
+    prompt_class: definition
+    desired_outcome: accurate_description
+    expected_answer_components: [definition, mechanism, scope, limitations]
+    target_entities: [ENT-ORG]
+    risk_classification: reputational
+    accuracy_status: not_observed
+    owner: AEO Owner
     status: active

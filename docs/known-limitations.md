@@ -8,9 +8,21 @@ surface.
 - **No live engine adapters.** No Search Console/Bing API clients, no
   ChatGPT/Perplexity/Copilot automation. `measure`/`test-prompts` validate and
   govern operator-supplied observations; they do not collect them.
+- **No verified crawler or edge matrix.** URL mode captures a synthetic request
+  using Citable's audit user agent. It does not prove that a declared crawler's
+  current published IP reached the edge, classify WAF/CAPTCHA decisions across
+  regions, or replace production server logs.
+- **No search-index presence adapter.** Index inclusion, engine-selected
+  canonical, and last crawl remain operator-supplied observations.
 - **No browser rendering.** TECH-011 is a heuristic on initial HTML; true
   rendered-vs-initial diffing and mobile/desktop parity need a headless
   browser the CLI does not bundle. validate-render documents the manual path.
+- **No passage corpus or main-content segmentation.** Paragraph-level checks do
+  not yet prove that a coherent 100-300-word answer passage can be extracted,
+  nor quantify navigation/CTA/footer noise.
+- **No automated citation-correctness verdict.** Prompt-result observations can
+  record citations, but material support and attribution accuracy still require
+  claim-to-passage human review.
 - **No Core Web Vitals measurement.** CWV-001..003 check infrastructure
   readiness (render-blocking resources, preconnect hints, image optimization);
   no field or lab data collection. Performance budgets are governance items only.
@@ -32,8 +44,10 @@ convict.
 
 ## Environment-specific behaviour
 
-- URL fetching requires network access and honors nothing beyond redirect
-  limits — run against production only with permission.
+- URL fetching requires network access, remains same-origin, rejects private
+  destinations, and enforces redirect/time/body limits. Run against production
+  only with permission; DNS policy checks reduce but do not eliminate all
+  network-environment risk.
 - Framework detection covers the mainstream JS ecosystem (Next/Astro/Nuxt/
   SvelteKit/Gatsby); other stacks are audited via built HTML output only.
 

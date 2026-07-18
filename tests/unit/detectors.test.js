@@ -161,3 +161,18 @@ test('CRAWL-001/002: robots vs registry policy conflicts', () => {
   findings = runDetectors(selectDetectors({ namespaces: ['CRAWL'] }), ctx).findings;
   assert.ok(findings.some((f) => f.detector_id === 'CRAWL-002'), 'CRAWL-002 fires when training decision missing');
 });
+
+test('AEO/GEO readiness detectors catch governance gaps and spare complete fixtures', () => {
+  const complete = ctxFor('site-clean', 'registries-good', 'https://example.test');
+  let findings = runDetectors(selectDetectors({ namespaces: ['ANS', 'GEO'] }), complete).findings;
+  for (const id of ['ANS-009', 'ANS-010', 'GEO-005', 'GEO-006']) {
+    assert.ok(!findings.some((f) => f.detector_id === id), `${id} should not fire on complete fixture`);
+  }
+
+  const gaps = ctxFor('site-clean', 'registries-aeo-geo-gaps', 'https://example.test');
+  findings = runDetectors(selectDetectors({ namespaces: ['ANS', 'GEO'] }), gaps).findings;
+  const ids = new Set(findings.map((f) => f.detector_id));
+  for (const id of ['ANS-009', 'ANS-010', 'GEO-005', 'GEO-006']) {
+    assert.ok(ids.has(id), `${id} should fire on incomplete AEO/GEO fixture`);
+  }
+});

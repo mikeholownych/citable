@@ -175,6 +175,54 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'GEO-005', name: 'Generative target lacks primary entity mapping', namespace: 'GEO',
+  description: 'A page intended to define, compare, categorize, or recommend entities does not declare its primary entities.',
+  discipline: ['geo', 'aeo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
+  impact: { representation: 'high', citation: 'medium', maintainability: 'medium' },
+  applicable_requirement: 'GEO §3 canonical entity registry and §19 page acceptance; AEO §3 entity architecture',
+  remediation: 'Map the page to canonical entity IDs in primary_entities and ensure visible names and structured-data @ids agree.',
+  verification: 'Page primary_entities is non-empty, referential integrity passes, and ENTITY detectors report no conflict.',
+  check(ctx) {
+    const entityTypes = new Set(['definition', 'product', 'service', 'comparison', 'recommendation', 'category', 'about']);
+    return indexTargets(ctx).flatMap((p) => {
+      const reg = registryPageFor(ctx, p);
+      if (!reg || !entityTypes.has(reg.page_type) || (reg.primary_entities || []).length) return [];
+      return [{
+        subject: pageSubject(p),
+        summary: `${reg.page_type} page ${reg.page_id} has no primary entity mapping`,
+        evidence: ['primary_entities is empty or absent'],
+      }];
+    });
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-006', name: 'Active prompt lacks evaluation brief', namespace: 'GEO',
+  description: 'An active prompt lacks the expected answer components, desired outcome, risk classification, or accountable owner needed for reproducible GEO evaluation.',
+  discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['registries'],
+  impact: { representation: 'high', citation: 'medium', maintainability: 'high' },
+  applicable_requirement: 'GEO §1 prompt registry, §12 repeatable measurement, and §15 governance; AEO §1 question corpus',
+  remediation: 'Complete expected_answer_components, desired_outcome, risk_classification, and owner before using the prompt as an optimization target.',
+  verification: 'Every active prompt has a complete evaluation brief and passes registry validation.',
+  check(ctx) {
+    return (ctx.registries.prompts?.entries || [])
+      .filter((p) => !['retired', 'deprecated'].includes(p.status))
+      .flatMap((p) => {
+        const missing = [];
+        if (!(p.expected_answer_components || []).length) missing.push('expected_answer_components');
+        if (!p.desired_outcome) missing.push('desired_outcome');
+        if (!p.risk_classification) missing.push('risk_classification');
+        if (!p.owner) missing.push('owner');
+        return missing.length ? [{
+          subject: entrySubject('prompts', p.prompt_id),
+          summary: `Prompt ${p.prompt_id} lacks a complete evaluation brief`,
+          evidence: [`missing: ${missing.join(', ')}`],
+        }] : [];
+      });
+  },
+}));
+
 /* ---------------- RECO: recommendation eligibility ---------------- */
 
 const RECO_CHECKS = [

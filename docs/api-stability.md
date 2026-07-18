@@ -12,7 +12,7 @@ Changes to any of the following require a **MAJOR** version bump:
 | `manifest` schema | `manifest.json` envelope fields required by downstream consumers |
 | Detector IDs | `detector_id` values (e.g. `TECH-001`) — referenced in suppressions and reports |
 | Namespace names | `TECH`, `CRAWL`, `ARCH`, etc. — used in `--scope` flag |
-| CLI commands | `audit`, `init`, `inspect`, `map-claims`, `substantiate`, `schema`, `validate`, `compare-snapshots` |
+| CLI commands | `audit`, `init`, `inspect`, `map-claims`, `substantiate`, `schema`, `validate`, `compare-snapshots`, `action-plan` |
 | CLI flags | `--scope`, `--target`, `--output-dir`, `--providers`, `--yes`, `--dry-run`, `--force` |
 | Exit codes | `0` = success, `1` = findings at or above threshold, `2` = tool error |
 | Registry schemas | JSON-Schema files in `schemas/` — changes to required fields |
@@ -39,6 +39,7 @@ Changes to any of the following require a **MAJOR** version bump:
 - `skill/SKILL.md` content — the guidance text may change as best practices evolve
 - Report formatting (`report.md` rendered output) — cosmetic changes are not breaking
 - Evidence package filenames beyond `findings.json` and `manifest.json`
+- Action-plan Markdown rendering; the JSON artifact is governed by `schemas/action-plan.schema.json`
 
 ## Suppression Compatibility
 

@@ -1,0 +1,7 @@
+version: 1
+kind: prompts
+entries:
+  - prompt_id: P-INCOMPLETE
+    canonical_prompt: What platforms provide runtime authorization for AI agents?
+    prompt_class: recommendation
+    status: active

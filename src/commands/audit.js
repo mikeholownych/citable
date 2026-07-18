@@ -54,7 +54,12 @@ export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
 
   // Evidence package artifacts
   run.writeArtifact('findings.json', findings);
-  const summary = summarize(findings);
+  const summary = summarize(findings, {
+    detectorsRun,
+    detectorsSkipped,
+    promptResults: ctx.promptResults || [],
+    targetOrigin: ctx.site?.baseUrl ? new URL(ctx.site.baseUrl).origin : null,
+  });
   run.writeArtifact('summary.json', summary);
   run.writeArtifact('inputs.json', {
     target: run.manifest.target, scope: scope ?? 'all',
