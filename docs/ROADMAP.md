@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 121 pass |
+| Tests | 122 pass |
 | Registries | 13 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 52 canonical skill files per provider |

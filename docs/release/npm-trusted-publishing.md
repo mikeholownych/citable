@@ -85,9 +85,11 @@ same environment name.
 5. Dispatch `Ship release` with the same version. The protected `release`
    environment gates tagging. The workflow revalidates version consistency,
    tests, and the packed artifact before creating the tag and GitHub release.
-6. The `vX.Y.Z` tag triggers `.github/workflows/npm-publish.yml`, which verifies
-   the tag is based on `main`, refuses duplicate versions, tests again, and
-   publishes with npm OIDC provenance.
+6. `Ship release` explicitly dispatches `.github/workflows/npm-publish.yml` at
+   the new `vX.Y.Z` tag. This is required because GitHub suppresses workflow
+   events caused by tags created with the repository `GITHUB_TOKEN`. The publish
+   workflow refuses duplicate versions, tests again, and publishes with npm
+   OIDC provenance after the `npm-publish` environment review.
 7. Verify the GitHub release, npm version, provenance, and install from the
    registry. Record workflow URLs and the released commit SHA in release notes
    or the release issue.
@@ -110,6 +112,9 @@ Do not push a locally prepared release directly to `main`; use the release PR.
 - If npm publication fails after the tag exists, do not move or recreate the
   tag. Fix the publishing path and rerun the failed tag workflow for the same
   immutable source version.
+- If the ship workflow created the tag but did not dispatch publishing, use the
+  manual npm workflow at that immutable tag. This recovery path was required for
+  `v1.5.0` before explicit dispatch was added.
 - Published npm versions are immutable. Any package defect requires a new patch
   release; deprecate the defective version when appropriate.
 
