@@ -35,7 +35,10 @@ jobs:
         run: npm run build:dist
 
       - name: Integration tests
-        run: npm run test:integration
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          node --test --test-concurrency=1 --test-reporter=spec tests/integration/commands.test.js tests/integration/installer.test.js 2>&1
 
       - name: E2E package test
         shell: bash

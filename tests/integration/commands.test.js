@@ -150,7 +150,7 @@ test('schema command proposes registry-derived JSON-LD and blocks incomplete ent
 test('compare-snapshots detects regression and resolution between runs', async () => {
   const dir = project(null);
   await audit(dir, { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', refDate: '2026-07-18' });
-  await new Promise((r) => setTimeout(r, 1100)); // distinct run ids (second precision)
+  await new Promise((r) => setTimeout(r, 2000)); // distinct run ids (second precision; 2s for macOS CI)
   await audit(dir, { target: path.join(FIX, 'site-broken'), baseUrl: 'https://broken.test', refDate: '2026-07-18' });
   const cmp = compareSnapshots(dir, {});
   assert.ok(cmp.summary.new_findings > 0, 'regressions detected');
