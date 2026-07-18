@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 — 2026-07-18
+
+### Fixed
+
+- GitHub workflows now use `actions/checkout@v7` and `actions/setup-node@v7`,
+  whose action runtimes target Node.js 24, in addition to running project tasks
+  on Node.js 24.
+
 ## 1.3.0 — 2026-07-18
 
 ### Added
