@@ -41,10 +41,12 @@ export function prepareRelease(root, version, date = new Date().toISOString().sl
   const lockFile = path.join(root, 'package-lock.json');
   const changelogFile = path.join(root, 'CHANGELOG.md');
   const roadmapFile = path.join(root, 'docs', 'ROADMAP.md');
+  const skillFile = path.join(root, 'skill', 'SKILL.md');
   const packageJson = readJson(packageFile);
   const lock = readJson(lockFile);
   const changelog = fs.readFileSync(changelogFile, 'utf8');
   const roadmap = fs.readFileSync(roadmapFile, 'utf8');
+  const skill = fs.readFileSync(skillFile, 'utf8');
   const previousVersion = packageJson.version;
   if (compareVersions(version, packageJson.version) <= 0) {
     throw new Error(`release ${version} must be greater than current version ${packageJson.version}`);
@@ -58,6 +60,7 @@ export function prepareRelease(root, version, date = new Date().toISOString().sl
   if (!/^## Current State \(v\d+\.\d+\.\d+\)$/m.test(roadmap)) {
     throw new Error('docs/ROADMAP.md current-version heading is missing');
   }
+  if (!/^version: \d+\.\d+\.\d+$/m.test(skill)) throw new Error('skill/SKILL.md version field is missing');
 
   packageJson.version = version;
   writeJson(packageFile, packageJson);
@@ -69,6 +72,7 @@ export function prepareRelease(root, version, date = new Date().toISOString().sl
     changelog.replace('## Unreleased', `## Unreleased\n\n## ${version} — ${date}`),
   );
   fs.writeFileSync(roadmapFile, roadmap.replace(/^## Current State \(v\d+\.\d+\.\d+\)$/m, `## Current State (v${version})`));
+  fs.writeFileSync(skillFile, skill.replace(/^version: \d+\.\d+\.\d+$/m, `version: ${version}`));
   return { previousVersion, version, date };
 }
 
@@ -78,6 +82,7 @@ export function validateRelease(root, version) {
   const lock = readJson(path.join(root, 'package-lock.json'));
   const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
   const roadmap = fs.readFileSync(path.join(root, 'docs', 'ROADMAP.md'), 'utf8');
+  const skill = fs.readFileSync(path.join(root, 'skill', 'SKILL.md'), 'utf8');
   const failures = [];
   if (packageJson.version !== version) failures.push(`package.json is ${packageJson.version}`);
   if (lock.version !== version) failures.push(`package-lock.json is ${lock.version}`);
@@ -85,6 +90,7 @@ export function validateRelease(root, version) {
   if (!changelog.includes(`## ${version} `)) failures.push('release changelog heading is missing');
   if (changelogSection(changelog, '## Unreleased')) failures.push('Unreleased changelog must be empty after preparation');
   if (!roadmap.includes(`## Current State (v${version})`)) failures.push('roadmap version is inconsistent');
+  if (!skill.includes(`version: ${version}`)) failures.push('skill version is inconsistent');
   if (failures.length) throw new Error(`release version mismatch: ${failures.join('; ')}`);
   return true;
 }
