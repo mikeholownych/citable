@@ -11,8 +11,9 @@ surface.
 - **No browser rendering.** TECH-011 is a heuristic on initial HTML; true
   rendered-vs-initial diffing and mobile/desktop parity need a headless
   browser the CLI does not bundle. validate-render documents the manual path.
-- **No Core Web Vitals measurement.** Performance budgets are governance
-  items only; no field/lab data collection.
+- **No Core Web Vitals measurement.** CWV-001..003 check infrastructure
+  readiness (render-blocking resources, preconnect hints, image optimization);
+  no field or lab data collection. Performance budgets are governance items only.
 - **No multimodal detectors.** Image/video/transcript evidence surfaces are
   un-audited beyond alt text (PAGE-007).
 - **Screenshots/rendered directories** in the evidence package layout are

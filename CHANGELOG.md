@@ -21,7 +21,7 @@
 
 ### Changed
 
-- Detector count: 109 → 119 across 18 namespaces
+- Detector count: 102/15 namespaces (0.1.0) → 109/17 (1.0.0) → **119/18 namespaces** (this release)
 - Test count: 46 → 84
 
 ## 1.0.0 — 2026-07-18
@@ -38,6 +38,9 @@
   - CWV-001: LCP potential blockers (render-blocking scripts, images without dimensions)
   - CWV-002: preconnect hints for fonts
   - CWV-003: image optimization checks (format, dimensions, lazy loading)
+
+  > **Limitation:** no field or lab data collection; the CWV detectors check
+  > infrastructure readiness, not performance.
 - **URL fetch resilience** — retry with exponential backoff + jitter, 5xx handling
 - **CI workflow** — GitHub Actions for Node 22 matrix testing
 

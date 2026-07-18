@@ -16,8 +16,8 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
   evidence, pages, crawler policies, competitors, experiments — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **109 detectors** across 17 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
-  ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV), each with
+- **119 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
+  ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
   remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
   robots/sitemaps/headers/schema/link graph, checksums.
@@ -28,6 +28,12 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   mandatory human-review conditions.
 - **Multi-agent distribution**: Claude Code, Codex-compatible, Cursor, Gemini,
   generic — generated from one canonical `skill/` source.
+- **Agent-readiness detectors** (AGENT namespace): agents are both readers
+  and writers of your site — `llms.txt` and Markdown content negotiation shape
+  what they consume; MCP Server Cards and A2A Agent Cards expose what they can
+  invoke; Content-Signals and Web Bot Auth govern the permissions they receive.
+  Citable checks all of these in one pass alongside the rest of your
+  SEO/AEO/GEO signal surface.
 
 ## Install
 
