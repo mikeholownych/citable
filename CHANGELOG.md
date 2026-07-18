@@ -8,7 +8,7 @@ Initial MVP.
   installer commands: install, update, check, uninstall, list, doctor, help,
   `--version`, JSON output, dry-run support for mutating commands, and
   provider-specific project/global path handling.
-- `npx citable install` installs from the packaged `dist/universal/` bundle
+- `npx @nebulacomponents/citable install` installs from the packaged `dist/universal/` bundle
   without requiring a Git checkout, with managed manifests, SHA-256 payload
   hashes, atomic target replacement, idempotency checks, and unmanaged/local
   modification refusal.

@@ -1,15 +1,15 @@
 # npm Trusted Publishing
 
-Citable publishes to npm as `citable`.
+Citable publishes to npm as `@nebulacomponents/citable`.
 
 Trusted publishing uses GitHub Actions OIDC instead of a long-lived npm publish
 token. The repository workflow is `.github/workflows/npm-publish.yml`.
 
 ## First Publish
 
-npm trusted publisher configuration is package-scoped. If `citable` does not
-exist on npm yet, publish the first version manually with an npm account that has
-2FA enabled:
+npm trusted publisher configuration is package-scoped. If
+`@nebulacomponents/citable` does not exist on npm yet, publish the first version
+manually with an npm account that has 2FA enabled:
 
 ```bash
 npm publish --access public --otp=<current-otp>
@@ -22,7 +22,7 @@ After the package exists, configure trusted publishing for future releases.
 Open:
 
 ```text
-https://www.npmjs.com/package/citable/access
+https://www.npmjs.com/package/@nebulacomponents/citable/access
 ```
 
 In the trusted publisher settings, choose GitHub Actions and use:
@@ -79,7 +79,7 @@ The workflow fails closed if:
 After the package exists, npm CLI 11.15.0+ can configure the publisher:
 
 ```bash
-npm trust github citable \
+npm trust github @nebulacomponents/citable \
   --repo mikeholownych/citable \
   --file npm-publish.yml \
   --env npm-publish \

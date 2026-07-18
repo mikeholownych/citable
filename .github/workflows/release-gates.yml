@@ -32,7 +32,11 @@ jobs:
 
       - run: npm pack --dry-run
 
-      - run: npm pack
+      - name: Pack package
+        shell: bash
+        run: |
+          npm pack --json > npm-pack.json
+          node -e "const fs = require('node:fs'); const pack = JSON.parse(fs.readFileSync('npm-pack.json', 'utf8'))[0]; fs.writeFileSync('npm-pack-filename.txt', pack.filename);"
 
       - name: Install from packed tarball
         shell: bash
@@ -41,10 +45,11 @@ jobs:
           tmp="$(mktemp -d)"
           home="$tmp/home"
           mkdir -p "$home"
-          cp citable-0.1.0.tgz "$tmp/"
+          tarball="$(cat npm-pack-filename.txt)"
+          cp "$tarball" "$tmp/"
           cd "$tmp"
-          HOME="$home" npx ./citable-0.1.0.tgz install --providers=claude,codex,cursor --project --yes
+          HOME="$home" npx "./$tarball" install --providers=claude,codex,cursor --project --yes
           test -f .claude/skills/citable/SKILL.md
           test -f .agents/skills/citable/SKILL.md
           test -f .cursor/skills/citable/SKILL.md
-          HOME="$home" npx ./citable-0.1.0.tgz install --providers=claude,codex,cursor --project --yes
+          HOME="$home" npx "./$tarball" install --providers=claude,codex,cursor --project --yes

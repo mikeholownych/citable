@@ -1,5 +1,5 @@
 {
-  "name": "citable",
+  "name": "@nebulacomponents/citable",
   "version": "0.1.0",
   "description": "Production-grade SEO, AEO, and GEO agent skill with auditable detection, claim governance, evidence validation, and multi-agent installation.",
   "keywords": [

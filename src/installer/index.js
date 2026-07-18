@@ -1094,10 +1094,10 @@ Installer commands
   --version                 Print the citable package version
 
 Install examples
-  npx citable install
-  npx citable install --yes
-  npx citable install --providers=claude,codex,cursor --project --yes
-  npx citable install --providers=all --global --dry-run
+  npx @nebulacomponents/citable install
+  npx @nebulacomponents/citable install --yes
+  npx @nebulacomponents/citable install --providers=claude,codex,cursor --project --yes
+  npx @nebulacomponents/citable install --providers=all --global --dry-run
 
 Options
   --providers=<list>        Provider ids, detected, or all

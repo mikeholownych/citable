@@ -34,38 +34,41 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 Install Citable into detected coding agents:
 
 ```bash
-npx citable install
+npx @nebulacomponents/citable install
 ```
 
 Install into specific agents:
 
 ```bash
-npx citable install --providers=claude,codex,cursor
+npx @nebulacomponents/citable install --providers=claude,codex,cursor
 ```
 
 Install globally:
 
 ```bash
-npx citable install --global
+npx @nebulacomponents/citable install --global
 ```
 
 Preview changes:
 
 ```bash
-npx citable install --dry-run
+npx @nebulacomponents/citable install --dry-run
 ```
 
 Check installed versions:
 
 ```bash
-npx citable check
+npx @nebulacomponents/citable check
 ```
 
 Diagnose installation problems:
 
 ```bash
-npx citable doctor
+npx @nebulacomponents/citable doctor
 ```
+
+The npm package is scoped as `@nebulacomponents/citable`; the installed
+executable is still named `citable`.
 
 Supported provider ids are `claude`, `codex`, `cursor`, `gemini`, `github`,
 `opencode`, `kiro`, `pi`, `qoder`, `trae`, `trae-cn`, and `rovodev`. Project
@@ -106,7 +109,7 @@ filesystem APIs, with platform-specific file-mode differences reported by
 ```bash
 npm install
 npm test
-npx citable help
+npx @nebulacomponents/citable help
 
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)
