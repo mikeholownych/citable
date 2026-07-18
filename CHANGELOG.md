@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.5.0 — 2026-07-18
+
 ### Added
 
 - Installer aliases compatible with the common `skills` CLI interface:
