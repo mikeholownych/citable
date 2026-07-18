@@ -18,3 +18,10 @@ test('release workflow uses the shared npm pack parser', () => {
   assert.match(workflow, /scripts\/pack-json\.js/);
   assert.doesNotMatch(workflow, /JSON\.parse\([^\n]+\)\[0\]/);
 });
+
+test('ship workflow explicitly dispatches trusted npm publishing', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ship-release.yml'), 'utf8');
+  assert.match(workflow, /actions: write/);
+  assert.match(workflow, /gh workflow run npm-publish\.yml/);
+  assert.match(workflow, /--ref "v\$\{RELEASE_VERSION\}"/);
+});

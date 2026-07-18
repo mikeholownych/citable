@@ -9,6 +9,7 @@ on:
         type: string
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -63,3 +64,6 @@ jobs:
             --verify-tag \
             --title "v${RELEASE_VERSION}" \
             --notes-file /tmp/release-notes.md
+          gh workflow run npm-publish.yml \
+            --ref "v${RELEASE_VERSION}" \
+            -f "version=${RELEASE_VERSION}"
