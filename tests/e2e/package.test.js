@@ -75,6 +75,7 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
     cwd: project,
     env: { ...process.env, HOME: home, npm_config_yes: 'true' },
     encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit'],
   });
   assert.equal(fs.existsSync(path.join(project, '.claude', 'skills', 'citable', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(project, '.agents', 'skills', 'citable', 'manifest.json')), true);

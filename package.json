@@ -48,6 +48,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test --test-concurrency=1 'tests/**/*.test.js'",
+    "test:unit": "node --test --test-concurrency=1 'tests/unit/**/*.test.js'",
+    "test:integration": "node --test --test-concurrency=1 'tests/integration/**/*.test.js'",
+    "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.js'",
     "build:dist": "node scripts/build-dist.js",
     "prepack": "npm run build:dist"
   },

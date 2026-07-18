@@ -28,7 +28,15 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: E2E package test
+        shell: bash
+        run: npm run test:e2e
 
       - run: npm pack --dry-run
 
