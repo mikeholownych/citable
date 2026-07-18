@@ -13,8 +13,6 @@ surface.
   browser the CLI does not bundle. validate-render documents the manual path.
 - **No Core Web Vitals measurement.** Performance budgets are governance
   items only; no field/lab data collection.
-- **No hreflang/international detectors.** Multi-locale sites get no
-  locale-specific checks in MVP.
 - **No multimodal detectors.** Image/video/transcript evidence surfaces are
   un-audited beyond alt text (PAGE-007).
 - **Screenshots/rendered directories** in the evidence package layout are

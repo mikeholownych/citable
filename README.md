@@ -16,8 +16,8 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
   evidence, pages, crawler policies, competitors, experiments — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **102 detectors** across 15 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
-  ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS), each with
+- **109 detectors** across 17 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
+  ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV), each with
   remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
   robots/sitemaps/headers/schema/link graph, checksums.
