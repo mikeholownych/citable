@@ -1,0 +1,4 @@
+{
+  "/gone/": { "status": 404 },
+  "/redirected/": { "status": 301, "redirect_to": "/" }
+}

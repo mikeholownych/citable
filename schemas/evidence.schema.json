@@ -1,0 +1,41 @@
+{
+  "$id": "citable://schemas/evidence.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Evidence registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "evidence" },
+    "entries": { "items": { "$ref": "#/definitions/evidence" } }
+  },
+  "definitions": {
+    "evidence": {
+      "type": "object",
+      "required": ["evidence_id", "title", "evidence_type", "verification_status"],
+      "properties": {
+        "evidence_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "evidence_type": { "type": "string", "enum": ["primary_documentation", "architecture_specification", "test_result", "benchmark", "dataset", "incident_analysis", "case_study", "customer_reference", "regulatory_text", "academic_paper", "third_party_article", "certification", "corporate_registration", "public_profile", "interview", "transcript"] },
+        "source": { "type": "string" },
+        "source_type": { "type": "string" },
+        "source_owner": { "type": "string" },
+        "primary_or_secondary": { "type": "string", "enum": ["primary", "secondary"] },
+        "supports_claims": { "type": "array", "items": { "type": "string" } },
+        "methodology": { "type": "string" },
+        "test_conditions": { "type": "string" },
+        "measurement_period": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "publication_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "retrieved_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "valid_until": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "integrity_hash": { "type": "string" },
+        "access_status": { "type": "string", "enum": ["publicly_accessible", "gated", "internal", "inaccessible", "unknown"] },
+        "reuse_status": { "type": "string", "enum": ["open_license", "licensed", "no_express_reuse_license", "prohibited", "unknown"] },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "reviewer": { "type": "string" },
+        "verification_status": { "type": "string", "enum": ["verified", "reviewed", "unverified", "stale", "revoked", "inaccessible"] },
+        "attribution": { "type": "string" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

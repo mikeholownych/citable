@@ -1,0 +1,46 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-NOEV
+    claim: Our platform reduces compliance costs by 70 percent.
+    claim_type: performance
+    evidence: []
+    status: verified
+    legal_status: approved
+  - claim_id: CLAIM-EXPIRED-EV
+    claim: Gadget handles 10,000 requests per second.
+    claim_type: performance
+    evidence: [EVD-OLD-BENCH]
+    status: verified
+    legal_status: approved
+  - claim_id: CLAIM-PAST-EXPIRY
+    claim: Product is certified against Standard X.
+    claim_type: legal_regulatory
+    evidence: [EVD-CERT]
+    status: verified
+    legal_status: approved
+    expires: "2025-01-01"
+  - claim_id: CLAIM-OPINION-VERIFIED
+    claim: Human approval should be treated as an input rather than final authority.
+    claim_type: opinion
+    evidence: []
+    status: verified
+  - claim_id: CLAIM-SEC-NOREVIEW
+    claim: All customer data is encrypted end to end in every configuration.
+    claim_type: security
+    evidence: [EVD-BLOG]
+    status: unverified
+    legal_status: not_assessed
+  - claim_id: CLAIM-DANGLING
+    claim: Integrates with over 200 systems.
+    claim_type: capability
+    evidence: [EVD-DOES-NOT-EXIST]
+    status: unverified
+    legal_status: approved
+  - claim_id: CLAIM-CONTRADICTED
+    claim: The company operates in 40 countries.
+    claim_type: factual
+    evidence: [EVD-CERT]
+    contradictory_sources: ["registry filing lists 12 countries"]
+    status: verified
+    legal_status: approved

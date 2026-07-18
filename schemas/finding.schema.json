@@ -1,0 +1,101 @@
+{
+  "$id": "citable://schemas/finding.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Finding",
+  "type": "object",
+  "required": ["finding_id", "detector_id", "run_id", "timestamp", "discipline", "subject", "observation", "classification", "remediation", "verification", "status"],
+  "properties": {
+    "finding_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+    "detector_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+    "run_id": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "discipline": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["seo", "aeo", "geo"] } },
+    "subject": {
+      "type": "object",
+      "required": ["type", "identifier"],
+      "properties": {
+        "type": { "type": "string", "enum": ["url", "page", "source_file", "registry_entry", "site", "schema_block", "link", "crawler", "claim", "evidence", "entity", "prompt", "query", "experiment", "run"] },
+        "identifier": { "type": "string" },
+        "url": { "type": "string" },
+        "source_file": { "type": "string" },
+        "source_location": { "type": "string" },
+        "rendered_selector": { "type": "string" }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["summary", "evidence"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "captured_value": {},
+        "expected_value": {}
+      }
+    },
+    "classification": {
+      "type": "object",
+      "required": ["finding_type", "severity", "confidence", "deterministic", "impact"],
+      "properties": {
+        "finding_type": { "type": "string", "enum": ["deterministic_observation", "evidence_backed_semantic_finding", "probabilistic_inference", "strategic_hypothesis", "experiment_result", "untestable_condition"] },
+        "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "informational", "experimental"] },
+        "confidence": { "type": "string", "enum": ["confirmed", "high", "medium", "low", "unknown"] },
+        "deterministic": { "type": "boolean" },
+        "impact": {
+          "type": "object",
+          "properties": {
+            "retrieval": { "$ref": "#/definitions/impactLevel" },
+            "ranking": { "$ref": "#/definitions/impactLevel" },
+            "citation": { "$ref": "#/definitions/impactLevel" },
+            "representation": { "$ref": "#/definitions/impactLevel" },
+            "legal": { "$ref": "#/definitions/impactLevel" },
+            "reputational": { "$ref": "#/definitions/impactLevel" },
+            "conversion": { "$ref": "#/definitions/impactLevel" },
+            "maintainability": { "$ref": "#/definitions/impactLevel" }
+          }
+        }
+      }
+    },
+    "reasoning": {
+      "type": "object",
+      "properties": {
+        "applicable_requirement": { "type": "string" },
+        "explanation": { "type": "string" },
+        "assumptions": { "type": "array", "items": { "type": "string" } },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "required": ["preferred"],
+      "properties": {
+        "preferred": { "type": "string" },
+        "alternatives": { "type": "array", "items": { "type": "string" } },
+        "unsafe_shortcuts": { "type": "array", "items": { "type": "string" } },
+        "owner": { "type": ["string", "null"] },
+        "review_required": { "type": "boolean" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {
+        "method": { "type": "string" },
+        "expected_result": { "type": "string" },
+        "detector_to_rerun": { "type": "string" }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": { "type": "string", "enum": ["open", "acknowledged", "in_remediation", "resolved", "accepted_risk", "false_positive"] },
+        "first_seen": { "type": "string" },
+        "last_seen": { "type": "string" },
+        "resolved_at": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "definitions": {
+    "impactLevel": { "type": "string", "enum": ["none", "low", "medium", "high", "unknown"] }
+  }
+}

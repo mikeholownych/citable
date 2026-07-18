@@ -1,0 +1,41 @@
+{
+  "$id": "citable://schemas/config.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Citable project config",
+  "type": "object",
+  "required": ["version"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "site": {
+      "type": "object",
+      "properties": {
+        "base_url": { "type": ["string", "null"] },
+        "built_output_dir": { "type": ["string", "null"] },
+        "source_dirs": { "type": "array", "items": { "type": "string" } },
+        "default_locale": { "type": ["string", "null"] },
+        "default_jurisdiction": { "type": ["string", "null"] }
+      }
+    },
+    "framework": {
+      "type": "object",
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "rendering_model": { "type": ["string", "null"], "enum": ["static", "ssr", "csr", "hybrid", "unknown", null] },
+        "package_manager": { "type": ["string", "null"] },
+        "build_command": { "type": ["string", "null"] },
+        "test_command": { "type": ["string", "null"] }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "index_target_default": { "type": "boolean" },
+        "max_crawl_depth": { "type": "integer", "minimum": 1 },
+        "thin_content_words": { "type": "integer", "minimum": 1 },
+        "fetch_external": { "type": "boolean" },
+        "detector_overrides": { "type": "object" }
+      }
+    },
+    "thresholds": { "type": "object" }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$id": "citable://schemas/page.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "pages" },
+    "entries": { "items": { "$ref": "#/definitions/page" } }
+  },
+  "definitions": {
+    "page": {
+      "type": "object",
+      "required": ["page_id", "url", "page_type", "status"],
+      "properties": {
+        "page_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "url": { "type": "string", "minLength": 1 },
+        "canonical_url": { "type": "string" },
+        "source_files": { "type": "array", "items": { "type": "string" } },
+        "page_type": { "type": "string", "enum": ["home", "hub", "definition", "problem", "solution", "product", "service", "comparison", "recommendation", "implementation", "evidence", "case_study", "pricing", "faq", "glossary", "documentation", "policy", "about", "contact", "author", "category", "legal", "landing", "article", "other"] },
+        "primary_intent": { "type": "string" },
+        "secondary_intents": { "type": "array", "items": { "type": "string" } },
+        "target_queries": { "type": "array", "items": { "type": "string" } },
+        "target_prompts": { "type": "array", "items": { "type": "string" } },
+        "primary_entities": { "type": "array", "items": { "type": "string" } },
+        "published_claims": { "type": "array", "items": { "type": "string" } },
+        "evidence_references": { "type": "array", "items": { "type": "string" } },
+        "content_owner": { "type": "string" },
+        "factual_reviewer": { "type": "string" },
+        "lifecycle_class": { "type": "string", "enum": ["foundational", "product_capability", "regulatory", "pricing", "market_statistics", "technical_implementation", "competitive_comparison", "security_claim", "evergreen", "news", "unclassified"] },
+        "review_cadence": { "type": "string" },
+        "next_review_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "indexing_intent": { "type": "string", "enum": ["index", "noindex", "undecided"] },
+        "conversion_action": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$id": "citable://schemas/experiment.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Experiment registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "experiments" },
+    "entries": { "items": { "$ref": "#/definitions/experiment" } }
+  },
+  "definitions": {
+    "experiment": {
+      "type": "object",
+      "required": ["experiment_id", "hypothesis", "primary_metric", "status"],
+      "properties": {
+        "experiment_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "hypothesis": { "type": "string", "minLength": 10 },
+        "discipline": { "type": "array", "items": { "type": "string", "enum": ["seo", "aeo", "geo"] } },
+        "primary_metric": { "type": "string" },
+        "secondary_metrics": { "type": "array", "items": { "type": "string" } },
+        "prompt_cohort": { "type": "array", "items": { "type": "string" } },
+        "query_cohort": { "type": "array", "items": { "type": "string" } },
+        "engines": { "type": "array", "items": { "type": "string" } },
+        "control_group": { "type": "string" },
+        "baseline_window": { "type": "string" },
+        "evaluation_window": { "type": "string" },
+        "minimum_observation_window": { "type": "string" },
+        "known_confounders": { "type": "array", "items": { "type": "string" } },
+        "decision_rule": { "type": "string" },
+        "owner": { "type": "string" },
+        "result": { "type": "string" },
+        "result_confidence": { "type": "string", "enum": ["confirmed", "high", "medium", "low", "unknown"] },
+        "status": { "type": "string", "enum": ["draft", "active", "observing", "concluded", "abandoned"] },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

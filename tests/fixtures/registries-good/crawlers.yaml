@@ -1,0 +1,30 @@
+version: 1
+kind: crawlers
+entries:
+  - crawler_id: CRAWLER-GOOGLEBOT
+    user_agent: Googlebot
+    vendor: Google
+    purpose: search_indexing
+    decision: allow
+    decision_owner: SEO Owner
+    business_rationale: search visibility
+    next_review_date: "2027-01-01"
+    status: active
+  - crawler_id: CRAWLER-GPTBOT
+    user_agent: GPTBot
+    vendor: OpenAI
+    purpose: model_training
+    decision: block
+    decision_owner: Legal Owner
+    legal_rationale: no training license granted
+    next_review_date: "2027-01-01"
+    status: active
+  - crawler_id: CRAWLER-OAI-SEARCHBOT
+    user_agent: OAI-SearchBot
+    vendor: OpenAI
+    purpose: ai_search_discovery
+    decision: allow
+    decision_owner: SEO Owner
+    business_rationale: ChatGPT search inclusion
+    next_review_date: "2027-01-01"
+    status: active

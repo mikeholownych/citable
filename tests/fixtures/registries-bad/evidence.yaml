@@ -1,0 +1,35 @@
+version: 1
+kind: evidence
+entries:
+  - evidence_id: EVD-OLD-BENCH
+    title: 2023 benchmark run
+    evidence_type: benchmark
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-EXPIRED-EV]
+    valid_until: "2024-06-01"
+    verification_status: verified
+  - evidence_id: EVD-CERT
+    title: Certification letter
+    evidence_type: certification
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-PAST-EXPIRY, CLAIM-CONTRADICTED]
+    verification_status: verified
+  - evidence_id: EVD-BLOG
+    title: Third-party blog post about encryption
+    evidence_type: third_party_article
+    primary_or_secondary: secondary
+    supports_claims: [CLAIM-SEC-NOREVIEW]
+    verification_status: reviewed
+  - evidence_id: EVD-NO-METHOD
+    title: Benchmark without methodology
+    evidence_type: benchmark
+    primary_or_secondary: primary
+    supports_claims: []
+    verification_status: verified
+  - evidence_id: EVD-INACCESSIBLE
+    title: Removed customer study
+    evidence_type: case_study
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-NOEV]
+    access_status: inaccessible
+    verification_status: inaccessible

@@ -1,0 +1,43 @@
+{
+  "$id": "citable://schemas/query.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Query registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "queries" },
+    "entries": { "items": { "$ref": "#/definitions/query" } }
+  },
+  "definitions": {
+    "query": {
+      "type": "object",
+      "required": ["query_id", "canonical_query", "intent", "status"],
+      "properties": {
+        "query_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "canonical_query": { "type": "string", "minLength": 3 },
+        "variants": { "type": "array", "items": { "type": "string" } },
+        "intent": { "type": "string", "enum": ["problem_awareness", "category_discovery", "informational", "comparative", "vendor_evaluation", "commercial_action", "transactional", "navigational", "brand"] },
+        "audiences": { "type": "array", "items": { "type": "string" } },
+        "funnel_stage": { "type": "string", "enum": ["awareness", "evaluation", "selection", "conversion", "retention"] },
+        "topic_entities": { "type": "array", "items": { "type": "string" } },
+        "geography": { "type": "string" },
+        "language": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "search_result_type": { "type": "string" },
+        "target_page": { "type": "string" },
+        "current_ranking_page": { "type": "string" },
+        "competitor_urls": { "type": "array", "items": { "type": "string" } },
+        "business_value": { "type": "string", "enum": ["critical", "high", "medium", "low", "unknown"] },
+        "conversion_model": { "type": "string" },
+        "attainability": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "freshness_sensitivity": { "type": "string", "enum": ["static", "periodic", "event_driven", "real_time"] },
+        "commercial_priority": { "type": ["string", "integer"] },
+        "coverage_owner": { "type": "string" },
+        "review_cadence": { "type": "string" },
+        "measurement_cohort": { "type": "string" },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

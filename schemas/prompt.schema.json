@@ -1,0 +1,41 @@
+{
+  "$id": "citable://schemas/prompt.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prompt registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "prompts" },
+    "entries": { "items": { "$ref": "#/definitions/prompt" } }
+  },
+  "definitions": {
+    "prompt": {
+      "type": "object",
+      "required": ["prompt_id", "canonical_prompt", "prompt_class", "status"],
+      "properties": {
+        "prompt_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "canonical_prompt": { "type": "string", "minLength": 3 },
+        "variants": { "type": "array", "items": { "type": "string" } },
+        "prompt_class": { "type": "string", "enum": ["definition", "problem", "category", "comparison", "recommendation", "evaluation", "objection", "adversarial", "multi_constraint", "follow_up"] },
+        "intent": { "type": "string" },
+        "audiences": { "type": "array", "items": { "type": "string" } },
+        "funnel_stage": { "type": "string" },
+        "target_entities": { "type": "array", "items": { "type": "string" } },
+        "expected_answer_components": { "type": "array", "items": { "type": "string" } },
+        "desired_outcome": { "type": "string", "enum": ["mention", "citation", "recommendation", "comparison_inclusion", "accurate_description"] },
+        "risk_classification": { "type": "string", "enum": ["commercial", "legal", "reputational", "safety", "none"] },
+        "geography": { "type": "string" },
+        "language": { "type": "string" },
+        "jurisdiction": { "type": "string" },
+        "temporal_sensitivity": { "type": "string" },
+        "competitor_set": { "type": "array", "items": { "type": "string" } },
+        "baseline_outputs": { "type": "array", "items": { "type": "string" } },
+        "observed_sources": { "type": "array", "items": { "type": "string" } },
+        "accuracy_status": { "type": "string", "enum": ["accurate", "partially_accurate", "inaccurate", "not_observed", "unknown"] },
+        "owner": { "type": "string" },
+        "review_cadence": { "type": "string" },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

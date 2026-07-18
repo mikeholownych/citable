@@ -1,0 +1,39 @@
+{
+  "$id": "citable://schemas/claim.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claim registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "claims" },
+    "entries": { "items": { "$ref": "#/definitions/claim" } }
+  },
+  "definitions": {
+    "claim": {
+      "type": "object",
+      "required": ["claim_id", "claim", "claim_type", "status"],
+      "properties": {
+        "claim_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "claim": { "type": "string", "minLength": 3 },
+        "claim_type": { "type": "string", "enum": ["factual", "capability", "performance", "comparative", "definitional", "commercial", "legal_regulatory", "security", "opinion", "position", "aspirational"] },
+        "entity": { "type": "string" },
+        "scope": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "assumptions": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "external_corroboration": { "type": "array", "items": { "type": "string" } },
+        "contradictory_sources": { "type": "array", "items": { "type": "string" } },
+        "legal_status": { "type": "string", "enum": ["approved", "restricted", "prohibited", "review_required", "not_assessed"] },
+        "publication_surfaces": { "type": "array", "items": { "type": "string" } },
+        "query_coverage": { "type": "array", "items": { "type": "string" } },
+        "prompt_coverage": { "type": "array", "items": { "type": "string" } },
+        "owner": { "type": "string" },
+        "status": { "type": "string", "enum": ["candidate", "unverified", "verified", "verified_narrowed", "insufficient_evidence", "contradicted", "expired", "prohibited", "review_required", "retired"] },
+        "valid_from": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "expires": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "last_verified": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "source_location": { "type": "string" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

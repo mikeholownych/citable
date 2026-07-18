@@ -1,0 +1,27 @@
+{
+  "name": "citable",
+  "version": "0.1.0",
+  "description": "Citable — audit, remediation, validation, and governance layer for SEO / AEO / GEO discoverability",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test 'tests/**/*.test.js'",
+    "build:dist": "node scripts/build-dist.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "citable": "./src/cli/index.js"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^5.2.1",
+    "node-html-parser": "^9.0.0"
+  }
+}

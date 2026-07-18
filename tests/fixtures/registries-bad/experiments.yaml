@@ -1,0 +1,9 @@
+version: 1
+kind: experiments
+entries:
+  - experiment_id: EXP-BADCAUSAL
+    hypothesis: Adding FAQ schema caused ChatGPT inclusion.
+    primary_metric: mention_rate
+    result: FAQ schema caused inclusion
+    result_confidence: high
+    status: concluded

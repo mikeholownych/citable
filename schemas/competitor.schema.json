@@ -1,0 +1,28 @@
+{
+  "$id": "citable://schemas/competitor.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Competitor registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "competitors" },
+    "entries": { "items": { "$ref": "#/definitions/competitor" } }
+  },
+  "definitions": {
+    "competitor": {
+      "type": "object",
+      "required": ["competitor_id", "name", "status"],
+      "properties": {
+        "competitor_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "name": { "type": "string" },
+        "domains": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string" },
+        "queries_contested": { "type": "array", "items": { "type": "string" } },
+        "prompts_contested": { "type": "array", "items": { "type": "string" } },
+        "observed_citations": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+version: 1
+kind: pages
+entries:
+  - page_id: PAGE-NOOWNER
+    url: /no-owner/
+    page_type: article
+    published_claims: [CLAIM-NOEV]
+    lifecycle_class: unclassified
+    next_review_date: "2025-01-01"
+    indexing_intent: index
+    status: active
+  - page_id: PAGE-REG
+    url: /regulated/
+    page_type: article
+    published_claims: [CLAIM-PAST-EXPIRY]
+    content_owner: Someone
+    lifecycle_class: regulatory
+    status: active

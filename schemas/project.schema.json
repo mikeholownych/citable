@@ -1,0 +1,29 @@
+{
+  "$id": "citable://schemas/project.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project profile",
+  "type": "object",
+  "required": ["version", "initialized_at"],
+  "properties": {
+    "version": { "type": "integer" },
+    "initialized_at": { "type": "string" },
+    "repository_root": { "type": "string" },
+    "detected": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": ["string", "null"] },
+        "rendering_model": { "type": ["string", "null"] },
+        "package_manager": { "type": ["string", "null"] },
+        "build_commands": { "type": "array", "items": { "type": "string" } },
+        "test_commands": { "type": "array", "items": { "type": "string" } },
+        "robots_files": { "type": "array", "items": { "type": "string" } },
+        "sitemap_sources": { "type": "array", "items": { "type": "string" } },
+        "schema_sources": { "type": "array", "items": { "type": "string" } },
+        "metadata_systems": { "type": "array", "items": { "type": "string" } },
+        "analytics": { "type": "array", "items": { "type": "string" } },
+        "content_collections": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "unresolved_assumptions": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,8 @@
+version: 1
+kind: prompts
+entries:
+  - prompt_id: P-ONESHOT
+    canonical_prompt: Best AI governance platform?
+    prompt_class: recommendation
+    accuracy_status: accurate
+    status: active

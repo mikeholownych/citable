@@ -1,0 +1,6 @@
+User-agent: Googlebot
+Disallow: /hidden/
+
+User-agent: *
+Allow: /
+Weird-directive: nonsense

@@ -1,0 +1,33 @@
+{
+  "$id": "citable://schemas/common.defs.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "isoDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}([T ].*)?$" },
+    "url": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "candidate", "active", "verified", "unverified", "incomplete", "blocked", "expired", "prohibited", "review_required", "deprecated", "retired"]
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "created": { "$ref": "#/definitions/isoDate" },
+        "updated": { "$ref": "#/definitions/isoDate" },
+        "created_by": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "registryFile": {
+      "type": "object",
+      "required": ["version", "kind", "entries"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "kind": { "type": "string" },
+        "updated": { "$ref": "#/definitions/isoDate" },
+        "entries": { "type": "array" }
+      }
+    }
+  }
+}

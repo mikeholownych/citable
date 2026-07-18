@@ -1,0 +1,36 @@
+{
+  "$id": "citable://schemas/run.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Run manifest",
+  "type": "object",
+  "required": ["run_id", "command", "tool_version", "skill_version", "timestamp", "target", "status"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "command": { "type": "string" },
+    "argv": { "type": "array", "items": { "type": "string" } },
+    "tool_version": { "type": "string" },
+    "skill_version": { "type": "string" },
+    "repository_commit": { "type": ["string", "null"] },
+    "working_tree_state": { "type": ["string", "null"], "enum": ["clean", "dirty", null] },
+    "target": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["source", "built_output", "url", "registries", "fixture"] },
+        "location": { "type": "string" },
+        "environment": { "type": "string" }
+      }
+    },
+    "timestamp": { "type": "string" },
+    "locale": { "type": "string" },
+    "jurisdiction": { "type": ["string", "null"] },
+    "configuration_hash": { "type": ["string", "null"] },
+    "input_hashes": { "type": "object" },
+    "output_hashes": { "type": "object" },
+    "detectors_run": { "type": "array", "items": { "type": "string" } },
+    "detectors_skipped": { "type": "array", "items": { "type": "object", "properties": { "detector_id": { "type": "string" }, "reason": { "type": "string" } } } },
+    "incomplete_checks": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "status": { "type": "string", "enum": ["completed", "completed_with_warnings", "incomplete", "failed"] }
+  }
+}

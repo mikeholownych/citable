@@ -1,0 +1,39 @@
+{
+  "$id": "citable://schemas/entity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entity registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "entities" },
+    "entries": { "items": { "$ref": "#/definitions/entity" } }
+  },
+  "definitions": {
+    "entity": {
+      "type": "object",
+      "required": ["entity_id", "canonical_name", "entity_type", "status"],
+      "properties": {
+        "entity_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "canonical_name": { "type": "string", "minLength": 1 },
+        "entity_type": { "type": "string", "enum": ["organization", "legal_entity", "person", "author", "product_family", "product", "service", "category", "proprietary_concept", "methodology", "research_artifact", "dataset", "location", "partnership", "case_study"] },
+        "legal_name": { "type": "string" },
+        "operating_name": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "owner_entity": { "type": "string" },
+        "canonical_url": { "type": "string" },
+        "external_identifiers": { "type": "array", "items": { "type": ["string", "object"] } },
+        "authoritative_profiles": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string" },
+        "secondary_categories": { "type": "array", "items": { "type": "string" } },
+        "definition": { "type": "string" },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "relationships": { "type": "array", "items": { "type": "object", "required": ["type", "entity"], "properties": { "type": { "type": "string" }, "entity": { "type": "string" } } } },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "schema_types": { "type": "array", "items": { "type": "string" } },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "last_verified": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "owner": { "type": "string" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$id": "citable://schemas/crawler.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Crawler policy registry",
+  "allOf": [{ "$ref": "citable://schemas/common.defs.json#/definitions/registryFile" }],
+  "properties": {
+    "kind": { "const": "crawlers" },
+    "entries": { "items": { "$ref": "#/definitions/crawler" } }
+  },
+  "definitions": {
+    "crawler": {
+      "type": "object",
+      "required": ["crawler_id", "user_agent", "purpose", "decision", "status"],
+      "properties": {
+        "crawler_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+        "user_agent": { "type": "string", "minLength": 1 },
+        "vendor": { "type": "string" },
+        "purpose": { "type": "string", "enum": ["search_indexing", "ai_search_discovery", "user_initiated_retrieval", "model_training", "licensed_access", "partner_access"] },
+        "decision": { "type": "string", "enum": ["allow", "block", "undecided"] },
+        "decision_owner": { "type": "string" },
+        "business_rationale": { "type": "string" },
+        "legal_rationale": { "type": "string" },
+        "robots_rule": { "type": "string" },
+        "ip_validation_method": { "type": "string" },
+        "documentation_source": { "type": "string" },
+        "review_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "next_review_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+        "status": { "$ref": "citable://schemas/common.defs.json#/definitions/status" },
+        "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
+      }
+    }
+  }
+}

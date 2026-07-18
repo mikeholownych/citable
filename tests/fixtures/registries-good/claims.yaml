@@ -1,0 +1,21 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-ENFORCE
+    claim: >
+      Gatekeeper validates whether an AI-initiated action remains admissible
+      before execution in configured enforcement deployments.
+    claim_type: capability
+    entity: ENT-GATEKEEPER
+    scope:
+      - configured deployments using enforcement mode
+    exclusions:
+      - advisory-only deployments
+    evidence: [EVD-ARCH-SPEC]
+    legal_status: approved
+    publication_surfaces: ["/products/gatekeeper/"]
+    owner: Claim Owner
+    status: verified
+    valid_from: "2026-05-10"
+    expires: "2027-05-10"
+    last_verified: "2026-06-01"
