@@ -1,0 +1,33 @@
+{
+  "$id": "citable://schemas/intervention.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Intervention registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "updated", "entries"],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "interventions" },
+    "updated": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["intervention_id", "name", "status", "deployed_at", "affected_urls", "finding_ids", "objective_ids", "limitations"],
+        "properties": {
+          "intervention_id": { "type": "string", "pattern": "^INTERVENTION-[A-Z0-9][A-Z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["planned", "deployed", "rolled_back", "superseded"] },
+          "deployed_at": { "type": ["string", "null"], "format": "date-time" },
+          "commit": { "type": ["string", "null"] },
+          "pull_request": { "type": ["string", "null"] },
+          "affected_urls": { "type": "array", "items": { "type": "string" } },
+          "finding_ids": { "type": "array", "items": { "type": "string" } },
+          "objective_ids": { "type": "array", "items": { "type": "string", "pattern": "^OBJECTIVE-" } },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

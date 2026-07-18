@@ -1,0 +1,26 @@
+{
+  "objective_id": "OBJECTIVE-PRODUCT_DISCOVERY",
+  "name": "Product discovery",
+  "description": "Observe selected discovery and outcome metrics without combining them.",
+  "owner": "growth",
+  "status": "active",
+  "primary_metrics": ["METRIC-GSC_IMPRESSIONS"],
+  "supporting_metrics": [],
+  "guardrails": [
+    {
+      "metric_id": "METRIC-GSC_IMPRESSIONS",
+      "operator": "increase_by",
+      "threshold": 0.25
+    }
+  ],
+  "cohort": {
+    "urls": ["https://example.test/product/*"],
+    "queries": [],
+    "labels": ["product"]
+  },
+  "comparison": {
+    "baseline_days": 7,
+    "evaluation_days": 7,
+    "minimum_observations": 2
+  }
+}

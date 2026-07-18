@@ -1,0 +1,65 @@
+{
+  "$id": "citable://schemas/objective.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Objective registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "updated", "entries"],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "objectives" },
+    "updated": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["objective_id", "name", "status", "primary_metrics", "supporting_metrics", "guardrails", "cohort", "comparison"],
+        "properties": {
+          "objective_id": { "type": "string", "pattern": "^OBJECTIVE-[A-Z0-9][A-Z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "owner": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["draft", "active", "paused", "archived"] },
+          "primary_metrics": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/definitions/metricRef" } },
+          "supporting_metrics": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/definitions/metricRef" } },
+          "guardrails": { "type": "array", "items": { "$ref": "#/definitions/guardrail" } },
+          "cohort": { "$ref": "#/definitions/cohort" },
+          "comparison": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["baseline_days", "evaluation_days", "minimum_observations"],
+            "properties": {
+              "baseline_days": { "type": "integer", "minimum": 1 },
+              "evaluation_days": { "type": "integer", "minimum": 1 },
+              "minimum_observations": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "metricRef": { "type": "string", "pattern": "^METRIC-[A-Z0-9][A-Z0-9_-]*$" },
+    "guardrail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_id", "operator", "threshold"],
+      "properties": {
+        "metric_id": { "$ref": "#/definitions/metricRef" },
+        "operator": { "type": "string", "enum": ["gte", "lte", "increase_by", "decrease_by", "no_regression"] },
+        "threshold": { "type": "number" }
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urls", "queries", "labels"],
+      "properties": {
+        "urls": { "type": "array", "items": { "type": "string" } },
+        "queries": { "type": "array", "items": { "type": "string" } },
+        "labels": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

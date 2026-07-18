@@ -13,6 +13,10 @@ export const REGISTRY_SPECS = [
   { file: 'crawlers.yaml', kind: 'crawlers', schema: 'crawler.schema.json', idField: 'crawler_id' },
   { file: 'competitors.yaml', kind: 'competitors', schema: 'competitor.schema.json', idField: 'competitor_id' },
   { file: 'experiments.yaml', kind: 'experiments', schema: 'experiment.schema.json', idField: 'experiment_id' },
+  { file: 'metrics.yaml', kind: 'metrics', schema: 'metric.schema.json', idField: 'metric_id' },
+  { file: 'objectives.yaml', kind: 'objectives', schema: 'objective.schema.json', idField: 'objective_id' },
+  { file: 'interventions.yaml', kind: 'interventions', schema: 'intervention.schema.json', idField: 'intervention_id' },
+  { file: 'connections.yaml', kind: 'connections', schema: 'connection.schema.json', idField: 'connection_id' },
 ];
 
 export function contextDir(root) {
@@ -90,6 +94,15 @@ export function checkReferentialIntegrity(registries) {
     for (const ent of p.primary_entities || []) {
       if (!ids.entities.has(ent)) problems.push(`pages/${p.page_id}: primary_entities references unknown entity id "${ent}"`);
     }
+  }
+  const metricIds = ids.metrics || new Set();
+  const objectiveIds = ids.objectives || new Set();
+  for (const objective of registries.objectives?.entries || []) {
+    const refs = [...(objective.primary_metrics || []), ...(objective.supporting_metrics || []), ...(objective.guardrails || []).map((item) => item.metric_id)];
+    for (const ref of refs) if (!metricIds.has(ref)) problems.push(`objectives/${objective.objective_id}: references unknown metric id "${ref}"`);
+  }
+  for (const intervention of registries.interventions?.entries || []) {
+    for (const ref of intervention.objective_ids || []) if (!objectiveIds.has(ref)) problems.push(`interventions/${intervention.intervention_id}: references unknown objective id "${ref}"`);
   }
   return problems;
 }

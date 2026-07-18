@@ -152,6 +152,10 @@ citable observe performance --target https://example.com # CRUX_API_KEY
 citable apply --input remediation-spec.json          # dry run
 citable apply --input remediation-spec.json --write  # reviewed + hash-locked
 citable monitor [runA runB]
+citable metrics import --provider gsc --input metrics.csv
+citable objectives init --input objective.json --write
+citable objectives validate
+citable evaluate OBJECTIVE-PRODUCT_DISCOVERY --ref-date 2026-07-18
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -162,7 +166,7 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 9 registries plus findings, runs, observations, remediation, config, and prompt results |
+| `schemas/` | JSON Schemas: 13 registries plus findings, runs, observations, remediation, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |
@@ -178,6 +182,8 @@ citable validate              # registry schema + referential integrity
   any coverage claim
 - [Capability gap analysis](docs/capability-gap-analysis.md) — implemented,
   partial, operator-supplied, and missing evidence boundaries
+- [Measurement objectives](docs/measurement-objectives.md) — optional metric
+  imports, user-owned objectives, comparison windows, and guardrails
 
 ## Requirements
 
@@ -187,6 +193,9 @@ an installed Chromium browser. Google index inspection uses `GSC_ACCESS_TOKEN`
 and `--site-url`; CrUX uses `CRUX_API_KEY`. Missing dependencies or credentials
 produce incomplete evidence. Supported frameworks for auto-detection: Next.js,
 Astro, Nuxt, SvelteKit, Gatsby (other stacks: audit their built HTML output).
+Metrics and objectives are optional. No analytics or webmaster connection is
+required for core Citable workflows; owner CSV/JSON imports work without live
+provider authorization.
 
 ## License
 

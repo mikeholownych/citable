@@ -88,6 +88,10 @@ citable action-plan [run-id]          # ordered actions, blockers, semantic gate
 citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
 citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
 citable monitor [runA runB]           # observation regression alerts
+citable metrics import --provider <name> --input <csv|json>
+citable objectives init --input <json|yaml> [--write]
+citable objectives validate
+citable evaluate [objective-id] [--ref-date YYYY-MM-DD]
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -144,8 +148,9 @@ mandatory.
 
 ## Registries are the source of truth
 
-`.citable/` holds nine YAML registries (queries, prompts, entities, claims,
-evidence, pages, crawlers, competitors, experiments), all schema-validated
+`.citable/` holds YAML registries for queries, prompts, entities, claims,
+evidence, pages, crawlers, competitors, experiments, metrics, objectives,
+interventions, and optional connection state, all schema-validated
 (`schemas/*.schema.json`) with referential integrity checks. Rules:
 
 - Never overwrite registry content without history — use the loader/saver in

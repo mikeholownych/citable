@@ -14,6 +14,11 @@
 - Review-gated release preparation and shipping workflows with semantic-version
   consistency checks, changelog-derived GitHub releases, protected tagging, and
   npm trusted publishing handoff.
+- Optional provider-neutral metric, objective, intervention, and connection-state
+  contracts with strict schema and referential validation.
+- CSV/JSON metric imports, user-owned objective creation and validation, and
+  evidence-deduplicated baseline/evaluation reporting with explicit guardrails
+  and inconclusive outcomes.
 
 ### Fixed
 

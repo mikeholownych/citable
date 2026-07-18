@@ -1,0 +1,28 @@
+version: 1
+kind: metrics
+updated: '2026-07-18T00:00:00.000Z'
+entries:
+  - metric_id: METRIC-GSC_IMPRESSIONS
+    name: Google search impressions
+    provider: gsc
+    external_name: impressions
+    unit: count
+    value_type: integer
+    aggregation: sum
+    direction: increase
+    dimensions: [url, query, label]
+    limitations:
+      - Search Console aggregation and privacy filtering apply.
+    status: active
+  - metric_id: METRIC-GA4_KEY_EVENTS
+    name: GA4 organic key events
+    provider: ga4
+    external_name: keyEvents
+    unit: count
+    value_type: number
+    aggregation: sum
+    direction: increase
+    dimensions: [url]
+    limitations:
+      - Reporting identity, attribution, thresholding, and sampling may apply.
+    status: active
