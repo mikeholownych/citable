@@ -164,3 +164,25 @@ test('validate registries fails on bad structural data', async () => {
   assert.equal(r.ok, false);
   assert.ok(r.problems.length > 0);
 });
+
+test('CLAIM-009 + substantiate entailment gate: verified requires semantic support assessment', async () => {
+  const dir = project('registries-good');
+  // good fixture: assessment present → no CLAIM-009, verified preserved
+  let r = substantiate(dir, { refDate: '2026-07-18' });
+  assert.equal(r.assessments.find((a) => a.claim_id === 'CLAIM-ENFORCE').outcome, 'verified');
+  const { loadRegistries, saveRegistry } = await import('../../src/registries/index.js');
+  const { registries } = loadRegistries(dir);
+  // strip the assessment → substantiate demands entailment review, no silent verified
+  delete registries.claims.entries[0].support_assessment;
+  saveRegistry(dir, 'claims', registries.claims);
+  r = substantiate(dir, { refDate: '2026-07-18' });
+  const a = r.assessments.find((x) => x.claim_id === 'CLAIM-ENFORCE');
+  assert.equal(a.outcome, 'review_required');
+  assert.ok(a.required_input.includes('support_assessment with named assessor'));
+  // contradicted assessment → contradicted outcome regardless of evidence linkage
+  const { registries: reg2 } = loadRegistries(dir);
+  reg2.claims.entries[0].support_assessment = { status: 'contradicted', assessor: 'SME Reviewer' };
+  saveRegistry(dir, 'claims', reg2.claims);
+  r = substantiate(dir, { refDate: '2026-07-18' });
+  assert.equal(r.assessments.find((x) => x.claim_id === 'CLAIM-ENFORCE').outcome, 'contradicted');
+});

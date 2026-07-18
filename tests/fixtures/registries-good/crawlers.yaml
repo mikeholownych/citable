@@ -28,3 +28,12 @@ entries:
     business_rationale: ChatGPT search inclusion
     next_review_date: "2027-01-01"
     status: active
+  - crawler_id: CRAWLER-GOOGLE-EXTENDED
+    user_agent: Google-Extended
+    vendor: Google
+    purpose: model_training
+    decision: block
+    decision_owner: Legal Owner
+    legal_rationale: no training license granted
+    next_review_date: "2027-01-01"
+    status: active

@@ -68,11 +68,22 @@ export function substantiate(root, { write = false, refDate } = {}) {
         a.reasons.push('evidence exists but claim declares no scope; treat as verified only with narrowed scope pending scope definition');
         a.required_input.push('explicit scope and exclusions');
       } else {
-        // Deterministic conditions passed. Preserve existing verified status; do not
-        // auto-upgrade unverified→verified — semantic adequacy needs human review.
-        if (['verified', 'verified_narrowed'].includes(c.status)) {
-          a.outcome = c.status;
-          a.reasons.push('deterministic conditions hold; existing verified status preserved');
+        // Deterministic conditions passed. Verified status additionally requires a recorded
+        // semantic support assessment (entailment) by a named assessor — evidence linkage
+        // alone does not establish that the wording matches what the evidence proves.
+        const sa = c.support_assessment;
+        if (sa?.status === 'contradicted') {
+          a.outcome = 'contradicted';
+          a.reasons.push('support assessment records the evidence as contradicting the claim wording');
+        } else if (['verified', 'verified_narrowed'].includes(c.status)) {
+          if (sa && ['directly_supported', 'partially_supported'].includes(sa.status) && sa.assessor) {
+            a.outcome = sa.status === 'partially_supported' ? 'verified_narrowed' : c.status;
+            a.reasons.push(`deterministic conditions hold; support assessment ${sa.status} by ${sa.assessor}`);
+          } else {
+            a.outcome = 'review_required';
+            a.reasons.push('verified status held without an adequate semantic support assessment; entailment review required (evidence-strength rubric)');
+            a.required_input.push('support_assessment with named assessor');
+          }
         } else {
           a.outcome = 'review_required';
           a.reasons.push('deterministic conditions hold; semantic adequacy review required before marking verified (see evidence-strength rubric)');

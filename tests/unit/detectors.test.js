@@ -105,6 +105,7 @@ test('governance registries trigger CLAIM/EVD/LIFE/MEAS/CRAWL detectors', () => 
     'CLAIM-003', // active after expiry
     'CLAIM-005', // opinion marked verified
     'CLAIM-006', // security claim without review
+    'CLAIM-009', // verified claim without semantic support assessment
     'EVD-001',   // evidence past validity
     'EVD-002',   // benchmark without methodology
     'EVD-003',   // dangling evidence reference

@@ -199,6 +199,29 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'CLAIM-009', name: 'Verified claim without semantic support assessment', namespace: 'CLAIM',
+  description: 'A claim holds verified status without a recorded assessment that the evidence semantically supports the claim as worded (entailment, not just linkage). Valid evidence references, dates, and owners do not establish that the wording matches what the evidence proves.',
+  discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
+  impact: { legal: 'high', representation: 'high' },
+  applicable_requirement: 'Premise 3.5 + evidence-strength rubric: verified status requires semantic adequacy review, not only deterministic linkage',
+  remediation: 'Run the evidence-strength rubric with a named assessor; record support_assessment (status, assessor, method, supporting passages). Downgrade to review_required until directly_supported or partially_supported.',
+  verification: 'Verified claims carry support_assessment.status of directly_supported or partially_supported with a named assessor.',
+  check(ctx) {
+    return (ctx.registries.claims?.entries || [])
+      .filter((c) => ['verified', 'verified_narrowed'].includes(c.status))
+      .filter((c) => {
+        const sa = c.support_assessment;
+        return !sa || !['directly_supported', 'partially_supported'].includes(sa.status) || !sa.assessor;
+      })
+      .map((c) => ({
+        subject: entrySubject('claims', c.claim_id),
+        summary: `Verified claim "${truncate(c.claim)}" has no adequate semantic support assessment (${c.support_assessment ? `status: ${c.support_assessment.status}${c.support_assessment.assessor ? '' : ', no assessor'}` : 'absent'})`,
+        evidence: [`claims/${c.claim_id}: status=${c.status}; support_assessment=${c.support_assessment ? JSON.stringify({ status: c.support_assessment.status, assessor: c.support_assessment.assessor ?? null }) : 'missing'}`],
+      }));
+  },
+}));
+
 function truncate(s, n = 70) {
   s = String(s).replace(/\s+/g, ' ').trim();
   return s.length > n ? s.slice(0, n) + '…' : s;

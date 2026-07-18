@@ -1,2 +1,11 @@
 node_modules/
-/.citable/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+.citable/runs/
+.citable/snapshots/
+*.log
+.DS_Store
+Thumbs.db

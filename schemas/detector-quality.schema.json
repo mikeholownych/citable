@@ -1,0 +1,39 @@
+{
+  "$id": "citable://schemas/detector-quality.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Detector quality report",
+  "type": "object",
+  "required": ["generated_at", "corpus", "detectors"],
+  "properties": {
+    "generated_at": { "type": "string" },
+    "corpus": {
+      "type": "object",
+      "properties": {
+        "positive_fixtures": { "type": "array", "items": { "type": "string" } },
+        "negative_fixtures": { "type": "array", "items": { "type": "string" } },
+        "production_sites_evaluated": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["detector_id", "fixtures_positive", "fixtures_negative", "production_pages_evaluated", "precision", "recall"],
+        "properties": {
+          "detector_id": { "type": "string" },
+          "deterministic": { "type": "boolean" },
+          "fixtures_positive": { "type": "integer", "description": "findings produced on the seeded-defect corpus" },
+          "fixtures_negative": { "type": "integer", "description": "findings produced on the clean corpus (should be 0)" },
+          "exercised_by_fixtures": { "type": "boolean" },
+          "production_pages_evaluated": { "type": "integer" },
+          "true_positives": { "type": ["integer", "null"] },
+          "false_positives": { "type": ["integer", "null"] },
+          "false_negatives": { "type": ["integer", "null"] },
+          "precision": { "type": ["number", "null"], "description": "null = not measured; fixture counts alone do not establish precision" },
+          "recall": { "type": ["number", "null"] },
+          "known_blind_spots": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

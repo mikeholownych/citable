@@ -32,6 +32,20 @@
         "expires": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
         "last_verified": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
         "source_location": { "type": "string" },
+        "support_assessment": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "string", "enum": ["directly_supported", "partially_supported", "inferred", "contradicted", "not_assessed"] },
+            "assessor": { "type": "string" },
+            "assessment_method": { "type": "string" },
+            "assessment_date": { "$ref": "citable://schemas/common.defs.json#/definitions/isoDate" },
+            "supporting_passages": { "type": "array", "items": { "type": "string" } },
+            "unsupported_components": { "type": "array", "items": { "type": "string" } },
+            "confidence": { "type": "string", "enum": ["confirmed", "high", "medium", "low", "unknown"] },
+            "human_review_required": { "type": "boolean" }
+          }
+        },
         "provenance": { "$ref": "citable://schemas/common.defs.json#/definitions/provenance" }
       }
     }

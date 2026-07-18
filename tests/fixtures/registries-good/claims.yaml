@@ -19,3 +19,13 @@ entries:
     valid_from: "2026-05-10"
     expires: "2027-05-10"
     last_verified: "2026-06-01"
+    support_assessment:
+      status: directly_supported
+      assessor: SME Reviewer
+      assessment_method: manual evidence-strength rubric review
+      assessment_date: "2026-06-01"
+      supporting_passages:
+        - "architecture specification v2 §3.1 permit evaluation sequence"
+      unsupported_components: []
+      confidence: high
+      human_review_required: false

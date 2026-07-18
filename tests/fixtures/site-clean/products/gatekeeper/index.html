@@ -11,5 +11,6 @@
 <p>Gatekeeper is available as SaaS or self-hosted. Pricing is published per seat per month; contact sales for enterprise quotes. Gatekeeper is available in North America and Europe.</p>
 <h2>Limitations</h2>
 <p>Gatekeeper does not support advisory-only deployments for enforcement guarantees, and it does not cover workflows that bypass its integration points. Known limitation: latency budgets under 5 ms are out of scope.</p>
+<p>Integration is performed at the tool boundary: the agent framework requests a permit before invoking a tool, and Gatekeeper evaluates the request against the current policy and environment state. Decision evidence is retained for each request so that reviewers can reconstruct why an action was allowed or refused.</p>
 <p><a href="/learn/execution-governance/">Read the execution governance definition</a> or <a href="/pricing/">compare pricing and deployment options</a>. <a href="/">Example Governance home</a></p>
 </body></html>
