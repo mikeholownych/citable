@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Page with Performance Issues</title>
+  <!-- Test: render-blocking script -->
+  <script src="/js/app.js"></script>
+  <!-- Test: many stylesheets -->
+  <link rel="stylesheet" href="/css/normalize.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/colors.css" />
+  <link rel="stylesheet" href="/css/typography.css" />
+  <link rel="stylesheet" href="/css/buttons.css" />
+  <link rel="stylesheet" href="/css/forms.css" />
+</head>
+<body>
+  <h1>Test Page</h1>
+  <!-- Test: image without dimensions -->
+  <img src="/hero.jpg" alt="Hero image" />
+  <img src="/banner.jpg" alt="Banner" loading="lazy" />
+</body>
+</html>
