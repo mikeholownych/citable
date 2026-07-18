@@ -52,7 +52,7 @@
     "prepack": "npm run build:dist"
   },
   "bin": {
-    "citable": "./cli/bin/citable.js"
+    "citable": "cli/bin/citable.js"
   },
   "files": [
     "cli/",
