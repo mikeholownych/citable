@@ -131,6 +131,8 @@ citable validate              # registry schema + referential integrity
 - [Architecture decision record](docs/architecture/adr-001-architecture.md)
 - [Traceability matrix](docs/architecture/traceability-matrix.md) — every
   material source requirement mapped to a control
+- [npm trusted publishing](docs/release/npm-trusted-publishing.md) — release
+  workflow and trusted publisher setup
 - [Known limitations](docs/known-limitations.md) — read this before relying on
   any coverage claim
 

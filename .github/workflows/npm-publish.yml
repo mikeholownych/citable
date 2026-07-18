@@ -1,0 +1,88 @@
+name: npm publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish; must match package.json'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish citable to npm
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Verify npm CLI
+        run: |
+          npm install -g npm@latest
+          node --version
+          npm_version="$(npm --version)"
+          echo "npm ${npm_version}"
+          node -e "const [major, minor] = process.argv[1].split('.').map(Number); if (major < 11 || (major === 11 && minor < 5)) { throw new Error('npm 11.5.1 or newer is required for trusted publishing'); }" "${npm_version}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate release version
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            expected="${GITHUB_REF_NAME#v}"
+          else
+            expected="${{ inputs.version }}"
+          fi
+          if [[ "${package_version}" != "${expected}" ]]; then
+            echo "::error::package.json version ${package_version} does not match requested release ${expected}"
+            exit 1
+          fi
+
+      - name: Refuse duplicate npm version
+        run: |
+          set -euo pipefail
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          set +e
+          npm view "${package_name}@${package_version}" version --json >/tmp/npm-view-version.json 2>/tmp/npm-view-version.err
+          status=$?
+          set -e
+          if [[ "${status}" -eq 0 ]]; then
+            echo "::error::${package_name}@${package_version} already exists on npm"
+            cat /tmp/npm-view-version.json
+            exit 1
+          fi
+          if ! grep -q 'E404' /tmp/npm-view-version.err; then
+            cat /tmp/npm-view-version.err
+            echo "::error::Could not confirm whether ${package_name}@${package_version} already exists"
+            exit 1
+          fi
+
+      - name: Test
+        run: npm test
+
+      - name: Pack dry run
+        run: npm pack --dry-run --json
+
+      - name: Publish
+        run: npm publish --access public
