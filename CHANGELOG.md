@@ -21,6 +21,6 @@ Initial MVP.
   validate (5 modes), compare-snapshots
 - Evidence packages with manifests, checksums, and regression comparison
 - Canonical skill (SKILL.md, 12 rubrics, anti-pattern library, command contracts)
-- Generated distributions: claude-code, codex, cursor, gemini, generic
+- Generated universal bundle variants for supported agent hosts
 - Known gaps documented in docs/known-limitations.md (no live engine adapters,
   no browser rendering, no CWV/hreflang/multimodal detectors)

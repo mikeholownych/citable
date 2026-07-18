@@ -136,10 +136,10 @@ citable validate              # registry schema + referential integrity
 
 ## Requirements
 
-Node >= 20. Network access only for URL-mode audits. Supported frameworks for
+Node >= 22.22.2. Network access only for URL-mode audits. Supported frameworks for
 auto-detection: Next.js, Astro, Nuxt, SvelteKit, Gatsby (other stacks: audit
 their built HTML output).
 
 ## License
 
-MIT
+Apache-2.0

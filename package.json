@@ -46,6 +46,11 @@
   ],
   "author": "Mike Holownych - Nebula Components",
   "type": "module",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 'tests/**/*.test.js'",
+    "build:dist": "node scripts/build-dist.js",
+    "prepack": "npm run build:dist"
+  },
   "bin": {
     "citable": "./cli/bin/citable.js"
   },
@@ -74,5 +79,11 @@
   "homepage": "https://github.com/mikeholownych/citable#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^5.2.1",
+    "node-html-parser": "^9.0.0"
   }
 }
