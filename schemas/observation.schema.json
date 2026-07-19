@@ -7,7 +7,7 @@
   "required": ["observation_id", "kind", "state", "collected_at", "collection_method", "confidence", "source", "evidence_hash", "data"],
   "properties": {
     "observation_id": { "type": "string", "minLength": 1 },
-    "kind": { "type": "string", "enum": ["render", "index", "citation", "citation_review", "crawler_log", "passage", "canonical_freshness", "performance", "corroboration", "metric"] },
+    "kind": { "type": "string", "enum": ["render", "index", "citation", "citation_review", "crawler_log", "bing_webmaster", "passage", "canonical_freshness", "performance", "corroboration", "metric"] },
     "state": { "type": "string", "enum": ["observed", "not_observed", "not_evidenced", "incomplete", "review_required", "failed"] },
     "collected_at": { "type": "string", "format": "date-time" },
     "collection_method": { "type": "string", "enum": ["live_api", "browser", "owner_import", "synthetic_fetch", "static_analysis", "human_review"] },
@@ -15,6 +15,7 @@
     "source": { "type": "string", "minLength": 1 },
     "evidence_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "data": { "type": "object" },
-    "limitations": { "type": "array", "items": { "type": "string" } }
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "authority": { "$ref": "citable://schemas/evidence-authority.schema.json" }
   }
 }

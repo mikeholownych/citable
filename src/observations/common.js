@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createRun } from '../evidence/run.js';
 import { nowIso, readJson, sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { evidenceAuthority } from './authority.js';
 
 export function readInput(input) {
   if (!input) throw new Error('--input <json> is required for this collector');
@@ -10,12 +11,13 @@ export function readInput(input) {
   return { raw: fs.readFileSync(input, 'utf8'), value: readJson(input), file: path.resolve(input) };
 }
 
-export function envelope(kind, data, { method, source, state = 'observed', confidence = 'confirmed', limitations = [], raw } = {}) {
+export function envelope(kind, data, { method, source, state = 'observed', confidence = 'confirmed', limitations = [], authority, raw } = {}) {
   const evidence = raw ?? JSON.stringify(data);
   const item = {
     observation_id: `OBS-${kind.toUpperCase()}-${sha256(evidence).slice(0, 16)}`,
     kind, state, collected_at: nowIso(), collection_method: method,
     confidence, source, evidence_hash: sha256(evidence), data, limitations,
+    authority: evidenceAuthority(method, authority),
   };
   const check = validateAgainst('observation.schema.json', item);
   if (!check.valid) throw new Error(`observation violates contract: ${check.errors.join('; ')}`);

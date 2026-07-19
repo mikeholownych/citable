@@ -2,10 +2,15 @@ import { buildContext } from './context.js';
 import { envelope, observationRun, readInput } from '../observations/common.js';
 import { sha256 } from '../shared/io.js';
 import { fetchUrl } from '../crawler/fetch.js';
-import net from 'node:net';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parse as parseCsv } from 'csv-parse/sync';
+import { crawlerIdentity } from '../observations/crawlerIdentity.js';
+import { validateAgainst } from '../shared/schemaValidator.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
+const strictDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || '') && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 
 function canonicalReview(raw, targetOrigin) {
   const citations = raw.citations || [];
@@ -125,32 +130,85 @@ async function observeCitations(root, options) {
 }
 
 function observeLogs(root, options) {
-  const input = readInput(options.input);
-  const rows = Array.isArray(input.value) ? input.value : input.value.requests || [];
-  const ranges = input.value.provider_ranges || {};
-  const verify = (row) => {
-    const cidrs = ranges[row.user_agent] || [];
-    if (!row.source_ip || !cidrs.length) return { verified: false, method: null };
-    const family = net.isIP(row.source_ip);
-    if (!family) return { verified: false, method: 'invalid source IP' };
-    const block = new net.BlockList();
-    for (const cidr of cidrs) {
-      const [network, prefix] = cidr.split('/');
-      const rangeFamily = net.isIP(network);
-      if (rangeFamily === family && Number.isInteger(Number(prefix))) block.addSubnet(network, Number(prefix), family === 4 ? 'ipv4' : 'ipv6');
-    }
-    return { verified: block.check(row.source_ip, family === 4 ? 'ipv4' : 'ipv6'), method: `matched imported ${row.user_agent} CIDR set` };
-  };
+  if (!options.input || !fs.existsSync(options.input)) throw new Error('logs requires --input <json|csv>');
+  const raw = fs.readFileSync(options.input, 'utf8'), ext = path.extname(options.input).toLowerCase();
+  const value = ext === '.csv' ? { requests: parseCsv(raw, { columns: true, skip_empty_lines: true, trim: true }) } : JSON.parse(raw);
+  const input = { raw, value, file: path.resolve(options.input) };
+  const rows = (Array.isArray(value) ? value : value.requests || []).map((row) => ({
+    ...row,
+    timestamp: row.timestamp || row.datetime || row.date,
+    url: row.url || row.request_url || row['cs-uri-stem'],
+    user_agent: row.user_agent || row.userAgent || row['cs(User-Agent)'],
+    source_ip: row.source_ip || row.clientIP || row['c-ip'],
+    status: Number(row.status || row.status_code || row['sc-status']),
+    bytes: row.bytes == null ? null : Number(row.bytes),
+    latency_ms: row.latency_ms == null ? null : Number(row.latency_ms),
+    edge_observed: row.edge_observed === true || row.edge_observed === 'true',
+    origin_observed: row.origin_observed === true || row.origin_observed === 'true',
+    origin_status: row.origin_status == null || row.origin_status === '' ? null : Number(row.origin_status),
+    claimed_verified: row.claimed_verified === true || row.claimed_verified === 'true',
+  }));
+  const sensitive = (Array.isArray(value) ? value : value.requests || []).flatMap((row) => Object.keys(row).filter((key) => /(^|[-_])(authorization|cookie|set-cookie|access[-_]?token|refresh[-_]?token|api[-_]?key|password|secret)($|[-_])/i.test(key)));
+  if (sensitive.length) throw new Error(`log import contains sensitive fields that must be removed before collection: ${[...new Set(sensitive)].join(', ')}`);
+  const ranges = value.provider_ranges || {}, rangeSources = value.range_sources || {}, metadata = value.metadata || {};
   const observations = rows.map((row) => {
-    const identity = verify(row);
+    if (!row.timestamp || Number.isNaN(Date.parse(row.timestamp)) || !row.url || !row.user_agent || !Number.isInteger(row.status)) throw new Error('each log row requires valid timestamp, url, user_agent, and integer status');
+    const identity = crawlerIdentity(row, { ranges, rangeSources, collector: metadata.collector || 'owner_import' });
+    const fullyVerified = identity.verification_status === 'fully_verified';
     return envelope('crawler_log', {
     timestamp: row.timestamp, url: row.url, user_agent: row.user_agent, source_ip: row.source_ip,
     status: row.status, bytes: row.bytes ?? null, latency_ms: row.latency_ms ?? null,
     cache_status: row.cache_status ?? null, region: row.region ?? null,
-    identity_verified: identity.verified, verification_method: identity.method,
-  }, { method: 'owner_import', source: input.file, raw: JSON.stringify(row), confidence: identity.verified ? 'high' : 'low', limitations: identity.verified ? ['CIDR ranges were imported with the log evidence; their provider currency must be established by source metadata.'] : ['User-agent strings alone do not verify crawler identity.'] });
+    crawler_identity: identity,
+  }, { method: 'owner_import', source: input.file, raw: JSON.stringify(row), confidence: fullyVerified ? 'confirmed' : identity.verification_status === 'contradictory' ? 'high' : 'low',
+    authority: { collection_authority: 'production_log', authenticity_status: fullyVerified ? 'provider_range_verified' : 'checksum_protected_only', representativeness: metadata.representativeness || 'unknown' },
+    limitations: fullyVerified ? ['Verification applies only to this imported production event and captured verification chain.'] : ['The crawler identity chain is incomplete or contradictory; user agent and CIDR matching alone are insufficient.'] });
   });
-  return observationRun(root, 'observe logs', input.file, observations, { rawInputs: { server_logs: input.raw }, incomplete: observations.some((o) => !o.data.identity_verified) ? ['Some crawler identities are not IP-verified.'] : [] });
+  return observationRun(root, 'observe logs', input.file, observations, { rawInputs: { server_logs: input.raw }, incomplete: observations.some((o) => o.data.crawler_identity.verification_status !== 'fully_verified') ? ['Some crawler identities are not fully verified.'] : [] });
+}
+
+function observeBing(root, options) {
+  if (!options.input || !fs.existsSync(options.input)) throw new Error('bing requires --input <json|csv> --dataset <search_performance|ai_performance>');
+  if (!['search_performance', 'ai_performance'].includes(options.dataset)) throw new Error('bing dataset must be search_performance or ai_performance');
+  const raw = fs.readFileSync(options.input, 'utf8'), ext = path.extname(options.input).toLowerCase();
+  const value = ext === '.csv' ? parseCsv(raw, { columns: true, skip_empty_lines: true, trim: true }) : JSON.parse(raw);
+  const document = Array.isArray(value) ? { rows: value } : value;
+  const rows = document.rows || document.items || [];
+  if (!rows.length) throw new Error('Bing owner export contains no rows');
+  const numeric = (row, ...names) => {
+    const rawValue = names.map((name) => row[name]).find((item) => item !== '' && item != null);
+    if (rawValue == null) return null;
+    const result = Number(String(rawValue).replace(/%$/, ''));
+    if (!Number.isFinite(result)) throw new Error(`Bing metric ${names[0]} must be numeric`);
+    return String(rawValue).endsWith('%') ? result / 100 : result;
+  };
+  const observations = rows.map((row) => {
+    const date = row.date || row.Date;
+    if (!strictDate(date)) throw new Error('each Bing row requires a valid date in YYYY-MM-DD format');
+    const metrics = options.dataset === 'ai_performance' ? {
+      total_citations: numeric(row, 'total_citations', 'Total Citations', 'citations'),
+      average_cited_pages: numeric(row, 'average_cited_pages', 'Average Cited Pages'),
+    } : {
+      clicks: numeric(row, 'clicks', 'Clicks'), impressions: numeric(row, 'impressions', 'Impressions'),
+      ctr: numeric(row, 'ctr', 'CTR', 'Average CTR'), position: numeric(row, 'position', 'Average Position'),
+      crawl_requests: numeric(row, 'crawl_requests', 'Crawl Requests'), crawl_errors: numeric(row, 'crawl_errors', 'Crawl Errors'),
+      indexed_pages: numeric(row, 'indexed_pages', 'Indexed Pages'),
+    };
+    const boundaries = options.dataset === 'ai_performance'
+      ? ['Citation counts do not indicate ranking, authority, placement, page importance, or material support.', 'Grounding queries are sampled and the dashboard aggregates supported Microsoft AI surfaces.']
+      : ['Bing search performance can combine traffic sources; source dimensions must be preserved.', 'Observed performance does not establish that an intervention caused a change.'];
+    if (!Object.values(metrics).some((value) => value != null)) throw new Error(`Bing ${options.dataset} row contains no recognized metrics`);
+    const data = {
+      dataset: options.dataset, date, url: row.url || row.URL || row.page || null, metrics,
+      dimensions: { query: row.query || row.Query || null, grounding_query: row.grounding_query || row['Grounding Query'] || null, source: row.source || row.Source || null, country: row.country || row.Country || null, device: row.device || row.Device || null },
+      interpretation_boundary: boundaries,
+    };
+    const check = validateAgainst('bing-webmaster.schema.json', data);
+    if (!check.valid) throw new Error(`Bing observation violates contract: ${check.errors.join('; ')}`);
+    return envelope('bing_webmaster', data, { method: 'owner_import', source: path.resolve(options.input), raw: JSON.stringify(row),
+      authority: { representativeness: document.metadata?.representativeness || 'unknown' }, limitations: boundaries });
+  });
+  return observationRun(root, 'observe bing', path.resolve(options.input), observations, { rawInputs: { bing_owner_export: raw }, warnings: ['Bing AI Performance has no supported API contract captured by this release; this evidence is an owner export.'] });
 }
 
 async function observePassages(root, options) {
@@ -226,10 +284,11 @@ export async function observe(root, mode, options = {}) {
     case 'index': return observeIndex(root, options);
     case 'citations': return observeCitations(root, options);
     case 'logs': return observeLogs(root, options);
+    case 'bing': return observeBing(root, options);
     case 'passages': return observePassages(root, options);
     case 'consensus': return observeConsensus(root, options);
     case 'performance': return observePerformance(root, options);
     case 'corroboration': return observeCorroboration(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, passages, consensus, performance, or corroboration');
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, or corroboration');
   }
 }

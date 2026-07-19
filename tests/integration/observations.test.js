@@ -29,9 +29,15 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
 
   const logs = await observe(root, 'logs', { input: path.join(OBS, 'logs.json') });
   assert.equal(logs.manifest.status, 'incomplete');
+  assert.ok(logs.observations.some((o) => o.confidence === 'confirmed'));
   assert.ok(logs.observations.some((o) => o.confidence === 'high'));
-  assert.ok(logs.observations.some((o) => o.confidence === 'low'));
-  assert.equal(logs.observations[0].data.verification_method, 'matched imported PerplexityBot CIDR set');
+  assert.equal(logs.observations[0].data.crawler_identity.verification_status, 'fully_verified');
+  assert.equal(logs.observations[1].data.crawler_identity.verification_status, 'contradictory');
+  assert.equal(logs.observations[0].authority.authenticity_status, 'provider_range_verified');
+  assert.equal(logs.observations[0].authority.collection_authority, 'production_log');
+  const unsafeLog = path.join(root, 'unsafe-log.json');
+  fs.writeFileSync(unsafeLog, JSON.stringify({ requests: [{ timestamp: '2026-07-18T00:00:00Z', url: '/', user_agent: 'Bot', status: 200, authorization: 'Bearer secret' }] }));
+  await assert.rejects(observe(root, 'logs', { input: unsafeLog }), /sensitive fields/);
 
   const performance = await observe(root, 'performance', { input: path.join(OBS, 'performance.json') });
   assert.equal(performance.observations[0].kind, 'performance');
@@ -41,6 +47,23 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
   for (const result of [index, citations, logs, performance, corroboration]) {
     assert.ok(fs.existsSync(path.join(result.dir, 'checksums.json')));
   }
+});
+
+test('Bing owner exports preserve dataset boundaries and never imply ranking or causation', async () => {
+  const root = fresh();
+  const ai = await observe(root, 'bing', { input: path.join(OBS, 'bing-ai-performance.csv'), dataset: 'ai_performance' });
+  assert.equal(ai.observations.length, 2);
+  assert.equal(ai.observations[0].data.metrics.total_citations, 12);
+  assert.match(ai.observations[0].data.interpretation_boundary.join(' '), /do not indicate ranking/);
+  assert.equal(ai.observations[0].authority.collection_authority, 'owner_export');
+  assert.equal(ai.observations[0].authority.representativeness, 'unknown');
+
+  const search = await observe(root, 'bing', { input: path.join(OBS, 'bing-search-performance.json'), dataset: 'search_performance' });
+  assert.equal(search.observations[0].data.dimensions.source, 'Web');
+  assert.equal(search.observations[0].authority.representativeness, 'complete_export');
+  assert.match(search.observations[0].data.interpretation_boundary.join(' '), /does not establish/);
+
+  await assert.rejects(observe(root, 'bing', { input: path.join(OBS, 'bing-invalid.json'), dataset: 'ai_performance' }), /valid date/);
 });
 
 test('passage and consensus collectors analyze site artifacts without external claims', async () => {

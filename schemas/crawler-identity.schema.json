@@ -1,0 +1,42 @@
+{
+  "$id": "citable://schemas/crawler-identity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Crawler identity evidence contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provider", "declared_user_agent", "observed_source_ip", "range_source", "cidr_membership", "dns", "edge", "origin", "region", "collector", "stages", "verification_status"],
+  "properties": {
+    "provider": { "type": "string", "minLength": 1 },
+    "declared_user_agent": { "type": "string", "minLength": 1 },
+    "observed_source_ip": { "type": ["string", "null"] },
+    "range_source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "retrieved_at", "authority", "checksum", "checksum_scope", "checksum_valid"],
+      "properties": {
+        "url": { "type": ["string", "null"], "format": "uri" },
+        "retrieved_at": { "type": ["string", "null"], "format": "date-time" },
+        "authority": { "type": "string", "enum": ["provider_published", "owner_controlled", "third_party", "unknown"] },
+        "checksum": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "checksum_scope": { "type": "string", "enum": ["source_snapshot", "not_captured"] },
+        "checksum_valid": { "type": "boolean" }
+      }
+    },
+    "cidr_membership": { "type": "string", "enum": ["matched", "not_matched", "not_tested", "invalid"] },
+    "dns": {
+      "type": "object", "additionalProperties": false, "required": ["status", "method"],
+      "properties": { "status": { "type": "string", "enum": ["verified", "failed", "not_tested"] }, "method": { "type": ["string", "null"] } }
+    },
+    "edge": {
+      "type": "object", "additionalProperties": false, "required": ["observed", "decision"],
+      "properties": { "observed": { "type": "boolean" }, "decision": { "type": ["string", "null"] } }
+    },
+    "origin": {
+      "type": "object", "additionalProperties": false, "required": ["observed", "status"],
+      "properties": { "observed": { "type": "boolean" }, "status": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 } }
+    },
+    "region": { "type": ["string", "null"] },
+    "collector": { "type": "string", "minLength": 1 },
+    "stages": { "type": "array", "uniqueItems": true, "items": { "type": "string", "enum": ["declared", "synthetically_observed", "range_matched", "dns_verified", "edge_observed", "origin_observed", "fully_verified", "contradictory", "insufficient_evidence"] } },
+    "verification_status": { "type": "string", "enum": ["declared", "synthetically_observed", "range_matched", "dns_verified", "edge_observed", "origin_observed", "fully_verified", "contradictory", "insufficient_evidence"] }
+  }
+}

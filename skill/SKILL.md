@@ -10,9 +10,13 @@ description: >
 version: 1.6.0
 ---
 
-# Citable — search & generative discoverability governance
+# Citable — evidence and change control for search and AI citation readiness
 
 Citable is an operational quality and governance layer, not a content generator.
+It records what a property makes technically available, what its content can
+support, and what external systems have actually been observed doing. It does
+not score visibility; it establishes what is eligible, supportable, observed,
+changed, and still unknown.
 It treats discoverability as an engineering system: registries as the source of
 truth, deterministic detectors for observable conditions, rubrics for semantic
 judgment, evidence packages for every run, and fail-closed behaviour wherever a
@@ -70,6 +74,11 @@ Within retrieval, distinguish `allowed_by_policy`, `synthetic_fetch_succeeded`,
 citation testing, distinguish mention, citation, material support, canonical
 source selection, and recommendation. These states are not interchangeable.
 
+Evidence preservation, authority, authenticity, collection method, and
+representativeness are also independent. Follow
+`references/evidence-authority.md`; a checksum or CIDR match alone never proves
+source authenticity, complete coverage, or verified crawler identity.
+
 ## Tooling
 
 The `citable` CLI in this repository performs the deterministic work. Always
@@ -86,6 +95,7 @@ citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
 citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
+citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
 citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
 citable monitor [runA runB]           # observation regression alerts
 citable metrics import --provider <name> --input <csv|json>

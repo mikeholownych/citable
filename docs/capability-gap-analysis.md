@@ -2,16 +2,16 @@
 
 Target state: defensible separation of retrieval eligibility, source extraction
 and support suitability, and observed citation behavior. Statuses describe the
-current repository as of 2026-07-18; they are not outcome scores.
+current repository as of 2026-07-19; they are not outcome scores.
 
 | Capability | Current state | Gap | Priority | Closure evidence |
 | --- | --- | --- | --- | --- |
 | Separate top-level states | Implemented | None | complete | Audit summary/report exposes three independent states |
 | Policy-level crawler decisions | Implemented | No edge proof | P0 | Per-crawler purpose registry plus effective robots rule |
 | Per-agent synthetic edge probes | Partial | One audit UA; no crawler matrix, WAF/challenge classification, region matrix, or IP pinning | P0 | Timestamped probe artifacts for each declared agent, clearly labelled simulated |
-| Verified crawler identity | Not implemented | No provider IP-range verifier | P0 | UA plus current provider-published IP validation and source checksum |
-| Production crawler access | Import implemented | Provider CIDR retrieval/verification remains owner supplied | P1 | Validated server/CDN log observations separated from policy and simulation |
-| Search-index presence | Partial | Google API/import implemented; other engines require exports | P0 | Engine, canonical selected, crawl date, indexed/rendered evidence, timestamp |
+| Verified crawler identity | Contract implemented | Authentic production evidence remains owner supplied; no managed range retriever | P0 | Staged UA/IP/range-source/DNS/edge/origin record with contradiction handling |
+| Production crawler access | JSON/CSV import implemented | Multi-region collection remains external | P1 | Validated server/CDN events separated from policy, simulation, and absent evidence |
+| Search-index presence | Partial | Google API/import and Bing owner exports implemented; Bing AI dashboard has no captured API contract | P0 | Engine, canonical selected, crawl date, indexed/rendered evidence, timestamp |
 | Rendered extraction parity | Partial | Optional desktop Chromium capture; no mobile/cross-browser detector matrix | P0 | Raw HTML, rendered DOM, main-content diff, interaction-hidden inventory |
 | Passage extraction | Partial | Candidate corpus/noise ratios implemented; semantic review remains | P1 | Versioned question-to-passage records with dependency findings |
 | Claim/evidence support | Partial | Registry linkage and methodology checks; no automated passage-to-source entailment | P1 | Claim, adjacent passage, source passage, reviewer, support status, checksum |

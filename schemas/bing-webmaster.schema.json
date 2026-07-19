@@ -1,0 +1,25 @@
+{
+  "$id": "citable://schemas/bing-webmaster.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Normalized Bing Webmaster observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset", "date", "url", "metrics", "dimensions", "interpretation_boundary"],
+  "properties": {
+    "dataset": { "type": "string", "enum": ["search_performance", "ai_performance"] },
+    "date": { "type": "string", "format": "date" },
+    "url": { "type": ["string", "null"], "format": "uri", "pattern": "^https?://" },
+    "metrics": { "type": "object", "additionalProperties": { "type": ["number", "null"] } },
+    "dimensions": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "query": { "type": ["string", "null"] },
+        "grounding_query": { "type": ["string", "null"] },
+        "source": { "type": ["string", "null"] },
+        "country": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] }
+      }
+    },
+    "interpretation_boundary": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  }
+}

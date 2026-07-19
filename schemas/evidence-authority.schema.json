@@ -1,0 +1,15 @@
+{
+  "$id": "citable://schemas/evidence-authority.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Multidimensional evidence authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_authority", "collection_authority", "authenticity_status", "representativeness"],
+  "properties": {
+    "source_authority": { "type": "string", "enum": ["provider_published", "standards_body", "owner_controlled", "independently_controlled", "third_party_commercial", "synthetic", "inferred", "unknown"] },
+    "collection_authority": { "type": "string", "enum": ["direct_api", "production_log", "browser_capture", "owner_export", "third_party_export", "manual_entry", "model_generated_inference", "static_analysis", "synthetic_probe"] },
+    "authenticity_status": { "type": "string", "enum": ["cryptographically_authenticated", "provider_range_verified", "owner_attested", "transport_authenticated", "checksum_protected_only", "unverified"] },
+    "representativeness": { "type": "string", "enum": ["production_population", "complete_export", "statistically_sampled", "controlled_experiment", "convenience_sample", "single_observation", "unknown"] },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

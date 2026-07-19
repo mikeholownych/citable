@@ -1,20 +1,24 @@
 # Citable
 
-An installable agent skill and CLI for auditing, remediating, validating, and
-monitoring the conditions that influence **SEO** (search visibility), **AEO**
-(answer citation), and **GEO** (generative representation).
+The evidence and change-control layer for defensible search and AI citation
+readiness. Citable records what a web property makes technically available,
+what its content can support, and what external systems have actually been
+observed doing. It binds findings to evidence, interventions to source state,
+and outcomes to controlled comparison windows.
 
 Citable is an operational quality and governance layer — not a content
 generator, not a Lighthouse wrapper, not an "AI visibility score".
 
 > Nothing Citable produces guarantees crawling, indexing, ranking, citation,
-> recommendation, inclusion, sentiment, or conversion. It manages eligibility,
-> evidence, and probability.
+> recommendation, inclusion, sentiment, or conversion. It does not score
+> visibility. It establishes what is eligible, supportable, observed, changed,
+> and still unknown.
 
 ## What it does
 
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
-  evidence, pages, crawler policies, competitors, experiments — all
+  evidence, pages, crawler policies, competitors, experiments, metrics,
+  objectives, interventions, and optional connections — all
   JSON-Schema validated with referential integrity and history-preserving saves.
 - **123 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
@@ -147,6 +151,7 @@ citable observe passages --target ./dist --base-url https://example.com
 citable observe index --input search-console-export.json
 citable observe citations --input prompt-results.json --target https://example.com
 citable observe logs --input edge-logs.json
+citable observe bing --dataset ai_performance --input bing-ai-performance.csv
 citable observe consensus --target ./dist --base-url https://example.com
 citable observe performance --target https://example.com # CRUX_API_KEY
 citable apply --input remediation-spec.json          # dry run

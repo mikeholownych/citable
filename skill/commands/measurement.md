@@ -70,6 +70,21 @@ agent × URL × status; flag 403/429/5xx concentrations against declared-allow
 crawlers; note that user-agent strings are spoofable and IP validation is the
 confirmation step (crawler registry ip_validation_method). Compare observed
 access against `crawlers.yaml` decisions (CRAWL-001 logic applied to logs).
+Normalize JSON or CSV edge/origin events into the crawler identity contract.
+Do not label CIDR membership alone verified: preserve range-source provenance,
+DNS, edge, origin, region, collector, stages, and contradiction state.
+Remove credentials, cookies, secrets, and unnecessary personal data before
+import. Citable rejects common sensitive field names but cannot establish that
+arbitrary URL or query values are lawful or appropriately minimized.
+
+# Bing owner observations
+
+Use `citable observe bing --dataset search_performance|ai_performance --input
+<csv|json>`. This release normalizes owner exports because no supported Bing AI
+Performance API contract has been captured. Citation counts do not indicate
+ranking, authority, placement, page importance, or material support. Grounding
+queries may be sampled. Preserve traffic-source dimensions and never infer
+causation from a temporal change.
 
 # monitor-contradictions
 Compare approved entity + claim records against: owned pages (automated, via

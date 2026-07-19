@@ -39,7 +39,7 @@ Commands
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
-  observe <mode>            Collect render, index, citation, log, passage,
+  observe <mode>            Collect render, index, citation, log, Bing, passage,
                             consensus, performance, or corroboration evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
@@ -61,6 +61,7 @@ Options
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
   --input <file>            Import file or remediation specification
   --provider <name>         Provider label for imported observations
+  --dataset <name>          Provider export dataset (for example ai_performance)
   --connection-id <id>      Connection registry identifier
   --property-id <id>        Provider property or site identifier
   --credential-env <name>   Environment variable containing the access token
@@ -88,6 +89,7 @@ function parseArgs(argv) {
     else if (a === '--ref-date') args.refDate = argv[++i];
     else if (a === '--input') args.input = argv[++i];
     else if (a === '--provider') args.provider = argv[++i];
+    else if (a === '--dataset') args.dataset = argv[++i];
     else if (a === '--connection-id') args.connectionId = argv[++i];
     else if (a === '--property-id') args.propertyId = argv[++i];
     else if (a === '--credential-env') args.credentialEnv = argv[++i];
