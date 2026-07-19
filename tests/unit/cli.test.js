@@ -21,4 +21,5 @@ test('top-level help exposes audit-to-action commands', () => {
   assert.match(output, /reviews queue/);
   assert.match(output, /schedules run/);
   assert.match(output, /project github/);
+  assert.match(output, /media evidence/);
 });

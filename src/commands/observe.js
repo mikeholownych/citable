@@ -7,6 +7,7 @@ import path from 'node:path';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { crawlerIdentity } from '../observations/crawlerIdentity.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { observeMedia } from '../observations/media.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -289,6 +290,7 @@ export async function observe(root, mode, options = {}) {
     case 'consensus': return observeConsensus(root, options);
     case 'performance': return observePerformance(root, options);
     case 'corroboration': return observeCorroboration(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, or corroboration');
+    case 'media': return observeMedia(root, options);
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, or media');
   }
 }

@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 144 pass |
+| Tests | 147 pass |
 | Registries | 19 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 65 packaged files per provider |
+| Distribution | 67 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -77,8 +77,10 @@ audited property or claiming that a recommendation was implemented.
   connector work begins.
 - Lighthouse lab execution; CrUX field collection is implemented while existing
   CWV detectors remain infrastructure-readiness checks.
-- Multimodal extraction for images, video, audio, and PDFs with explicit
-  provenance and confidence.
+- Bounded PDF text/metadata, transcript, and image-context evidence is
+  implemented with explicit provenance and optional OCR. Native video/audio
+  decoding, scanned-PDF OCR, table reconstruction, and visual entailment remain
+  future version gates.
 - Optional analytics integrations using aggregate data and documented consent
   boundaries. GSC Search Analytics and GA4 organic acquisition are implemented;
   additional providers remain version-gated.

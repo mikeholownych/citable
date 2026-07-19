@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Bounded media evidence collection for local PDF text/metadata with page
+  anchors, transcript cues with provenance, and image alt/caption context.
+- Explicit optional OCR behavior and media-to-claim linkage validation through
+  `citable observe media --input <manifest> [--ocr]`.
+- Medium-specific limitations that prevent extraction from being represented as
+  claim support, reading-order validation, transcription accuracy, or semantic equivalence.
+
 ## 1.10.0 — 2026-07-19
 
 ### Added
