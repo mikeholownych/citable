@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   policy:
+    if: github.event.pull_request.state == 'open'
     name: PR structure and release notes
     runs-on: ubuntu-latest
     steps:

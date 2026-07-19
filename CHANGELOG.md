@@ -46,6 +46,8 @@
 
 ### Changed — Release Evidence Governance
 
+- PR policy validation now skips post-merge edited events, preventing deleted
+  head references from creating misleading failures after a successful merge.
 - Controlled surfaces now declare exact-body or projection-hash-header
   verification. Rendered pages without the declared header produce
   `insufficient_evidence` instead of a false body-hash divergence.
