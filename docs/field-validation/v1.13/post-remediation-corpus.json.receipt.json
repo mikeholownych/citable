@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "receipt_id": "CORPUS-PUBLICATION-4BCE15F0F295EFC1AAEC",
+  "corpus_id": "CORPUS-V1.13-POST-REMEDIATION-20260719",
+  "corpus_version": "1.0.0",
+  "source_hash": "bf17b50d66bbc36ac44174d007ba30f3b98d6544a24f0945025f2b293207473b",
+  "published_hash": "bf17b50d66bbc36ac44174d007ba30f3b98d6544a24f0945025f2b293207473b",
+  "metrics_json_hash": "c610798c85d373da1e4bcbc99204edcf1dc4df58d1e72e43c605cc6a088e56a7",
+  "metrics_markdown_hash": "f4ff57d15a286013816d16c66e0b2800f4dba6594288003cae837761373bbb0c",
+  "property_ids": [
+    "PROP-AISYNDICATE",
+    "PROP-GOFAULTLINE",
+    "PROP-MIKEHOLOWNYCH",
+    "PROP-NEBULACOMPONENTS"
+  ],
+  "publication_levels": [
+    "sanitized_artifacts"
+  ],
+  "generated_at": "2026-07-19T16:33:21.323Z",
+  "authority": "owner_authorized_publication_projection",
+  "limitations": [
+    "Publication receipt records publisher-controlled approval and projection integrity, not independent validation.",
+    "Automated pattern checks supplement but do not replace the recorded human sanitization review."
+  ],
+  "receipt_hash": "69d0d90ba2ac283330c0d8f5c49f59b03b53c12cabe198c23ab31b997d07363f"
+}
