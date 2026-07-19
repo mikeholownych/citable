@@ -1,0 +1,45 @@
+name: Provider or integration proposal
+description: Propose a supported evidence source or integration contract.
+title: "integration: "
+labels: ["type: feature", "area: connectors", "status: needs-evidence"]
+body:
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and product surface
+      placeholder: Provider / API or export surface
+    validations:
+      required: true
+  - type: textarea
+    id: interface
+    attributes:
+      label: Supported interface
+      description: Link official API, export, webhook, or log documentation.
+    validations:
+      required: true
+  - type: textarea
+    id: observation
+    attributes:
+      label: Observation the integration can establish
+      description: State what it proves and what it cannot prove.
+    validations:
+      required: true
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authentication, authority, and representativeness
+      description: Explain who controls the source and whether evidence is complete, sampled, or synthetic.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Legal, privacy, rate-limit, and retention constraints
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Proposed acceptance criteria
+    validations:
+      required: true

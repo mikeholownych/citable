@@ -69,3 +69,4 @@ jobs:
           test -f docs/architecture/adr-001-architecture.md
           test -f docs/architecture/traceability-matrix.md
           test -f docs/known-limitations.md
+          node scripts/validate-community.js

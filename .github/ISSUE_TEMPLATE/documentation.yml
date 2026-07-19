@@ -1,0 +1,32 @@
+name: Documentation correction
+description: Report stale, contradictory, unclear, or unsupported documentation.
+title: "docs: "
+labels: ["type: documentation", "status: needs-triage"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      placeholder: README.md#quick-start
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Current statement
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Proposed correction and supporting source
+      description: Distinguish a factual correction from a preference.
+    validations:
+      required: true
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Existing work
+      options:
+        - label: I searched existing Issues and Discussions for this correction.
+          required: true

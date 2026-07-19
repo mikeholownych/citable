@@ -1,0 +1,73 @@
+name: Bug report
+description: Report reproducible incorrect CLI or package behavior.
+title: "bug: "
+labels: ["type: bug", "status: needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, customer data, private URLs, or unsanitized evidence packages.
+  - type: input
+    id: version
+    attributes:
+      label: Citable version
+      description: Use the exact installed version, not `latest`.
+      placeholder: 1.12.0
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: 24.18.0
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation surface
+      options: [npm registry, packed tarball, repository checkout, installed agent skill, other]
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and agent host
+      placeholder: Ubuntu 24.04, Codex CLI
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal sanitized reproduction
+      description: Include the smallest inputs needed to reproduce the behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior and evidence
+      description: Include exit status, bounded output, run ID, or artifact checksums where relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, customer data, private URLs, and other sensitive material.
+          required: true
+        - label: I searched existing Issues and Discussions for this behavior.
+          required: true

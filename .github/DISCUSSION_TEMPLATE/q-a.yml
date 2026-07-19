@@ -1,0 +1,25 @@
+title: "[Question] "
+labels: ["discussion: q-and-a"]
+body:
+  - type: markdown
+    attributes:
+      value: Remove credentials, customer data, private URLs, and unsanitized evidence before posting.
+  - type: input
+    id: version
+    attributes:
+      label: Citable version
+      placeholder: 1.12.0
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and attempted workflow
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized output or evidence boundary
+    validations:
+      required: true

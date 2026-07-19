@@ -1,0 +1,28 @@
+title: "[Research] "
+labels: ["discussion: research"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Primary source
+      description: Link provider or standards-body documentation.
+    validations:
+      required: true
+  - type: input
+    id: effective
+    attributes:
+      label: Version or effective date
+    validations:
+      required: true
+  - type: textarea
+    id: implication
+    attributes:
+      label: Observed or proposed implication for Citable
+    validations:
+      required: true
+  - type: textarea
+    id: uncertainty
+    attributes:
+      label: Unknowns and verification required
+    validations:
+      required: true
