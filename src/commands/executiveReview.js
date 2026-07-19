@@ -41,14 +41,14 @@ export async function executiveReviewCommand(args, root = process.cwd()) {
   const { registries, problems: regProblems } = loadRegistries(root);
   const refProblems = checkReferentialIntegrity(registries);
 
-  const report = buildReview(registries, period, [...regProblems, ...refProblems], refProblems, asOf);
+  const report = buildReview(registries, period, [...regProblems, ...refProblems], refProblems);
   report.generated_at = nowIso();
   report.as_of = dateOnly(asOf);
 
   return asJson ? report : formatReview(report);
 }
 
-function buildReview(registries, period, regProblems, refProblems, asOf) {
+function buildReview(registries, period, regProblems, refProblems) {
   // Filter to schema-valid and referentially valid governed evidence.
   const kpis = validReferences(validEntries(registries.kpis?.entries, 'kpi.schema.json'), 'kpis', 'metric_id', refProblems);
   const validVariances = validReferences(validEntries(registries.variances?.entries, 'variance.schema.json'), 'variances', 'variance_id', refProblems);

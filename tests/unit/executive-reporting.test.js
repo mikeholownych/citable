@@ -868,6 +868,19 @@ describe('second PR review regressions', () => {
     assert.ok(r.problems.some(problem => /YAML parse failure/.test(problem)));
   });
 
+  test('shared registry loader rejects primitive YAML shape without throwing', async () => {
+    const root = tmpProject();
+    fs.writeFileSync(path.join(root, '.citable', 'variances.yaml'), 'foo', 'utf8');
+    const r = await varianceCommand(['validate'], root);
+    assert.equal(r.valid, false);
+    assert.ok(r.problems.some(problem => /expected registry shape/.test(problem)));
+  });
+
+  test('decision new does not consume --write as a missing title', async () => {
+    const r = await decisionMemoCommand(['new', '--write'], tmpProject());
+    assert.equal(r.error, '--title required');
+  });
+
   test('critical strategic differentiation outranks high', async () => {
     const root = tmpProject();
     const base = { customer_demand: 'medium', revenue_potential: 'medium', evidence_strength: 'verified', engineering_cost: 'low', reversibility: 'reversible', status: 'proposed', owner: 'CEO' };

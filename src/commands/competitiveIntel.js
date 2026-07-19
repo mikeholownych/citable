@@ -38,7 +38,8 @@ export async function competitiveIntelCommand(args, root = process.cwd()) {
     case 'show':     return competitorShow(file, rest[0]);
     case 'validate': return competitorValidate(file);
     case 'stale': {
-      const days = parseInt(rest[rest.indexOf('--days') + 1]) || STALE_DAYS_DEFAULT;
+      const daysIndex = rest.indexOf('--days');
+      const days = (daysIndex >= 0 ? parseInt(rest[daysIndex + 1], 10) : NaN) || STALE_DAYS_DEFAULT;
       return competitorStale(file, days, parseAsOf(args));
     }
     default: return competitorList(file);

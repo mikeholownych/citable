@@ -132,7 +132,8 @@ function decisionValidate(file, args = []) {
 }
 
 async function decisionNew(file, args, root) {
-  const title = args[args.indexOf('--title') + 1];
+  const titleIndex = args.indexOf('--title');
+  const title = titleIndex >= 0 ? args[titleIndex + 1] : undefined;
   if (!title) return { error: '--title required' };
   const write = args.includes('--write');
 

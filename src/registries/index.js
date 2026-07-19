@@ -52,6 +52,10 @@ export function loadRegistryFile(file, kind) {
   if (fs.existsSync(file)) {
     try {
       data = readYaml(file) ?? emptyRegistry(kind);
+      if (typeof data !== 'object' || data === null || !Array.isArray(data.entries)) {
+        problems.push(`${path.basename(file)}: YAML does not match expected registry shape`);
+        data = emptyRegistry(kind);
+      }
     } catch (error) {
       problems.push(`${path.basename(file)}: YAML parse failure: ${error.message}`);
     }
