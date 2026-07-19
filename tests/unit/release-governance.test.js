@@ -19,6 +19,15 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMMIT = 'a'.repeat(40);
 
+function packagedSkillFileCount() {
+  const countFiles = (directory) => fs.readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .length;
+  return countFiles(path.join(ROOT, 'skill'))
+    + countFiles(path.join(ROOT, 'schemas'))
+    + 2; // Generated VERSION and scripts/README.md; manifest.json is excluded.
+}
+
 function releaseFixtureRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-release-governance-'));
   for (const relative of ['package.json', 'package-lock.json', 'skill/SKILL.md', 'README.md', 'CHANGELOG.md', 'docs/ROADMAP.md', 'release/surfaces.json']) {
@@ -27,7 +36,9 @@ function releaseFixtureRoot() {
     fs.copyFileSync(path.join(ROOT, relative), target);
   }
   fs.mkdirSync(path.join(root, 'dist', 'universal'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'dist', 'universal', 'manifest.json'), JSON.stringify({ providers: { fixture: { files: 85 } } }));
+  fs.writeFileSync(path.join(root, 'dist', 'universal', 'manifest.json'), JSON.stringify({
+    providers: { fixture: { files: packagedSkillFileCount() } },
+  }));
   return root;
 }
 
@@ -38,7 +49,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
   assert.equal(first.manifest.facts.detectors, 123);
-  assert.equal(first.manifest.facts.distribution_files_per_provider, 85);
+  assert.equal(first.manifest.facts.distribution_files_per_provider, packagedSkillFileCount());
   assert.ok(first.manifest.projections.some((item) => item.projection_id === 'llms-txt'));
   assert.match(first.generated['release/llms.txt'], /Release commit: a{40}/);
 });

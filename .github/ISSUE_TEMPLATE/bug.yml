@@ -11,7 +11,7 @@ body:
     attributes:
       label: Citable version
       description: Use the exact installed version, not `latest`.
-      placeholder: 1.12.0
+      placeholder: 1.13.0
     validations:
       required: true
   - type: input
