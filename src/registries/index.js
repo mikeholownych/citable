@@ -20,6 +20,8 @@ export const REGISTRY_SPECS = [
   { file: 'reviewers.yaml', kind: 'reviewers', schema: 'reviewer.schema.json', idField: 'reviewer_id' },
   { file: 'review-policies.yaml', kind: 'review_policies', schema: 'review-policy.schema.json', idField: 'policy_id' },
   { file: 'exceptions.yaml', kind: 'exceptions', schema: 'exception.schema.json', idField: 'exception_id' },
+  { file: 'review-items.yaml', kind: 'review_items', schema: 'review-item.schema.json', idField: 'review_item_id' },
+  { file: 'sampling-plans.yaml', kind: 'sampling_plans', schema: 'sampling-plan.schema.json', idField: 'sampling_plan_id' },
 ];
 
 export function contextDir(root) {
@@ -121,6 +123,13 @@ export function checkReferentialIntegrity(registries) {
     if (exception.related_intervention_id && !interventionIds.has(exception.related_intervention_id)) problems.push(`${prefix}: references unknown intervention id "${exception.related_intervention_id}"`);
     for (const ref of [exception.supersedes_exception_id, exception.superseded_by_exception_id]) if (ref && !exceptionIds.has(ref)) problems.push(`${prefix}: references unknown exception id "${ref}"`);
   }
+  for (const item of registries.review_items?.entries || []) {
+    const prefix = `review_items/${item.review_item_id}`;
+    if (!policyIds.has(item.policy_id)) problems.push(`${prefix}: references unknown review policy id "${item.policy_id}"`);
+    for (const ref of [...(item.assigned_reviewer_ids || []), ...(item.decisions || []).map((decision) => decision.reviewer_id), item.adjudication?.reviewer_id].filter(Boolean)) if (!reviewerIds.has(ref)) problems.push(`${prefix}: references unknown reviewer id "${ref}"`);
+  }
+  const reviewItemIds = ids.review_items || new Set();
+  for (const plan of registries.sampling_plans?.entries || []) for (const ref of plan.selected_item_ids || []) if (!reviewItemIds.has(ref)) problems.push(`sampling_plans/${plan.sampling_plan_id}: references unknown review item id "${ref}"`);
   return problems;
 }
 

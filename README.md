@@ -19,7 +19,7 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
   evidence, pages, crawler policies, competitors, experiments, metrics,
   objectives, interventions, optional connections, reviewers, review policies,
-  and governed exceptions — all
+  governed exceptions, semantic review items, and sampling plans — all
   JSON-Schema validated with referential integrity and history-preserving saves.
 - **123 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
@@ -166,6 +166,11 @@ citable objectives validate
 citable evaluate OBJECTIVE-PRODUCT_DISCOVERY --ref-date 2026-07-18
 citable governance validate --ref-date 2026-07-19
 citable governance evaluate <run-id> --ref-date 2026-07-19
+citable reviews queue <run-id> <policy-id> --write
+citable reviews prioritize --write
+citable reviews plan --input sampling-plan.json --write
+citable reviews sample <sampling-plan-id> --write
+citable reviews evaluate
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -176,7 +181,7 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 16 registries plus findings, runs, observations, remediation, config, and prompt results |
+| `schemas/` | JSON Schemas: 18 registries plus findings, runs, observations, remediation, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |

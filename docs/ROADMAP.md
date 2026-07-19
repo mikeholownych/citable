@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 138 pass |
-| Registries | 16 schema-validated |
+| Tests | 141 pass |
+| Registries | 18 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 60 packaged files per provider |
+| Distribution | 63 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -83,8 +83,9 @@ audited property or claiming that a recommendation was implemented.
 
 ### Review Scale
 
-- Materiality-ranked semantic review queues with recorded population, sampling
-  method, seed, assignment, disagreement, and extrapolation limits.
+- Materiality-ranked semantic review queues with recorded population, census or
+  seeded random sampling, assignment, disagreement, and extrapolation limits
+  are implemented. Stratified allocation remains a future version gate.
 - Expiring, evidence-backed exception renewal workflows and reviewer
   reassignment without weakening immutable source findings.
 

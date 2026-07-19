@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- Materiality-ranked semantic review queues with explicit missing-input states,
+  reviewer assignment, hash-bound decisions, and independent adjudication.
+- Reproducible census and seeded random sampling plans recording population
+  hashes, inclusion/exclusion criteria, assignment method, and extrapolation limits.
+- `citable reviews queue|prioritize|plan|sample|evaluate` workflows.
+
 ## 1.8.0 — 2026-07-19
 
 ### Added

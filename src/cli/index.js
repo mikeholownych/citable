@@ -18,6 +18,7 @@ import { monitor } from '../commands/monitor.js';
 import { evaluateObjective, importMetrics, initializeObjective, validateObjectives } from '../commands/measurement.js';
 import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
 import { evaluateDispositions, validateGovernance } from '../commands/governance.js';
+import { evaluateReviews, initializeSamplingPlan, prioritizeReviews, queueReviews, selectSample } from '../commands/reviews.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -56,6 +57,11 @@ Commands
   evaluate [objective-id]   Compare objective baseline and evaluation windows
   governance validate       Validate reviewer, policy, and exception controls
   governance evaluate [run] Produce immutable enforcement dispositions without changing findings
+  reviews queue [run policy] Create semantic review work from heuristic findings
+  reviews prioritize        Rank review work from explicit materiality inputs
+  reviews plan              Validate/add a sampling plan from --input
+  reviews sample [plan]     Select a reproducible census or seeded random sample
+  reviews evaluate          Detect stale decisions and require disagreement adjudication
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
@@ -253,6 +259,17 @@ export async function main(argv = process.argv.slice(2), options = {}) {
           out(args, `governance evaluate ${r.source_run_id}: ${r.dispositions.length} failed finding(s), ${accepted} accepted exception(s)\nEvidence package: ${r.dir}`, r);
           if (r.dispositions.some((item) => item.enforcement_disposition === 'blocked_ambiguous_exception')) process.exitCode = 1;
         } else throw new Error('usage: citable governance <validate|evaluate [run-id]> [--ref-date YYYY-MM-DD]');
+        break;
+      }
+      case 'reviews': {
+        const mode=args._[0]; let r;
+        if(mode==='queue') r=queueReviews(root,{runId:args._[1],policyId:args._[2],write:args.write});
+        else if(mode==='prioritize') r=prioritizeReviews(root,{write:args.write});
+        else if(mode==='plan') r=initializeSamplingPlan(root,{input:args.input,write:args.write});
+        else if(mode==='sample') r=selectSample(root,{planId:args._[1],write:args.write});
+        else if(mode==='evaluate') { r=evaluateReviews(root); if(!r.ok) process.exitCode=1; }
+        else throw new Error('usage: citable reviews <queue|prioritize|plan|sample|evaluate> [options]');
+        out(args,`reviews ${mode}: ${r.created?.length ?? r.items?.length ?? r.selected_item_ids?.length ?? r.results?.length ?? 1} item(s)${args.write?' written':' (dry run)'}`,r);
         break;
       }
       case 'self-upgrade': {
