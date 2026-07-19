@@ -94,13 +94,21 @@ export function checkReferentialIntegrity(registries) {
   const problems = [];
   const ids = {};
   for (const spec of REGISTRY_SPECS) {
-    ids[spec.kind] = new Set((registries[spec.kind]?.entries || []).map((e) => e[spec.idField]));
-    const seen = new Set();
-    for (const e of registries[spec.kind]?.entries || []) {
-      const id = e[spec.idField];
-      if (seen.has(id)) problems.push(`${spec.kind}: duplicate id ${id}`);
-      seen.add(id);
+    const registry = registries[spec.kind] ?? emptyRegistry(spec.kind);
+    const schemaValid = (registry.entries || []).filter((entry) =>
+      validateAgainst(spec.schema, { ...registry, entries: [entry] }).valid);
+    const counts = new Map();
+    for (const entry of schemaValid) {
+      const id = entry[spec.idField];
+      counts.set(id, (counts.get(id) ?? 0) + 1);
     }
+    for (const [id, count] of counts) {
+      if (count > 1) problems.push(`${spec.kind}/${id}: duplicate id ${id}`);
+    }
+    // Only schema-valid, unambiguous records may satisfy references.
+    ids[spec.kind] = new Set(schemaValid
+      .map((entry) => entry[spec.idField])
+      .filter((id) => counts.get(id) === 1));
   }
   const refChecks = [
     ['claims', 'evidence', 'evidence', 'claim_id'],

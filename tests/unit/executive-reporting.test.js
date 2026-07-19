@@ -915,11 +915,33 @@ describe('second PR review regressions', () => {
 
   test('reports exclude schema-valid records with dangling references', async () => {
     const root = tmpProject();
-    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-DANGLING', metric_id: 'KPI-MISSING', period: '2026-07', target: 100, actual: 90, variance_amount: -10, variance_pct: -10, materiality: 'material', primary_driver: 'timing', controllable: false, evidence: ['ledger.csv'], owner: 'CFO', management_response: 'monitor' }] });
-    const report = await executiveReviewCommand(['--period', '2026-07', '--json', '--as-of', '2026-07-31'], root);
-    assert.equal(report.ledger.variances_this_period, 0);
-    assert.equal(report.invalid_entries_excluded, 1);
-    assert.ok(report.registry_problems.some(problem => problem.includes('KPI-MISSING')));
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-001', metric_id: 'KPI-MISSING', period: '2026-01', target: 100, actual: 90, variance_amount: -10, variance_pct: -10, materiality: 'material', primary_driver: 'Observed campaign conversion fell 10%', controllable: false, evidence: ['ledger.csv'], management_response: 'Revise campaign', owner: 'CEO' }] });
+    const r = await boardReportCommand(['--quarter', '2026-Q1', '--json', '--as-of', '2026-03-31'], root);
+    assert.equal(r.sections.management_assessment.variances_this_quarter.value, 0);
+    assert.equal(r.invalid_entries_excluded.variances, 1);
+  });
+
+  test('duplicate governed IDs are excluded from board values', async () => {
+    const root = tmpProject();
+    const decision = { decision_id: 'DEC-1', title: 'Duplicate', owner: 'CEO', consulted: ['CFO'], deadline: '2026-09-01', reversibility: 'reversible', options: [{ label: 'A', description: 'desc', trade_offs: ['cost'] }], recommendation: 'A', supporting_evidence: ['memo.pdf'], contradicting_evidence: [], assumptions: [], what_would_change_recommendation: ['new evidence'], cost_of_delay: '$1k', reopen_conditions: [], status: 'open' };
+    const initiative = { initiative_id: 'INIT-1', title: 'Duplicate', customer_demand: 'high', revenue_potential: 'high', strategic_differentiation: 'high', evidence_strength: 'validated', engineering_cost: 'low', reversibility: 'reversible', status: 'approved', owner: 'CTO' };
+    write(root, 'decisions.yaml', { version: 1, kind: 'decisions', entries: [decision, { ...decision }] });
+    write(root, 'initiatives.yaml', { version: 1, kind: 'initiatives', entries: [initiative, { ...initiative }] });
+    const r = await boardReportCommand(['--quarter', '2026-Q3', '--json', '--as-of', '2026-09-30'], root);
+    assert.equal(r.sections.board_decisions_and_asks.open_decisions.value, 0);
+    assert.equal(r.sections.next_quarter_commitments.approved_initiatives.value, 0);
+    assert.equal(r.invalid_entries_excluded.decisions, 2);
+    assert.equal(r.invalid_entries_excluded.initiatives, 2);
+  });
+
+  test('references to schema-invalid targets are excluded', async () => {
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [{ metric_id: 'KPI-BAD', name: 'Invalid target' }] });
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-1', metric_id: 'KPI-BAD', period: '2026-01', target: 100, actual: 90, variance_amount: -10, variance_pct: -10, materiality: 'material', primary_driver: 'Observed conversion fell 10%', controllable: false, evidence: ['ledger.csv'], management_response: 'Revise campaign', owner: 'CEO' }] });
+    const r = await executiveReviewCommand(['--period', '2026-01', '--json', '--as-of', '2026-01-31'], root);
+    assert.equal(r.ledger.governed_metrics, 0);
+    assert.equal(r.ledger.variances_this_period, 0);
+    assert.equal(r.invalid_entries_excluded, 2);
   });
 
   test('board statement IDs are stable and text output contains values', async () => {

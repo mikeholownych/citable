@@ -50,11 +50,11 @@ export async function executiveReviewCommand(args, root = process.cwd()) {
 
 function buildReview(registries, period, regProblems, refProblems, asOf) {
   // Filter to schema-valid and referentially valid governed evidence.
-  const kpis = validEntries(registries.kpis?.entries, 'kpi.schema.json');
+  const kpis = validReferences(validEntries(registries.kpis?.entries, 'kpi.schema.json'), 'kpis', 'metric_id', refProblems);
   const validVariances = validReferences(validEntries(registries.variances?.entries, 'variance.schema.json'), 'variances', 'variance_id', refProblems);
   const variances = validVariances.filter(v => v.period === period);
-  const outcomes = validEntries(registries['customer-outcomes']?.entries, 'customer-outcome.schema.json');
-  const risks = validEntries(registries.risks?.entries, 'risk.schema.json');
+  const outcomes = validReferences(validEntries(registries['customer-outcomes']?.entries, 'customer-outcome.schema.json'), 'customer-outcomes', 'outcome_id', refProblems);
+  const risks = validReferences(validEntries(registries.risks?.entries, 'risk.schema.json'), 'risks', 'risk_id', refProblems);
   const decisions = validReferences(validEntries(registries.decisions?.entries, 'decision.schema.json'), 'decisions', 'decision_id', refProblems);
 
   const invalidTotal =
