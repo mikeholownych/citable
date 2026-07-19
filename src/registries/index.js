@@ -141,6 +141,64 @@ export function checkReferentialIntegrity(registries) {
   }
   const reviewItemIds = ids.review_items || new Set();
   for (const plan of registries.sampling_plans?.entries || []) for (const ref of plan.selected_item_ids || []) if (!reviewItemIds.has(ref)) problems.push(`sampling_plans/${plan.sampling_plan_id}: references unknown review item id "${ref}"`);
+
+  // ── Executive reporting suite cross-registry checks ────────────────────────
+  const kpiIds        = ids.kpis            || new Set();
+  const outcomeIds    = ids['customer-outcomes'] || new Set();
+  const decisionIds   = ids.decisions       || new Set();
+  const assumptionIds = ids.assumptions     || new Set();
+  const riskIds       = ids.risks           || new Set();
+  const initiativeIds = ids.initiatives     || new Set();
+
+  // variances must reference a known KPI metric_id
+  for (const v of registries.variances?.entries || []) {
+    if (v.metric_id && !kpiIds.has(v.metric_id))
+      problems.push(`variances/${v.variance_id}: metric_id "${v.metric_id}" references unknown kpi`);
+  }
+
+  // decisions: supporting/contradicting evidence can reference outcome IDs
+  for (const d of registries.decisions?.entries || []) {
+    const prefix = `decisions/${d.decision_id}`;
+    for (const ref of d.supporting_evidence || []) {
+      if (typeof ref === 'string' && ref.startsWith('OUT-') && !outcomeIds.has(ref))
+        problems.push(`${prefix}: supporting_evidence references unknown customer-outcome "${ref}"`);
+    }
+    for (const ref of d.contradicting_evidence || []) {
+      if (typeof ref === 'string' && ref.startsWith('OUT-') && !outcomeIds.has(ref))
+        problems.push(`${prefix}: contradicting_evidence references unknown customer-outcome "${ref}"`);
+    }
+    for (const ref of d.assumptions || []) {
+      if (typeof ref === 'string' && ref.startsWith('ASMP-') && !assumptionIds.has(ref))
+        problems.push(`${prefix}: assumptions references unknown assumption "${ref}"`);
+    }
+  }
+
+  // initiatives: linked_kpis, linked_outcomes, linked_risks, linked_decisions
+  for (const i of registries.initiatives?.entries || []) {
+    const prefix = `initiatives/${i.initiative_id}`;
+    for (const ref of i.linked_kpis || [])
+      if (!kpiIds.has(ref)) problems.push(`${prefix}: linked_kpis references unknown kpi "${ref}"`);
+    for (const ref of i.linked_outcomes || [])
+      if (!outcomeIds.has(ref)) problems.push(`${prefix}: linked_outcomes references unknown customer-outcome "${ref}"`);
+    for (const ref of i.linked_risks || [])
+      if (!riskIds.has(ref)) problems.push(`${prefix}: linked_risks references unknown risk "${ref}"`);
+    for (const ref of i.linked_decisions || [])
+      if (!decisionIds.has(ref)) problems.push(`${prefix}: linked_decisions references unknown decision "${ref}"`);
+  }
+
+  // scenarios: variable_ids should reference known KPIs or risks
+  for (const s of registries.scenarios?.entries || []) {
+    const prefix = `scenarios/${s.scenario_id}`;
+    for (const v of s.variables || []) {
+      const ref = v.variable_id;
+      if (!ref) continue;
+      if (ref.startsWith('KPI-') && !kpiIds.has(ref))
+        problems.push(`${prefix}: variable "${ref}" references unknown kpi`);
+      if (ref.startsWith('RISK-') && !riskIds.has(ref))
+        problems.push(`${prefix}: variable "${ref}" references unknown risk`);
+    }
+  }
+
   return problems;
 }
 

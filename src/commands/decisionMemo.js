@@ -23,13 +23,26 @@ import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
+function argVal(args, flag) {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : null;
+}
+
+function parseAsOf(args) {
+  const v = argVal(args, '--as-of');
+  if (!v) return new Date();
+  const d = new Date(v);
+  if (isNaN(d.getTime())) throw new Error(`--as-of must be YYYY-MM-DD, got: ${v}`);
+  return d;
+}
+
 export async function decisionMemoCommand(args, root = process.cwd()) {
   const [subcommand, ...rest] = args;
   const file = path.join(contextDir(root), 'decisions.yaml');
 
   switch (subcommand) {
     case 'show':     return decisionShow(file, rest[0]);
-    case 'validate': return decisionValidate(file);
+    case 'validate': return decisionValidate(file, rest);
     case 'new':      return decisionNew(file, rest, root);
     case 'list':
     default: {
@@ -92,11 +105,14 @@ function decisionShow(file, id) {
   };
 }
 
-function decisionValidate(file) {
+function decisionValidate(file, args = []) {
   const data = load(file);
   const problems = [];
   const { valid, errors } = validateAgainst('decision.schema.json', data);
   if (!valid) problems.push(...errors);
+
+  // Reference date for deadline staleness — deterministic when --as-of provided
+  const refDate = parseAsOf(args);
 
   for (const d of data.entries) {
     // Named consulted parties required
@@ -117,9 +133,9 @@ function decisionValidate(file) {
     if (!d.supporting_evidence || d.supporting_evidence.length === 0)
       problems.push(`${d.decision_id}: supporting_evidence required — performative uncertainty is not accepted`);
 
-    // Deadline validation
-    if (d.deadline && new Date(d.deadline) < new Date() && d.status === 'open')
-      problems.push(`${d.decision_id}: deadline ${d.deadline} is past but status is still "open"`);
+    // Deadline validation against reference date (not wall clock)
+    if (d.deadline && new Date(d.deadline) < refDate && d.status === 'open')
+      problems.push(`${d.decision_id}: deadline ${d.deadline} is past (as-of ${refDate.toISOString().slice(0,10)}) but status is still "open"`);
 
     // One-way decisions need reopen conditions
     if (d.reversibility === 'effectively_one_way' && (!d.reopen_conditions || d.reopen_conditions.length === 0))
@@ -132,36 +148,64 @@ function decisionValidate(file) {
 function decisionNew(file, args, root) {
   const title = args[args.indexOf('--title') + 1];
   if (!title) return { error: '--title required' };
+  const write = args.includes('--write');
 
   const data = load(file);
   const id = `DEC-${String(data.entries.length + 1).padStart(3, '0')}`;
+
+  // Use schema-valid placeholder values only — never persist enum-violating strings.
+  // reversibility enum: reversible | effectively_one_way | one_way
   const stub = {
     decision_id: id,
     title,
-    owner: 'REQUIRED',
+    owner: '',
     consulted: [],
-    deadline: 'REQUIRED',
-    reversibility: 'REQUIRED',
+    deadline: '',
+    reversibility: 'reversible',          // valid enum — change to match actual decision
     options: [],
-    recommendation: 'REQUIRED',
+    recommendation: '',
     supporting_evidence: [],
     contradicting_evidence: [],
     assumptions: [],
     what_would_change_recommendation: [],
-    cost_of_delay: 'REQUIRED',
+    cost_of_delay: '',
     reopen_conditions: [],
     status: 'open',
   };
 
+  // Validate the stub against the schema before any persistence
+  const { valid, errors } = validateAgainst('decision.schema.json', {
+    version: 1, kind: 'decisions', entries: [stub],
+  });
+  if (!valid) {
+    return { error: 'Stub failed schema validation — this is a bug', schema_errors: errors };
+  }
+
+  if (!write) {
+    return {
+      preview: true,
+      id,
+      stub,
+      message: 'Dry-run — pass --write to persist. Complete all empty fields before use.',
+      required_fields: ['owner','consulted','deadline','recommendation',
+        'supporting_evidence','what_would_change_recommendation','cost_of_delay'],
+      reversibility_options: ['reversible','effectively_one_way','one_way'],
+    };
+  }
+
+  // Persist only when explicitly requested and schema-valid
   data.entries.push(stub);
   const dir = contextDir(root);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  writeYaml(file, { ...data, updated: nowIso() });
+  // Route through saveRegistry so version history is preserved
+  import('../registries/index.js').then(({ saveRegistry }) => saveRegistry(root, 'decisions', data));
 
   return {
     created: id,
     file,
-    message: `Decision stub created. Complete all REQUIRED fields before use.`,
-    required_fields: ['owner','consulted','deadline','reversibility','recommendation','supporting_evidence','what_would_change_recommendation','cost_of_delay'],
+    message: 'Decision stub written. Complete all empty fields before use.',
+    required_fields: ['owner','consulted','deadline','recommendation',
+      'supporting_evidence','what_would_change_recommendation','cost_of_delay'],
+    reversibility_options: ['reversible','effectively_one_way','one_way'],
   };
 }

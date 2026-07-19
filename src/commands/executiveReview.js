@@ -16,27 +16,49 @@
  */
 import { loadRegistries } from '../registries/index.js';
 import { nowIso } from '../shared/io.js';
+import { validateAgainst } from '../shared/schemaValidator.js';
 
 const SECTIONS = ['commercial','customer','product','quality','operations','management'];
 
+/** Filter registry entries to only those that pass schema validation. */
+function validEntries(entries, schemaName) {
+  if (!entries?.length) return [];
+  return entries.filter(e => {
+    const { valid } = validateAgainst(schemaName, { version: 1, kind: schemaName.replace('.schema.json','s'), entries: [e] });
+    return valid;
+  });
+}
+
 export async function executiveReviewCommand(args, root = process.cwd()) {
-  const period = argVal(args, '--period') ?? currentPeriod();
+  const asOf  = parseAsOf(args);
+  const period = argVal(args, '--period') ?? currentPeriod(asOf);
   const asJson = args.includes('--json');
 
   const { registries, problems: regProblems } = loadRegistries(root);
 
-  const report = buildReview(registries, period);
-  report.registry_problems = regProblems;
+  const report = buildReview(registries, period, regProblems, asOf);
   report.generated_at = nowIso();
+  report.as_of = asOf.toISOString().slice(0, 10);
 
   return asJson ? report : formatReview(report);
 }
 
-function buildReview(registries, period) {
-  const kpis = registries.kpis?.entries ?? [];
-  const variances = (registries.variances?.entries ?? []).filter(v => v.period === period);
-  const outcomes = registries['customer-outcomes']?.entries ?? [];
-  const risks = registries.risks?.entries ?? [];
+function buildReview(registries, period, regProblems, asOf) {
+  // Filter to schema-valid entries only — invalid entries cannot serve as governed evidence
+  const kpis = validEntries(registries.kpis?.entries, 'kpi.schema.json');
+  const variances = validEntries(registries.variances?.entries, 'variance.schema.json')
+    .filter(v => v.period === period);
+  const outcomes = validEntries(registries['customer-outcomes']?.entries, 'customer-outcome.schema.json');
+  const risks = validEntries(registries.risks?.entries, 'risk.schema.json');
+
+  const invalidTotal =
+    ((registries.kpis?.entries?.length ?? 0) - kpis.length) +
+    ((registries.variances?.entries?.length ?? 0) - variances.length) +
+    ((registries['customer-outcomes']?.entries?.length ?? 0) - outcomes.length) +
+    ((registries.risks?.entries?.length ?? 0) - risks.length);
+
+  // Deadline staleness evaluated against asOf, not wall clock
+  const refDate = asOf ?? new Date();
 
   // Evidence ledger — raw facts before narrative
   const ledger = {
@@ -89,6 +111,8 @@ function buildReview(registries, period) {
   return {
     report_type: 'executive-operating-review',
     period,
+    registry_problems: regProblems,
+    invalid_entries_excluded: invalidTotal > 0 ? invalidTotal : undefined,
     ledger,
     four_act_required: buildFourActPrompt(variances),
     sections: { commercial, customer, product, quality, operations, management },
@@ -166,12 +190,21 @@ function formatReview(report) {
   return lines.join('\n');
 }
 
-function currentPeriod() {
-  const d = new Date();
+function currentPeriod(asOf) {
+  const d = asOf ?? new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function argVal(args, flag) {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : null;
+}
+
+/** Parse --as-of YYYY-MM-DD to a Date for deterministic temporal evaluation. */
+function parseAsOf(args) {
+  const v = argVal(args, '--as-of');
+  if (!v) return new Date();
+  const d = new Date(v);
+  if (isNaN(d.getTime())) throw new Error(`--as-of must be YYYY-MM-DD, got: ${v}`);
+  return d;
 }

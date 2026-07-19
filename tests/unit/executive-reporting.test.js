@@ -418,13 +418,25 @@ describe('decisionMemoCommand', () => {
     assert.ok(r.problems.some(p => /reopen_conditions/i.test(p)));
   });
 
-  test('new creates a stub decision file', async () => {
+  test('new creates a stub decision — dry-run by default (no file written)', async () => {
     const root = tmpProject();
     const r = await decisionMemoCommand(['new', '--title', 'Test decision'], root);
-    assert.ok(r.created);
-    assert.match(r.created, /DEC-/);
+    assert.ok(r.preview, 'should be a preview/dry-run result');
+    assert.ok(r.id, 'should return a decision id');
+    assert.match(r.id, /DEC-/);
+    // File must NOT exist — dry-run does not persist
     const file = path.join(root, '.citable', 'decisions.yaml');
-    assert.ok(fs.existsSync(file));
+    assert.ok(!fs.existsSync(file), 'dry-run must not write a file');
+  });
+
+  test('new --write uses schema-valid reversibility value (not "REQUIRED")', async () => {
+    const root = tmpProject();
+    const r = await decisionMemoCommand(['new', '--title', 'Test decision', '--write'], root);
+    assert.ok(r.created, 'should return created id');
+    // The resulting registry must pass schema validation
+    const validateResult = await decisionMemoCommand(['validate'], root);
+    const schemaErrors = (validateResult.problems ?? []).filter(p => p.includes('reversibility'));
+    assert.equal(schemaErrors.length, 0, `Schema-invalid reversibility should not appear: ${schemaErrors.join(', ')}`);
   });
 
   test('show formats memo structure', async () => {
@@ -689,5 +701,142 @@ describe('executiveCommand', () => {
     await executiveCommand(['risk register top risks'], root);
     const logFile = path.join(root, '.citable', 'executive-log.yaml');
     assert.ok(fs.existsSync(logFile));
+  });
+});
+
+// =======================================================================
+// ISSUE 2 — Reports must block sections when entries fail schema validation
+// =======================================================================
+describe('reports reject invalid registry entries as governed evidence', () => {
+  test('board-report refuses commercial section when all KPI entries are schema-invalid', async () => {
+    const root = tmpProject();
+    // Write a KPI entry missing 6 required fields
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [
+      { metric_id: 'ARR', name: 'ARR' } // missing owner, executive_definition, known_limitations, etc.
+    ]});
+    write(root, 'customer-outcomes.yaml', { version: 1, kind: 'customer-outcomes', entries: [{ outcome_id: 'O1', customer: 'X', property: 'x.com', baseline: 'b', intervention: 'i', observed_change: 'c', measurement_window: '7d', evidence_package: ['e.pdf'], customer_confirmed: true, causal_confidence: 'partial', outcome_stage: 'finding_accepted' }] });
+    write(root, 'risks.yaml', { version: 1, kind: 'risks', entries: [{ risk_id: 'R1', title: 'R', category: 'commercial', cause: 'c', event: 'e', consequence: 'q', likelihood: 'unlikely', impact: 'minor', gross_exposure: 'low', controls: [], control_owner: 'CEO', control_effectiveness: 'none', residual_exposure: 'low', key_risk_indicators: [], trigger_threshold: '', response: 'monitor', response_owner: 'CEO', review_date: '2027-01-01', trend: 'stable', board_visibility: false }] });
+    const r = await boardReportCommand(['--quarter', '2026-Q2', '--json'], root);
+    // After filtering invalids, kpis.length === 0 → refused_sections must fire
+    assert.ok(r.refused_sections, 'must refuse when all KPIs fail schema validation');
+    assert.match(r.refused_sections, /kpis/);
+    assert.ok(r.invalid_entries_excluded, 'must report excluded invalid entries');
+  });
+
+  test('executive-review excludes invalid KPI entries from governed_metrics count', async () => {
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [
+      { metric_id: 'ARR', name: 'ARR' } // invalid — missing required fields
+    ]});
+    const r = await executiveReviewCommand(['--period', '2026-06', '--json'], root);
+    // Invalid entry must not inflate governed_metrics
+    assert.equal(r.ledger.governed_metrics, 0, 'invalid KPI must not count as governed');
+    assert.ok(r.ungoverned_warning, 'must warn when no valid KPIs');
+    assert.ok(r.invalid_entries_excluded > 0, 'must report excluded count');
+  });
+});
+
+// =======================================================================
+// ISSUE 3 — Every board-report statement must carry full provenance contract
+// =======================================================================
+describe('board-report statement provenance contract', () => {
+  test('every factual statement in sections carries statement_id and owner', async () => {
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [{ metric_id: 'ARR', name: 'ARR', owner: 'CEO', reporting_cadence: 'quarterly', target: 400000, restatement_policy: 'restate', known_limitations: ['est'], comparison_required: false, executive_definition: 'ARR', calculation: 'mrr*12', numerator: 'mrr', denominator: '1', unit: 'USD', source_system: 'stripe', source_query: 'q', warning_threshold: 300000, critical_threshold: 200000 }] });
+    write(root, 'customer-outcomes.yaml', { version: 1, kind: 'customer-outcomes', entries: [{ outcome_id: 'O1', customer: 'X', property: 'x.com', baseline: 'b', intervention: 'i', observed_change: 'c', measurement_window: '7d', evidence_package: ['e.pdf'], customer_confirmed: true, causal_confidence: 'partial', outcome_stage: 'finding_accepted' }] });
+    write(root, 'risks.yaml', { version: 1, kind: 'risks', entries: [{ risk_id: 'R1', title: 'R', category: 'commercial', cause: 'c', event: 'e', consequence: 'q', likelihood: 'unlikely', impact: 'minor', gross_exposure: 'low', controls: [], control_owner: 'CEO', control_effectiveness: 'none', residual_exposure: 'low', key_risk_indicators: [], trigger_threshold: '', response: 'monitor', response_owner: 'CEO', review_date: '2027-01-01', trend: 'stable', board_visibility: false }] });
+    const r = await boardReportCommand(['--quarter', '2026-Q2', '--json'], root);
+
+    // governed_metrics in management_assessment is now a statement object
+    const stmt = r.sections.management_assessment.governed_metrics;
+    assert.ok(stmt.statement_id, 'governed_metrics must carry statement_id');
+    assert.ok(stmt.owner,        'governed_metrics must carry owner');
+    assert.ok(stmt.statement_type, 'governed_metrics must carry statement_type');
+    assert.ok(stmt.source_records, 'governed_metrics must carry source_records');
+    assert.ok(stmt.period,       'governed_metrics must carry period');
+
+    // Each statement_id must be unique within the report
+    const allStmtIds = [];
+    function collectIds(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      if (obj.statement_id) allStmtIds.push(obj.statement_id);
+      for (const v of Object.values(obj)) collectIds(v);
+    }
+    collectIds(r.sections);
+    const unique = new Set(allStmtIds);
+    assert.equal(unique.size, allStmtIds.length, 'all statement_ids must be unique');
+  });
+});
+
+// =======================================================================
+// ISSUE 4 — Cross-registry referential integrity
+// =======================================================================
+describe('checkReferentialIntegrity — executive suite cross-registry', () => {
+  test('valid cross-registry references produce no problems', async () => {
+    const { checkReferentialIntegrity, loadRegistries } = await import('../../src/registries/index.js');
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [{ metric_id: 'KPI-ARR', name: 'ARR', owner: 'CEO', reporting_cadence: 'quarterly', target: 400000, restatement_policy: 'restate', known_limitations: ['est'], comparison_required: false, executive_definition: 'ARR', calculation: 'mrr*12', numerator: 'mrr', denominator: '1', unit: 'USD', source_system: 'stripe', source_query: 'q', warning_threshold: 300000, critical_threshold: 200000 }] });
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-001', metric_id: 'KPI-ARR', period: '2026-04', target: 100, actual: 90, delta: -10, delta_pct: -10, materiality: 'immaterial', primary_driver: 'slower deal close', management_response: 'monitoring' }] });
+    const { registries } = loadRegistries(root);
+    const problems = checkReferentialIntegrity(registries);
+    const varProblems = problems.filter(p => p.startsWith('variances/'));
+    assert.equal(varProblems.length, 0, `valid metric_id should produce no ref problems: ${varProblems.join(', ')}`);
+  });
+
+  test('dangling variance metric_id produces a referential integrity problem', async () => {
+    const { checkReferentialIntegrity, loadRegistries } = await import('../../src/registries/index.js');
+    const root = tmpProject();
+    // No KPIs written — variance references a nonexistent KPI
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-001', metric_id: 'KPI-NONEXISTENT', period: '2026-04', target: 100, actual: 90, delta: -10, delta_pct: -10, materiality: 'immaterial', primary_driver: 'slower deal close', management_response: 'monitoring' }] });
+    const { registries } = loadRegistries(root);
+    const problems = checkReferentialIntegrity(registries);
+    const varProblems = problems.filter(p => p.includes('KPI-NONEXISTENT'));
+    assert.ok(varProblems.length > 0, `dangling metric_id must produce ref integrity failure: ${JSON.stringify(problems)}`);
+  });
+
+  test('dangling decision supporting_evidence (outcome ref) produces problem', async () => {
+    const { checkReferentialIntegrity, loadRegistries } = await import('../../src/registries/index.js');
+    const root = tmpProject();
+    write(root, 'decisions.yaml', { version: 1, kind: 'decisions', entries: [{
+      decision_id: 'DEC-001', title: 'T', owner: 'CEO', consulted: ['CFO'],
+      deadline: '2027-01-01', reversibility: 'reversible', options: [],
+      recommendation: 'yes', supporting_evidence: ['OUT-GHOST'],
+      contradicting_evidence: [], assumptions: [],
+      what_would_change_recommendation: ['counterevidence'], cost_of_delay: 'high',
+      reopen_conditions: [], status: 'open',
+    }]});
+    const { registries } = loadRegistries(root);
+    const problems = checkReferentialIntegrity(registries);
+    const refProblems = problems.filter(p => p.includes('OUT-GHOST'));
+    assert.ok(refProblems.length > 0, `dangling OUT- reference must fail: ${JSON.stringify(problems)}`);
+  });
+});
+
+// =======================================================================
+// ISSUE 5 — Temporal reproducibility via --as-of
+// =======================================================================
+describe('--as-of flag produces deterministic temporal evaluation', () => {
+  test('decision validate with --as-of flags past deadline relative to that date', async () => {
+    const root = tmpProject();
+    write(root, 'decisions.yaml', { version: 1, kind: 'decisions', entries: [{
+      decision_id: 'DEC-001', title: 'T', owner: 'CEO', consulted: ['CFO'],
+      deadline: '2025-01-01', reversibility: 'reversible', options: [],
+      recommendation: 'yes', supporting_evidence: ['data.csv'],
+      contradicting_evidence: [], assumptions: [],
+      what_would_change_recommendation: ['counterevidence'], cost_of_delay: 'high',
+      reopen_conditions: [], status: 'open',
+    }]});
+    // With as-of 2025-06-01 the deadline 2025-01-01 is past → flag it
+    const r = await decisionMemoCommand(['validate', '--as-of', '2025-06-01'], root);
+    assert.ok(r.problems.some(p => /deadline.*past/i.test(p)), `should flag past deadline: ${JSON.stringify(r.problems)}`);
+    // With as-of 2024-12-01 the deadline is in the future → no deadline problem
+    const r2 = await decisionMemoCommand(['validate', '--as-of', '2024-12-01'], root);
+    assert.ok(!r2.problems.some(p => /deadline.*past/i.test(p)), `should not flag future deadline at earlier as-of: ${JSON.stringify(r2.problems)}`);
+  });
+
+  test('executive-review records as_of field in output', async () => {
+    const root = tmpProject();
+    const r = await executiveReviewCommand(['--period', '2026-06', '--json', '--as-of', '2026-06-30'], root);
+    assert.equal(r.as_of, '2026-06-30', 'as_of must be recorded in output for reproducibility');
   });
 });
