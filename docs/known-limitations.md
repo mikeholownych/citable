@@ -78,6 +78,18 @@ or geographies are current. They cannot finalize a release.
 Finalization is a point-in-time attestation. Later drift creates a new finding;
 it does not invalidate or rewrite the historical finalized state.
 
+## Acceptance-run reproducibility
+
+Acceptance receipts verify the checksums present in one sealed run and compute
+a fingerprint over declared property inputs, detector sets, configuration,
+observation methods, toolchain versions, external-system versions, and
+canonical artifacts. Fingerprint equality does not prove that an external
+system was stable or that an unrecorded environment variable had no effect.
+Timestamps, locale, region, host identity, runtime, memory, and filesystem paths
+remain visible execution context but are explicitly excluded from fingerprint
+equality. Partial runs and unavailable observations remain partial after
+comparison.
+
 ## Probabilistic checks (by design)
 
 Heuristic detectors (deterministic: false) — TECH-011/014/015, PAGE-008/009,

@@ -1,0 +1,88 @@
+{
+  "$id": "citable://schemas/acceptance-run-receipt.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Acceptance-run reproducibility receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "run_id", "property", "detectors", "configuration", "observation_method", "toolchain", "external_systems", "execution", "canonical_artifacts", "reproducibility", "limitations", "receipt_hash"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "receipt_id": { "type": "string", "pattern": "^ACCEPTANCE-RECEIPT-[A-F0-9]{20}$" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "property": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target", "source_commit", "working_tree_state", "content_hashes"],
+      "properties": {
+        "target": { "type": "object" },
+        "source_commit": { "type": ["string", "null"] },
+        "working_tree_state": { "type": ["string", "null"] },
+        "content_hashes": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "detectors": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run", "skipped"],
+      "properties": {
+        "run": { "type": "array", "items": { "type": "string" } },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["detector_id", "reason"],
+            "properties": { "detector_id": { "type": "string" }, "reason": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["hash"], "properties": { "hash": { "type": ["string", "null"] } }
+    },
+    "observation_method": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command", "arguments", "target_kind", "collectors"],
+      "properties": {
+        "command": { "type": "string" },
+        "arguments": { "type": "array", "items": { "type": "string" } },
+        "target_kind": { "type": ["string", "null"] },
+        "collectors": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "toolchain": {
+      "type": "object", "additionalProperties": false,
+      "required": ["citable_version", "skill_version", "node_version"],
+      "properties": {
+        "citable_version": { "type": "string" },
+        "skill_version": { "type": "string" },
+        "node_version": { "type": "string" }
+      }
+    },
+    "external_systems": { "type": "object", "additionalProperties": { "type": "string" } },
+    "execution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["started_at", "receipt_created_at", "locale", "region", "status", "partial", "unavailable_observations", "errors"],
+      "properties": {
+        "started_at": { "type": "string", "format": "date-time" },
+        "receipt_created_at": { "type": "string", "format": "date-time" },
+        "locale": { "type": "string" },
+        "region": { "type": ["string", "null"] },
+        "status": { "type": "string" },
+        "partial": { "type": "boolean" },
+        "unavailable_observations": { "type": "array", "items": { "type": "string" } },
+        "errors": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "canonical_artifacts": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+    "reproducibility": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fingerprint", "included_fields", "excluded_environment_fields"],
+      "properties": {
+        "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "included_fields": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "excluded_environment_fields": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "receipt_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

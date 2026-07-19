@@ -122,6 +122,8 @@ citable project github <run-id>
 citable observe media --input <manifest.json> [--ocr]
 citable observe representation --input <release-manifest.json> --target <controlled-url>
 citable corpus evaluate --input <acceptance-corpus.json>
+citable corpus receipt --run <run-id> [--input <execution-context.json>]
+citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema

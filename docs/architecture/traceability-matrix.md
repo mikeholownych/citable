@@ -128,6 +128,7 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Intermediary observations cannot gate | C: `observe representation`; P: `authority_label: external_unverified`, `gates_release_finalization: false`; T: direct/cache-busted integration fixture |
 | Representation drift is longitudinal | C: `monitor`; V: stable surface/path/region/request key plus observed divergence and convergence intervals |
 | Corpus metrics preserve denominators | R: `acceptance-corpus.schema.json`; C: `corpus evaluate`; V: confusion matrix, incomplete evidence, reviewer, execution, reproducibility, and remediation metrics |
+| Acceptance runs have bounded reproducibility receipts | R: `acceptance-run-receipt.schema.json`; C: `corpus receipt`, `corpus compare-receipts`; V: sealed-package integrity, stable canonical fingerprints, six independent change dimensions, and visible partial observations |
 
 ## Executive Reporting Suite (feat/executive-reporting-suite)
 

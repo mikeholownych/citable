@@ -34,6 +34,8 @@ import { prioritizeCommand } from '../commands/prioritize.js';
 import { competitiveIntelCommand } from '../commands/competitiveIntel.js';
 import { executiveCommand } from '../commands/executive.js';
 import { evaluateCorpus } from '../commands/corpus.js';
+import { createAcceptanceReceipt, readAndCompareAcceptanceReceipts } from '../acceptance/reproducibility.js';
+import { readJson } from '../shared/io.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -80,6 +82,8 @@ Commands
   schedules run [id]        Execute an active version-pinned audit schedule
   project github [run]      Render non-authoritative GitHub annotations from a run
   corpus evaluate           Evaluate a disclosed real-property acceptance corpus
+  corpus receipt            Create a reproducibility receipt for a sealed run
+  corpus compare-receipts   Compare two acceptance-run receipt envelopes
   self-upgrade              Check for a newer version and upgrade the npx cache
   kpi [list|show|validate]  KPI architecture — govern metric definitions, sources, targets
   variance [list|validate|material]  Variance analysis — explain target-vs-actual without narrative smoothing
@@ -99,6 +103,7 @@ Options
   --base-url <url>          Base URL for path resolution of a built output dir
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
   --input <file>            Import file or remediation specification
+  --run <run-id>            Sealed run used to create an acceptance receipt
   --provider <name>         Provider label for imported observations
   --dataset <name>          Provider export dataset (for example ai_performance)
   --connection-id <id>      Connection registry identifier
@@ -137,6 +142,7 @@ function parseArgs(argv) {
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
     else if (a === '--input') args.input = argv[++i];
+    else if (a === '--run') args.runId = argv[++i];
     else if (a === '--provider') args.provider = argv[++i];
     else if (a === '--dataset') args.dataset = argv[++i];
     else if (a === '--connection-id') args.connectionId = argv[++i];
@@ -329,9 +335,18 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         break;
       }
       case 'corpus': {
-        if(args._[0] !== 'evaluate') throw new Error('usage: citable corpus evaluate --input <json>');
-        const r = evaluateCorpus(root, { input: args.input });
-        out(args, `corpus evaluate ${r.metrics.corpus_id}: ${r.metrics.population.detector_cases} detector case(s)\nEvidence package: ${r.dir}`, r);
+        const mode = args._[0];
+        if (mode === 'evaluate') {
+          const r = evaluateCorpus(root, { input: args.input });
+          out(args, `corpus evaluate ${r.metrics.corpus_id}: ${r.metrics.population.detector_cases} detector case(s)\nEvidence package: ${r.dir}`, r);
+        } else if (mode === 'receipt') {
+          const context = args.input ? readJson(args.input) : {};
+          const r = createAcceptanceReceipt(root, { runId: args.runId, context });
+          out(args, `corpus receipt ${r.receipt.receipt_id}\nFingerprint: ${r.receipt.reproducibility.fingerprint}\nReceipt: ${r.output}${r.receipt.execution.partial ? '\nStatus: partial' : ''}`, r);
+        } else if (mode === 'compare-receipts') {
+          const r = readAndCompareAcceptanceReceipts(args._[1], args._[2]);
+          out(args, `corpus compare-receipts ${r.receipt_a} → ${r.receipt_b}\nComparable envelope: ${r.comparable}\nFingerprint equal: ${r.fingerprint_equal}\nPartial runs: ${r.partial_runs.length}`, r);
+        } else throw new Error('usage: citable corpus <evaluate|receipt|compare-receipts> [options]');
         break;
       }
       case 'self-upgrade': {
