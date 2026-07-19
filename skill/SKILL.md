@@ -110,6 +110,11 @@ citable objectives validate
 citable evaluate [objective-id] [--ref-date YYYY-MM-DD]
 citable governance validate [--ref-date YYYY-MM-DD]
 citable governance evaluate <run-id> [--ref-date YYYY-MM-DD]
+citable reviews queue <run-id> <policy-id> [--write]
+citable reviews prioritize [--write]
+citable reviews plan --input <json|yaml> [--write]
+citable reviews sample <sampling-plan-id> [--write]
+citable reviews evaluate
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -169,7 +174,7 @@ mandatory.
 `.citable/` holds YAML registries for queries, prompts, entities, claims,
   evidence, pages, crawlers, competitors, experiments, metrics, objectives,
   interventions, optional connection state, reviewers, review policies, and
-  governed exceptions, all schema-validated
+  governed exceptions, semantic review items, and sampling plans, all schema-validated
 (`schemas/*.schema.json`) with referential integrity checks. Rules:
 
 - Never overwrite registry content without history — use the loader/saver in

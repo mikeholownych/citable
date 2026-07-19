@@ -28,6 +28,7 @@ intent, not executability, so statuses are strict:
 | /citable objectives init / validate | implemented — user-owned metric selection, cohorts, windows, and guardrails |
 | /citable evaluate | implemented — independent baseline/evaluation comparisons with inconclusive handling |
 | /citable governance validate / evaluate | implemented — validates reviewer and exception authority and emits immutable dispositions without changing failed findings |
+| /citable reviews queue / prioritize / plan / sample / evaluate | implemented — materiality queues, reproducible sampling, stale-decision checks, and independent disagreement adjudication |
 | /citable ingest, map-site, map-queries, map-prompts, map-entities, map-evidence | specified (ingest.md) |
 | /citable optimize-page | specified (optimize-page.md) — requires source-to-render mapping, claim-preserving rewrites, build execution, rollback; none of that is proven yet |
 | /citable create-page, answer-block, architect, interlink, consolidate, metadata | specified (page-work.md) |
