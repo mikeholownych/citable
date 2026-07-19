@@ -19,6 +19,11 @@ test('release workflow uses the shared npm pack parser', () => {
   assert.doesNotMatch(workflow, /JSON\.parse\([^\n]+\)\[0\]/);
 });
 
+test('PR policy ignores post-merge edited events whose head ref may be deleted', () => {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'pr-policy.yml'), 'utf8');
+  assert.match(workflow, /if: github\.event\.pull_request\.state == 'open'/);
+});
+
 test('ship workflow creates a draft release and explicitly dispatches trusted npm publishing', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'ship-release.yml'), 'utf8');
   assert.match(workflow, /actions: write/);
