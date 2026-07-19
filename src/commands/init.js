@@ -15,6 +15,19 @@ const DEFAULT_CRAWLERS = [
   ['CRAWLER-CLAUDEBOT', 'ClaudeBot', 'Anthropic', 'model_training'],
 ];
 
+function hasSchemaSignal(text) {
+  if (/application\/ld\+json/i.test(text)) return true;
+  for (const match of text.matchAll(/https?:\/\/[^\s"'<>]+/gi)) {
+    try {
+      const hostname = new URL(match[0]).hostname.toLowerCase();
+      if (hostname === 'schema.org' || hostname === 'www.schema.org') return true;
+    } catch {
+      // Ignore malformed URL-like source text during best-effort project discovery.
+    }
+  }
+  return false;
+}
+
 function detectFramework(root) {
   const detected = {
     framework: null, rendering_model: null, package_manager: null,
@@ -47,7 +60,7 @@ function detectFramework(root) {
   for (const f of listFiles(root, (p) => /sitemap.*\.(xml|ts|js|mjs)$/.test(p))) detected.sitemap_sources.push(path.relative(root, f));
   for (const f of listFiles(root, (p) => /\.(html|jsx?|tsx?|astro|vue|svelte)$/.test(p)).slice(0, 400)) {
     const text = fs.readFileSync(f, 'utf8');
-    if (text.includes('application/ld+json') || text.includes('schema.org')) detected.schema_sources.push(path.relative(root, f));
+    if (hasSchemaSignal(text)) detected.schema_sources.push(path.relative(root, f));
     if (/gtag\(|googletagmanager|plausible|posthog|umami|matomo/i.test(text)) detected.analytics.push(path.relative(root, f));
   }
   if (detected.rendering_model === null) unresolved.push('Rendering model could not be determined from manifests.');

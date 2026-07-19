@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- Replaced regex-based HTML and transcript tag stripping with structured parsing
+  that excludes executable elements, including malformed end-tag variants.
+- Restricted schema-source discovery to exact `schema.org` hosts instead of
+  accepting deceptive hostname substrings.
+- Removed command-line-derived release-note regular expressions and an
+  ineffective identity replacement in schema integration coverage.
+
 ## 1.12.0 — 2026-07-19
 
 ### Added

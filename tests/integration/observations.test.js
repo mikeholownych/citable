@@ -122,7 +122,7 @@ test('missing live credentials and browser dependency fail closed as incomplete'
 test('render profiles preserve partial failures and resume only successful immutable evidence', async () => {
   const root = fresh();
   const target = 'https://example.test/';
-  const fetchUrl = async () => ({ body: '<main>Raw server rendered content for parity comparison.</main>' });
+  const fetchUrl = async () => ({ body: '<main>Raw server rendered content for parity comparison.</main><script >hidden words must not count</script ><style >hidden styles</style >' });
   const captured = [];
   const captureProfile = async (name, viewport, settings = {}) => {
     captured.push(name);
@@ -133,6 +133,7 @@ test('render profiles preserve partial failures and resume only successful immut
     assert.equal(first.manifest.status, 'incomplete');
     assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
     assert.equal(first.observations.find((item) => item.data.profile === 'javascript_disabled').state, 'failed');
+    assert.equal(first.observations.find((item) => item.data.profile === 'desktop').data.raw_http_word_ratio, 2.333);
     assert.ok(fs.existsSync(path.join(first.dir, 'screenshots', 'mobile.png')));
 
     captured.length = 0;

@@ -42,6 +42,15 @@ test('init creates valid registries and does not overwrite on rerun', () => {
   });
 });
 
+test('init detects schema.org URLs without accepting deceptive hostnames', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-init-schema-'));
+  fs.writeFileSync(path.join(dir, 'deceptive.html'), '<a href="https://schema.org.attacker.test/Thing">not schema</a>');
+  fs.writeFileSync(path.join(dir, 'schema.html'), '<script>const context = "https://schema.org/Thing";</script>');
+
+  const result = init(dir);
+  assert.deepEqual(result.detected.schema_sources, ['schema.html']);
+});
+
 test('audit on clean fixture produces evidence package with manifest, findings, report, checksums', async () => {
   const dir = project('registries-good');
   const r = await audit(dir, { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', refDate: '2026-07-18' });
@@ -141,7 +150,7 @@ test('schema command proposes registry-derived JSON-LD and blocks incomplete ent
   const r = await schemaCommand(dir, { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', refDate: '2026-07-18' });
   const gk = r.proposals.find((p) => p.entity_id === 'ENT-GATEKEEPER');
   assert.ok(gk, 'Gatekeeper proposal exists');
-  assert.equal(gk.jsonld['@id'], 'https://example.test/products/gatekeeper/#product'.replace('#product', '#product')); // stable id present
+  assert.equal(gk.jsonld['@id'], 'https://example.test/products/gatekeeper/#product'); // stable id present
   assert.ok(gk.jsonld['@id'].startsWith('https://example.test/products/gatekeeper/#'));
   assert.equal(gk.jsonld.name, 'Gatekeeper');
   assert.ok(!('aggregateRating' in gk.jsonld), 'no fabricated ratings');

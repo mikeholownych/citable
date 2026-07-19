@@ -96,8 +96,9 @@ export function validateRelease(root, version) {
 }
 
 export function releaseNotes(root, version) {
+  parseVersion(version);
   const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
-  const heading = changelog.match(new RegExp(`^## ${version} [^\\n]*$`, 'm'))?.[0];
+  const heading = changelog.split(/\r?\n/).find((line) => line.startsWith(`## ${version} `));
   if (!heading) throw new Error(`CHANGELOG.md release ${version} is missing`);
   const notes = changelogSection(changelog, heading);
   if (!notes) throw new Error(`CHANGELOG.md release ${version} is empty`);
