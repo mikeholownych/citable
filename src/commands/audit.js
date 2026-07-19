@@ -34,6 +34,11 @@ export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
   if (ctx.site?.fetchErrors?.length) {
     run.manifest.errors.push(...ctx.site.fetchErrors);
   }
+  if (ctx.site?.crawl?.truncated) {
+    run.manifest.incomplete_checks.push(
+      `URL collection reached the ${ctx.site.crawl.maxPages}-page limit with ${ctx.site.crawl.pendingUrlCount} discovered URL(s) pending; sitemap absence checks are incomplete.`
+    );
+  }
 
   const { findings, detectorsRun, detectorsSkipped, errors } = runDetectors(detectors, ctx);
   run.manifest.detectors_run = detectorsRun;
@@ -65,6 +70,7 @@ export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
     target: run.manifest.target, scope: scope ?? 'all',
     registry_counts: Object.fromEntries(Object.entries(ctx.registries).map(([k, v]) => [k, v.entries.length])),
     pages_audited: ctx.site?.pages.length ?? 0,
+    crawl_coverage: ctx.site?.crawl ?? null,
   });
   run.writeArtifact('environment.json', {
     node: process.version, platform: process.platform, cwd: root,

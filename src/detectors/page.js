@@ -1,4 +1,4 @@
-import { defineDetector, indexTargets, pageSubject } from './framework.js';
+import { defineDetector, htmlIndexTargets, pageSubject } from './framework.js';
 
 const D = [];
 
@@ -11,7 +11,7 @@ D.push(defineDetector({
   remediation: 'Add a concise title identifying the page subject and distinguishing it from other pages.',
   verification: 'Confirm a non-empty <title> in rendered HTML.',
   check(ctx) {
-    return indexTargets(ctx).filter((p) => p.status === 200 && !p.title).map((p) => ({
+    return htmlIndexTargets(ctx).filter((p) => p.status === 200 && !p.title).map((p) => ({
       subject: pageSubject(p), summary: 'Page has no title element', evidence: ['<title> absent or empty'],
     }));
   },
@@ -27,7 +27,7 @@ D.push(defineDetector({
   verification: 'Confirm title uniqueness across index targets.',
   check(ctx) {
     const byTitle = new Map();
-    for (const p of indexTargets(ctx)) {
+    for (const p of htmlIndexTargets(ctx)) {
       if (!p.title || p.status !== 200) continue;
       if (!byTitle.has(p.title)) byTitle.set(p.title, []);
       byTitle.get(p.title).push(p);
@@ -49,7 +49,7 @@ D.push(defineDetector({
   remediation: 'Add an accurate, page-specific description stating the expected value.',
   verification: 'Confirm meta[name=description] present and non-empty.',
   check(ctx) {
-    return indexTargets(ctx).filter((p) => p.status === 200 && !p.metaDescription).map((p) => ({
+    return htmlIndexTargets(ctx).filter((p) => p.status === 200 && !p.metaDescription).map((p) => ({
       subject: pageSubject(p), summary: 'Page has no meta description', evidence: ['meta[name=description] absent'],
     }));
   },
@@ -65,7 +65,7 @@ D.push(defineDetector({
   verification: 'Confirm description uniqueness.',
   check(ctx) {
     const byDesc = new Map();
-    for (const p of indexTargets(ctx)) {
+    for (const p of htmlIndexTargets(ctx)) {
       if (!p.metaDescription || p.status !== 200) continue;
       if (!byDesc.has(p.metaDescription)) byDesc.set(p.metaDescription, []);
       byDesc.get(p.metaDescription).push(p);
@@ -87,7 +87,7 @@ D.push(defineDetector({
   remediation: 'Use exactly one H1 that identifies the page purpose.',
   verification: 'Count H1 elements.',
   check(ctx) {
-    return indexTargets(ctx).filter((p) => p.status === 200 && p.h1s.length !== 1).map((p) => ({
+    return htmlIndexTargets(ctx).filter((p) => p.status === 200 && p.h1s.length !== 1).map((p) => ({
       subject: pageSubject(p),
       summary: p.h1s.length === 0 ? 'Page has no H1' : `Page has ${p.h1s.length} H1 elements`,
       evidence: p.h1s.length ? p.h1s.map((h) => `H1: ${h.text}`) : ['no <h1> found'],
@@ -106,7 +106,7 @@ D.push(defineDetector({
   verification: 'Walk heading sequence and confirm no level is skipped.',
   check(ctx) {
     const hits = [];
-    for (const p of indexTargets(ctx)) {
+    for (const p of htmlIndexTargets(ctx)) {
       if (p.status !== 200) continue;
       let prev = 0;
       for (const h of p.headings) {
@@ -134,7 +134,7 @@ D.push(defineDetector({
   remediation: 'Add descriptive alt text (or empty alt for purely decorative images, reviewed case by case).',
   verification: 'Confirm every <img> has an alt attribute.',
   check(ctx) {
-    return indexTargets(ctx)
+    return htmlIndexTargets(ctx)
       .map((p) => ({ p, missing: p.images.filter((i) => i.alt === undefined || i.alt === null) }))
       .filter(({ p, missing }) => p.status === 200 && missing.length > 0)
       .map(({ p, missing }) => ({
@@ -156,7 +156,7 @@ D.push(defineDetector({
   verification: 'Re-measure extracted word count after revision.',
   check(ctx) {
     const min = ctx.config?.audit?.thin_content_words ?? 120;
-    return indexTargets(ctx)
+    return htmlIndexTargets(ctx)
       .filter((p) => p.status === 200 && p.wordCount > 0 && p.wordCount < min)
       .map((p) => ({
         subject: pageSubject(p),
@@ -178,7 +178,7 @@ D.push(defineDetector({
   verification: 'Re-measure dominant-term density.',
   check(ctx) {
     const hits = [];
-    for (const p of indexTargets(ctx)) {
+    for (const p of htmlIndexTargets(ctx)) {
       if (p.status !== 200 || p.wordCount < 80) continue;
       const words = p.text.toLowerCase().match(/[a-z][a-z-]{3,}/g) || [];
       const freq = new Map();

@@ -58,6 +58,11 @@
 - Release shipping now creates a draft release, records npm publication as an
   explicit unfinalized state, and requires valid controlled-surface receipts in
   a separate protected workflow before publishing the GitHub release as latest.
+- Field-derived detector applicability now keeps non-HTML resources eligible
+  for transport checks while restricting HTML semantics to HTML documents,
+  excludes Cloudflare `/cdn-cgi/` utility routes from default index-target
+  intent, and reports bounded URL crawls as incomplete coverage instead of
+  treating unfetched sitemap URLs as confirmed errors.
 
 ### Added — Executive Reporting Suite
 
