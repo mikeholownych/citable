@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.12.0 — 2026-07-19
+
 ### Added
 
 - Independent desktop, mobile, and JavaScript-disabled Chromium render profiles
