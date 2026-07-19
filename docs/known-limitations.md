@@ -10,12 +10,17 @@ surface.
   paths. Bing index evidence and consumer answer-product observations still
   require owner exports or a disclosed custom adapter. An API adapter is not
   presumed equivalent to ChatGPT, Perplexity, Copilot, or another consumer mode.
-- **No verified crawler or edge matrix.** URL mode captures a synthetic request
-  using Citable's audit user agent. It does not prove that a declared crawler's
-  current published IP reached the edge, classify WAF/CAPTCHA decisions across
-  regions, or replace production server logs.
+- **Verified crawler observations require owner evidence.** Citable validates a
+  staged identity contract and can classify imported events as fully verified,
+  contradictory, or insufficient. It does not independently operate a
+  multi-region edge/origin collector or prove events absent from supplied logs.
+  Imports reject credential/cookie field names, but owners remain responsible
+  for minimizing and lawfully supplying URL, query, and network log data.
 - **Search-index coverage is partial.** Google inspection is live; Bing and
   other engines require normalized owner exports.
+- **Bing AI Performance is owner-export only.** Citable has not captured a
+  supported API contract for the public-preview dashboard. Its citation counts
+  do not prove ranking, authority, placement, importance, or material support.
 - **Browser rendering is optional and desktop-only.** `observe render` captures
   Chromium DOM, text, screenshot, and failed requests when Playwright and its
   browser are installed. Mobile parity, interaction exploration, and

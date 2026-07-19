@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 128 pass |
+| Tests | 134 pass |
 | Registries | 13 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 52 canonical skill files per provider |
+| Distribution | 56 canonical skill files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -42,9 +42,11 @@ audited property or claiming that a recommendation was implemented.
 ### Retrieval Evidence
 
 - Provider-maintained IP-range retrieval and verification beyond imported
-  owner verification results.
+  owner verification results. The staged identity contract and production-log
+  normalization are implemented.
 - Bing index and AI Performance adapters when supported export/API contracts
-  can be captured defensibly.
+  can be captured defensibly. Owner-export normalization is implemented; a live
+  AI Performance adapter remains blocked on a supported API contract.
 - Multi-region and bot-specific reliability sampling.
 
 ### Extraction Evidence

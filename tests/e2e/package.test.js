@@ -21,6 +21,8 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
   assert.ok(dryFiles.has('dist/universal/.claude/skills/citable/SKILL.md'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/SKILL.md'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/schemas/metric.schema.json'));
+  assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/schemas/crawler-identity.schema.json'));
+  assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/references/evidence-authority.md'));
   assert.ok(dryFiles.has('schemas/objective.schema.json'));
   assert.ok(dryFiles.has('README.md'));
   assert.ok(dryFiles.has('LICENSE'));
@@ -49,6 +51,7 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
   assert.match(help, /metrics import/);
   assert.match(help, /objectives init/);
   assert.match(help, /evaluate \[objective-id\]/);
+  assert.match(help, /Bing/);
 
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-npx-project-'));
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-npx-home-'));

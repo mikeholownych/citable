@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- Multidimensional evidence authority metadata separating source authority,
+  collection authority, authenticity, and representativeness.
+- A staged crawler-identity evidence contract that requires checksummed range
+  provenance, DNS, edge, and origin evidence before `fully_verified`.
+- JSON/CSV production-log normalization and Bing Search Performance or AI
+  Performance owner-export observations with explicit interpretation limits.
+
+### Changed
+
+- Crawler log observations no longer reduce identity to an
+  `identity_verified` boolean; incomplete and contradictory chains remain
+  visible in the immutable evidence.
+
 ## 1.6.0 — 2026-07-19
 
 ### Added

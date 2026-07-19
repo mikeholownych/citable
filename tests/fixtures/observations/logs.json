@@ -2,6 +2,20 @@
   "provider_ranges": {
     "PerplexityBot": ["203.0.113.0/24"]
   },
+  "range_sources": {
+    "PerplexityBot": {
+      "provider": "Perplexity",
+      "authority": "provider_published",
+      "url": "https://docs.perplexity.ai/perplexitybot.json",
+      "retrieved_at": "2026-07-18T09:00:00Z",
+      "source_snapshot": ["203.0.113.0/24"],
+      "checksum": "7f7738312273936d34837bc35efddfec8efd9277d6eb104512de159f8d839fab"
+    }
+  },
+  "metadata": {
+    "collector": "fixture-edge-origin-correlator",
+    "representativeness": "production_population"
+  },
   "requests": [
     {
       "timestamp": "2026-07-18T10:00:00Z",
@@ -13,8 +27,12 @@
       "latency_ms": 84,
       "cache_status": "HIT",
       "region": "us-east",
-      "identity_verified": true,
-      "verification_method": "owner-supplied provider CIDR match"
+      "dns_status": "verified",
+      "dns_method": "forward-confirmed reverse DNS",
+      "edge_observed": true,
+      "edge_decision": "allow",
+      "origin_observed": true,
+      "origin_status": 200
     },
     {
       "timestamp": "2026-07-18T10:01:00Z",
@@ -22,7 +40,9 @@
       "user_agent": "GPTBot",
       "source_ip": "198.51.100.20",
       "status": 403,
-      "identity_verified": false
+      "claimed_verified": true,
+      "edge_observed": true,
+      "edge_decision": "block"
     }
   ]
 }

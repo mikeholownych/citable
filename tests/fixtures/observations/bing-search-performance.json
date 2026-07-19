@@ -1,0 +1,15 @@
+{
+  "metadata": { "representativeness": "complete_export" },
+  "rows": [
+    {
+      "date": "2026-07-18",
+      "url": "https://example.test/products/gatekeeper/",
+      "query": "runtime authorization",
+      "source": "Web",
+      "clicks": 4,
+      "impressions": 40,
+      "ctr": 0.1,
+      "position": 3.2
+    }
+  ]
+}
