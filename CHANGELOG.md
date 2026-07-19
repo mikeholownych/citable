@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.11.0 — 2026-07-19
+
 ### Added
 
 - Bounded media evidence collection for local PDF text/metadata with page
