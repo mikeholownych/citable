@@ -22,6 +22,7 @@ export const REGISTRY_SPECS = [
   { file: 'exceptions.yaml', kind: 'exceptions', schema: 'exception.schema.json', idField: 'exception_id' },
   { file: 'review-items.yaml', kind: 'review_items', schema: 'review-item.schema.json', idField: 'review_item_id' },
   { file: 'sampling-plans.yaml', kind: 'sampling_plans', schema: 'sampling-plan.schema.json', idField: 'sampling_plan_id' },
+  { file: 'schedules.yaml', kind: 'schedules', schema: 'schedule.schema.json', idField: 'schedule_id' },
 ];
 
 export function contextDir(root) {

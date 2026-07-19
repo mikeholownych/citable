@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- Version-pinned audit schedules that invoke the canonical audit path and keep
+  external trigger limitations explicit.
+- Hash-bound, non-authoritative GitHub annotation projections from immutable runs.
+- Differential comparability dimensions for resource, evidence artifact,
+  detector, configuration, observation method, tool, and external-system changes.
+
 ## 1.9.0 — 2026-07-19
 
 ### Added
