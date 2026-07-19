@@ -1,4 +1,9 @@
 * @mikeholownych
 /.github/ @mikeholownych
+/CODE_OF_CONDUCT.md @mikeholownych
+/GOVERNANCE.md @mikeholownych
+/MAINTAINERS.md @mikeholownych
+/SECURITY.md @mikeholownych
+/SUPPORT.md @mikeholownych
 /schemas/ @mikeholownych
 /scripts/release-process.js @mikeholownych

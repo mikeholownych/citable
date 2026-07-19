@@ -1,5 +1,20 @@
 # Contributing
 
+By submitting a contribution, you agree that it is licensed under the
+repository's Apache-2.0 license. Participation is governed by
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## Start In The Right Channel
+
+- Reproducible bugs, detector challenges, documentation corrections, and
+  supported integration proposals use the matching Issue form.
+- Usage questions, early ideas, provider research, and examples use
+  [GitHub Discussions](https://github.com/mikeholownych/citable/discussions).
+- Security vulnerabilities use private vulnerability reporting. Never include
+  credentials, customer data, or private evidence in public channels.
+- Hosted dashboard, account, billing, and service work is outside this
+  repository. See [`SUPPORT.md`](SUPPORT.md).
+
 ## Pull Requests
 
 - Branch from current `main`; direct pushes to `main` are not the supported
@@ -14,6 +29,8 @@
 - Require the `PR structure and release notes`, `test`, `lint`, and platform npm
   package checks before merge. Require a code-owner review when an eligible
   maintainer other than the PR author is available.
+- Link the accepted Issue when one exists. A Discussion alone does not establish
+  implementation approval.
 
 ## Engineering Contracts
 
@@ -29,6 +46,8 @@
   (identical content hashes across consecutive builds).
 - New source requirements must be added to docs/architecture/traceability-matrix.md —
   no material requirement may disappear silently.
+- Run `node scripts/validate-community.js` when changing community forms,
+  governance files, or support routing.
 
 ## Release Changes
 

@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 149 pass |
+| Tests | 151 pass |
 | Registries | 19 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 67 packaged files per provider |

@@ -1,0 +1,24 @@
+title: "[Idea] "
+labels: ["discussion: idea"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the decision or workflow that is currently difficult.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence of need
+      description: Explain who encounters the problem and how often.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Open-core and evidence boundary
+      description: State whether this belongs in the local CLI, an open contract, or the separate hosted service.
+    validations:
+      required: true

@@ -1,0 +1,54 @@
+name: Detector false positive or false negative
+description: Challenge a detector result with reproducible evidence.
+title: "detector: "
+labels: ["area: detectors", "status: needs-triage"]
+body:
+  - type: input
+    id: detector
+    attributes:
+      label: Detector ID
+      placeholder: TECH-011
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Citable version
+      placeholder: 1.12.0
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Report classification
+      options: [False positive, False negative, Incorrect severity, Incorrect confidence, Requirement lineage concern, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: subject
+    attributes:
+      label: Sanitized subject and reproduction
+      description: Provide source and built-output inputs where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and authority source
+      description: Link the normative requirement or explain the empirical basis.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Detection and non-detection expectations
+      description: State both the condition that should fire and a nearby condition that should not.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: The reproduction is sanitized and contains no credentials or private evidence.
+          required: true

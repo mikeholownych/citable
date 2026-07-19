@@ -211,6 +211,20 @@ citable validate              # registry schema + referential integrity
 - [Known limitations](docs/known-limitations.md) includes medium-specific PDF,
   transcript, image-context, and optional OCR boundaries.
 
+## Community And Governance
+
+- [Contributing](CONTRIBUTING.md) - engineering and pull-request contracts
+- [Support](SUPPORT.md) - Issues, Discussions, hosted-service, and security routing
+- [Governance](GOVERNANCE.md) - authority, decisions, roles, and continuity
+- [Maintainers](MAINTAINERS.md) - current responsibilities and succession
+- [Security](SECURITY.md) - private reporting and supported-version policy
+- [Code of Conduct](CODE_OF_CONDUCT.md) - participation and enforcement
+
+Repository documentation and released schemas are canonical. Issues track
+accepted work, Discussions develop questions and proposals, and the Wiki holds
+non-authoritative operational recipes. The hosted Nebula Components dashboard
+is a separate product surface.
+
 ## Requirements
 
 Node >= 24.0.0. Network access is used for URL audits and explicitly selected

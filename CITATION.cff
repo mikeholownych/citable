@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use Citable in research or published audit methodology, cite this software and the exact release used."
+title: "Citable"
+type: software
+authors:
+  - family-names: "Holownych"
+    given-names: "Mike"
+repository-code: "https://github.com/mikeholownych/citable"
+url: "https://nebulacomponents.shop/resources/citable"
+license: "Apache-2.0"
+keywords:
+  - SEO
+  - AEO
+  - GEO
+  - evidence governance
+  - citation readiness

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/mikeholownych/citable/security
+    about: Report vulnerabilities privately. Do not disclose them in an issue.
+  - name: Usage question or product idea
+    url: https://github.com/mikeholownych/citable/discussions
+    about: Use Q&A for support and Ideas for proposals that are not accepted work.
+  - name: Hosted Nebula Components service
+    url: https://nebulacomponents.shop/resources/citable
+    about: Hosted dashboard, account, billing, and service concerns are outside this repository.
