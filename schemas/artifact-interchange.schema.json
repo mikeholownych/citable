@@ -1,0 +1,58 @@
+{
+  "$id": "citable://schemas/artifact-interchange.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Citable artifact interchange envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "contract_version", "created_at", "producer", "run", "artifacts", "package_hash", "limitations"],
+  "properties": {
+    "contract": { "const": "citable-artifact-interchange" },
+    "contract_version": { "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "tool_version", "skill_version"],
+      "properties": {
+        "tool": { "const": "citable" },
+        "tool_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+        "skill_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "command", "status", "timestamp", "tool_version", "skill_version", "manifest_sha256", "checksums_sha256"],
+      "properties": {
+        "run_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "command": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["completed", "completed_with_warnings", "incomplete", "failed"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "tool_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+        "skill_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+        "manifest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "checksums_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "package_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

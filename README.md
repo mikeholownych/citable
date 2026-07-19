@@ -182,6 +182,9 @@ citable corpus evaluate --input acceptance-corpus.json
 citable corpus publish --input acceptance-corpus.json --output public-corpus.json
 citable corpus receipt --run <run-id> --input execution-context.json
 citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
+citable artifacts export <run-id> --output ./portable-run
+citable artifacts verify --input ./portable-run
+citable artifacts import --input ./portable-run
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```

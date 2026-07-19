@@ -126,6 +126,9 @@ citable corpus evaluate --input <acceptance-corpus.json>
 citable corpus publish --input <acceptance-corpus.json> --output <public-corpus.json>
 citable corpus receipt --run <run-id> [--input <execution-context.json>]
 citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
+citable artifacts export <run-id> --output <directory>
+citable artifacts verify --input <directory>
+citable artifacts import --input <directory>
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema

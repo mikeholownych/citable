@@ -36,6 +36,7 @@ intent, not executability, so statuses are strict:
 | /citable create-page, answer-block, architect, interlink, consolidate, metadata | specified (page-work.md) |
 | /citable validate-render | partially implemented by `observe render`; fixed Chromium profiles and schema-validated Chromium/Firefox/WebKit journeys are implemented, while reviewed semantic-impact detectors and reusable application-specific journey libraries remain |
 | /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by metric/observation imports, objective evaluation, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
+| `citable artifacts export/verify/import` | implemented — portable, versioned, checksum-bound run interchange without hosted-service authority |
 
 Shared refusal conditions (all commands): any action that would fabricate
 facts, citations, evidence, authorship, reviews, corroboration, or hidden

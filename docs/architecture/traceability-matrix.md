@@ -133,6 +133,7 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Acceptance runs have bounded reproducibility receipts | R: `acceptance-run-receipt.schema.json`; C: `corpus receipt`, `corpus compare-receipts`; V: sealed-package integrity, stable canonical fingerprints, six independent change dimensions, and visible partial observations |
 | Public field corpus is owner-authorized and sanitized | R: acceptance corpus v2 plus `corpus-publication-receipt.schema.json`; C: `corpus publish`; V: private scope, expired authority, unsafe/unapproved refs, sensitive patterns, missing limitations, and overwrite attempts fail closed |
 | Field metrics preserve methodology and provenance | R: `field-validation-metrics.schema.json`; C: `corpus evaluate`, `corpus publish`; V: numerator/denominator/population/exclusions/confidence, sample/census, collection dates, detector-version cohorts, unknown false negatives, and receipt-bound JSON/Markdown projections |
+| Sealed runs remain portable without hosted authority | R: `artifact-interchange.schema.json`; C: `artifacts export`, `artifacts verify`, `artifacts import`; V: exact inventory, manifest and checksum binding, historical source versions, atomic import, idempotence, and fail-closed tamper/path/collision handling |
 
 ## Executive Reporting Suite (feat/executive-reporting-suite)
 
