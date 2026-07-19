@@ -344,7 +344,7 @@ export async function main(argv = process.argv.slice(2), options = {}) {
           out(args, `corpus evaluate ${r.metrics.corpus_id}: ${r.metrics.population.detector_cases} detector case(s)\nEvidence package: ${r.dir}`, r);
         } else if (mode === 'publish') {
           const r = publishCorpus(root, { input: args.input, output: args.output });
-          out(args, `corpus publish ${r.receipt.corpus_id}: ${r.receipt.property_ids.length} approved property record(s)\nProjection: ${r.output}\nReceipt: ${r.receiptFile}\nEvidence package: ${r.dir}`, r);
+          out(args, `corpus publish ${r.receipt.corpus_id}: ${r.receipt.property_ids.length} approved property record(s)\nCorpus: ${r.output}\nMetrics: ${r.metricsFile}\nReport: ${r.reportFile}\nReceipt: ${r.receiptFile}\nEvidence package: ${r.dir}`, r);
         } else if (mode === 'receipt') {
           const context = args.input ? readJson(args.input) : {};
           const r = createAcceptanceReceipt(root, { runId: args.runId, context });

@@ -96,6 +96,11 @@ pattern checks can reject common credentials, email addresses, unsafe paths,
 and undeclared references, but cannot prove that every form of personal,
 customer, contractual, or proprietary information has been removed. Publication
 receipts are publisher-controlled evidence and are not independent attestation.
+Field-validation rates describe only the disclosed corpus and adjudicated case
+design. They are not confidence intervals, estimates of unknown false negatives,
+or evidence that sampled results generalize beyond recorded extrapolation limits.
+Mixed detector versions are reported separately and do not establish property
+change or detector causation.
 
 ## Probabilistic checks (by design)
 

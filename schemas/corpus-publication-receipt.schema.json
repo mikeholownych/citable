@@ -4,7 +4,7 @@
   "title": "Acceptance corpus publication receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "receipt_id", "corpus_id", "corpus_version", "source_hash", "published_hash", "property_ids", "publication_levels", "generated_at", "authority", "limitations", "receipt_hash"],
+  "required": ["schema_version", "receipt_id", "corpus_id", "corpus_version", "source_hash", "published_hash", "metrics_json_hash", "metrics_markdown_hash", "property_ids", "publication_levels", "generated_at", "authority", "limitations", "receipt_hash"],
   "properties": {
     "schema_version": { "const": 1 },
     "receipt_id": { "type": "string", "pattern": "^CORPUS-PUBLICATION-[A-F0-9]{20}$" },
@@ -12,6 +12,8 @@
     "corpus_version": { "type": "string" },
     "source_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "published_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "metrics_json_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "metrics_markdown_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "property_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
     "publication_levels": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["sanitized_artifacts", "public_artifacts"] } },
     "generated_at": { "type": "string", "format": "date-time" },

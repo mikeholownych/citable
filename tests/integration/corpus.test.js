@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluateCorpus, evaluateCorpusData, publishCorpus, validateCorpusData, verifyCorpusPublicationReceipt } from '../../src/commands/corpus.js';
+import { evaluateCorpus, evaluateCorpusData, publishCorpus, validateCorpusData, verifyCorpusPublicationReceipt, verifyFieldValidationMetrics } from '../../src/commands/corpus.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FIXTURE = path.join(ROOT, 'tests', 'fixtures', 'acceptance-corpus.json');
@@ -24,12 +24,24 @@ test('corpus metrics preserve confusion matrix denominators and incomplete evide
   assert.equal(result.execution_metrics.reproducibility_rate, 0.5);
   assert.equal(result.remediation_metrics.verification_success_rate, 1);
   assert.equal(result.remediation_metrics.incomplete, 1);
+  assert.equal(result.evaluation_design.mode, 'census');
+  assert.equal(result.unknown_false_negatives.status, 'not_quantified');
+  assert.equal(result.metric_definitions.detector_precision.numerator, 1);
+  assert.equal(result.metric_definitions.detector_precision.denominator, 2);
+  assert.deepEqual(result.detector_versions.versions, ['1.12.0']);
+  assert.equal(result.detector_versions.mixed_versions, false);
+  assert.equal(verifyFieldValidationMetrics(result).valid, true);
+  const tamperedMetrics = structuredClone(result);
+  tamperedMetrics.population.properties = 99;
+  assert.equal(verifyFieldValidationMetrics(tamperedMetrics).valid, false);
 });
 
 test('corpus evaluation writes immutable evidence and rejects unknown property references', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-corpus-'));
   const result = evaluateCorpus(root, { input: FIXTURE });
   assert.ok(fs.existsSync(path.join(result.dir, 'accuracy-metrics.json')));
+  assert.ok(fs.existsSync(path.join(result.dir, 'accuracy-metrics.md')));
+  assert.match(fs.readFileSync(path.join(result.dir, 'accuracy-metrics.md'), 'utf8'), new RegExp(result.metrics.metrics_hash));
   assert.ok(fs.existsSync(path.join(result.dir, 'checksums.json')));
   const corpus = JSON.parse(fs.readFileSync(FIXTURE));
   corpus.detector_cases[0].property_id = 'UNKNOWN';
@@ -42,10 +54,12 @@ test('public corpus projection preserves approved artifacts and writes a hash-bo
   const result = publishCorpus(root, { input: FIXTURE, output, at: '2026-07-19T10:00:00Z' });
   assert.ok(fs.existsSync(output));
   assert.ok(fs.existsSync(`${output}.receipt.json`));
+  assert.ok(fs.existsSync(`${output}.metrics.json`));
+  assert.ok(fs.existsSync(`${output}.metrics.md`));
   assert.ok(fs.existsSync(path.join(result.dir, 'checksums.json')));
   assert.deepEqual(result.receipt.property_ids, ['PROP-A', 'PROP-B']);
   assert.equal(result.receipt.authority, 'owner_authorized_publication_projection');
-  assert.equal(verifyCorpusPublicationReceipt(result.receipt, fs.readFileSync(output, 'utf8')).valid, true);
+  assert.equal(verifyCorpusPublicationReceipt(result.receipt, fs.readFileSync(output, 'utf8'), { metrics: fs.readFileSync(result.metricsFile, 'utf8'), report: fs.readFileSync(result.reportFile, 'utf8') }).valid, true);
   const tampered = structuredClone(result.receipt);
   tampered.property_ids.push('PROP-UNRECORDED');
   assert.equal(verifyCorpusPublicationReceipt(tampered, fs.readFileSync(output, 'utf8')).valid, false);
@@ -88,4 +102,20 @@ test('schema v1 corpus is rejected with an explicit migration boundary', () => {
   const corpus = JSON.parse(fs.readFileSync(FIXTURE));
   corpus.schema_version = 1;
   assert.throws(() => evaluateCorpusData(corpus), /schema_version/);
+});
+
+test('sample/census design and detector-version changes remain explicit', () => {
+  const sample = JSON.parse(fs.readFileSync(FIXTURE));
+  sample.evaluation_design.mode = 'sample';
+  assert.throws(() => evaluateCorpusData(sample), /sampling plan reference/);
+  sample.evaluation_design.sampling_plan_ref = 'SAMPLE-FIELD-ONE';
+  sample.detector_cases[0].detector_version = '1.13.0';
+  const metrics = evaluateCorpusData(sample);
+  assert.equal(metrics.evaluation_design.mode, 'sample');
+  assert.equal(metrics.detector_versions.mixed_versions, true);
+  assert.deepEqual(metrics.detector_versions.versions, ['1.12.0', '1.13.0']);
+
+  const reversed = JSON.parse(fs.readFileSync(FIXTURE));
+  reversed.evaluation_design.collection_ended_at = '2026-07-19T08:00:00Z';
+  assert.throws(() => evaluateCorpusData(reversed), /ends before it starts/);
 });

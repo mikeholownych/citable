@@ -29,10 +29,14 @@ arrays are valid only where that class of evidence did not occur.
 citable corpus evaluate --input acceptance-corpus.json
 ```
 
-Evaluation validates the v2 contract and writes bounded metrics with their
-denominators. It does not authorize publication. Unknown false negatives remain
-unknown; discovered false-negative rates apply only to adjudicated expected
-detections in the disclosed population.
+Evaluation validates the v2 contract and writes `accuracy-metrics.json` plus a
+human-readable `accuracy-metrics.md` projection from the same hash-bound data.
+Every reported metric discloses its numerator, denominator, population,
+exclusions, and confidence limits. Sample and census designs remain distinct,
+and detector versions are reported as separate cohorts. Evaluation does not
+authorize publication. Unknown false negatives remain unknown; discovered
+false-negative rates apply only to adjudicated expected detections in the
+disclosed population.
 
 ## Publish
 
