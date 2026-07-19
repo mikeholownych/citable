@@ -8,10 +8,17 @@ import { parse as parseCsv } from 'csv-parse/sync';
 import { crawlerIdentity } from '../observations/crawlerIdentity.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import { observeMedia } from '../observations/media.js';
+import { parse as parseHtml } from 'node-html-parser';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
 const strictDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || '') && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+
+function visibleHtmlText(html) {
+  const document = parseHtml(String(html || ''));
+  for (const node of document.querySelectorAll('script,style')) node.remove();
+  return document.textContent.replace(/\s+/g, ' ').trim();
+}
 
 function canonicalReview(raw, targetOrigin) {
   const citations = raw.citations || [];
@@ -74,7 +81,7 @@ async function observeRender(root, options) {
       };
     }
     const initial = await (options.fetchUrl || fetchUrl)(options.target, { timeoutMs: options.timeout || 30000, maxRetries: 1 });
-    const initialText = initial.body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const initialText = visibleHtmlText(initial.body);
     const observations = [...reused], artifacts = { 'initial/response.html': initial.body }, incomplete = [];
     const profiles = [{ name: 'desktop', viewport: { width: 1280, height: 900 } }, { name: 'mobile', viewport: { width: 390, height: 844 }, settings: { isMobile: true } }, { name: 'javascript_disabled', viewport: { width: 1280, height: 900 }, settings: { javaScriptEnabled: false } }];
     for (const profile of profiles.filter((item) => !reused.some((old) => old.data.profile === item.name))) {

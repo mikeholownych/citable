@@ -29,7 +29,14 @@ async function pdfEvidence(item, file, artifacts) {
 
 function transcriptEvidence(item, file, artifacts) {
   const raw = fs.readFileSync(file, 'utf8');
-  const cues = raw.split(/\r?\n\r?\n/).map((block) => { const lines = block.split(/\r?\n/).filter(Boolean); const timing = lines.find((line) => line.includes('-->')) || null; const text = lines.filter((line) => line !== 'WEBVTT' && line !== timing && !/^\d+$/.test(line)).join(' ').replace(/<[^>]+>/g, '').trim(); return text ? { timing, text } : null; }).filter(Boolean);
+  const cues = raw.split(/\r?\n\r?\n/).map((block) => {
+    const lines = block.split(/\r?\n/).filter(Boolean);
+    const timing = lines.find((line) => line.includes('-->')) || null;
+    const fragment = parse(lines.filter((line) => line !== 'WEBVTT' && line !== timing && !/^\d+$/.test(line)).join(' '));
+    for (const node of fragment.querySelectorAll('script,style')) node.remove();
+    const text = fragment.textContent.replace(/\s+/g, ' ').trim();
+    return text ? { timing, text } : null;
+  }).filter(Boolean);
   const text = cues.map((cue) => cue.text).join(' ');
   artifacts[`media/${item.media_id}/transcript.txt`] = text;
   return envelope('media_transcript', { media_id: item.media_id, source_url: item.source_url, page_url: item.page_url, claim_ids: item.claim_ids, permission_status: item.permission_status, language: item.language || null, published_at: item.published_at || null, cues, word_count: text ? text.split(/\s+/).length : 0 }, { method: 'owner_import', source: file, raw, limitations: ['Speaker identity, transcription accuracy, timing accuracy, and media parity require human verification.', 'Transcript ingestion does not establish that linked claims are supported.'] });

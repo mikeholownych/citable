@@ -30,6 +30,10 @@ test('stable semantic versions parse and compare numerically', () => {
   assert.throws(() => parseVersion('1.2.3-beta.1'), /invalid stable semantic version/);
 });
 
+test('release notes reject regex-like versions before changelog lookup', () => {
+  assert.throws(() => releaseNotes(fixture(), '1.4.0.*'), /invalid stable semantic version/);
+});
+
 test('prepareRelease promotes Unreleased notes and updates version contracts', () => {
   const root = fixture();
   const result = prepareRelease(root, '1.5.0', '2026-07-19');
