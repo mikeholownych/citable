@@ -12,7 +12,7 @@ current repository as of 2026-07-19; they are not outcome scores.
 | Verified crawler identity | Contract implemented | Authentic production evidence remains owner supplied; no managed range retriever | P0 | Staged UA/IP/range-source/DNS/edge/origin record with contradiction handling |
 | Production crawler access | JSON/CSV import implemented | Multi-region collection remains external | P1 | Validated server/CDN events separated from policy, simulation, and absent evidence |
 | Search-index presence | Partial | Google API/import and Bing owner exports implemented; Bing AI dashboard has no captured API contract | P0 | Engine, canonical selected, crawl date, indexed/rendered evidence, timestamp |
-| Rendered extraction parity | Partial | Optional desktop Chromium capture; no mobile/cross-browser detector matrix | P0 | Raw HTML, rendered DOM, main-content diff, interaction-hidden inventory |
+| Rendered extraction parity | Partial | Optional desktop/mobile/JavaScript-disabled Chromium capture and bounded interaction inventory; no cross-browser detector matrix or application-specific journeys | P0 | Raw HTML, rendered DOM, main-content diff, interaction-hidden inventory |
 | Passage extraction | Partial | Candidate corpus/noise ratios implemented; semantic review remains | P1 | Versioned question-to-passage records with dependency findings |
 | Claim/evidence support | Partial | Registry linkage and methodology checks; no automated passage-to-source entailment | P1 | Claim, adjacent passage, source passage, reviewer, support status, checksum |
 | Canonical consensus matrix | Partial | Static matrix implemented; engine-selected canonical requires index observation | P1 | One table per URL covering redirects, HTML, sitemap, OG, links, engine observation |

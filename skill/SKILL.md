@@ -96,6 +96,8 @@ citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
 citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
+citable observe render --target <url> [--interactions] [--resume-run <run-id>]
+citable observe performance --target <url> --lighthouse [--repeat 1..5]
 citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
 citable monitor [runA runB]           # observation regression alerts
 citable metrics import --provider <name> --input <csv|json>

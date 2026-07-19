@@ -1,9 +1,10 @@
 # Rendered-truth phase plan (RENDER namespace)
 
 Status: **collector partially implemented; detector phase pending.** `observe
-render` uses optional Playwright to capture Chromium DOM, text, screenshots, and
-failed requests. The `RENDER` namespace remains reserved until mobile and
-cross-browser parity plus raw-versus-rendered detector inputs are complete.
+render` uses optional Playwright to capture desktop, mobile, and
+JavaScript-disabled Chromium DOM, text, screenshots, failed requests, bounded
+interaction evidence, and raw/rendered word parity. The `RENDER` namespace
+remains reserved until cross-browser parity and detector inputs are complete.
 
 ## Phase objective
 

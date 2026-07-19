@@ -9,7 +9,11 @@ failure_behaviour: unavailable dependency, credential, source run, reviewer, exa
 ## Collection modes
 
 - `observe render --target <URL>` uses optional Playwright. Browser evidence is
-  not search-index evidence.
+  not search-index evidence. It captures independent desktop, mobile, and
+  JavaScript-disabled profiles. `--interactions` exercises at most 20 visible
+  disclosure, inactive-tab, and load-more-like controls; it does not prove an
+  application-specific journey. `--resume-run` reuses only successful profile
+  observations from the named immutable run and recollects failed/absent ones.
 - `observe index --input <JSON>` imports owner exports. With `--target`,
   `--site-url`, and `GSC_ACCESS_TOKEN`, it calls Google URL Inspection, which
   reports the indexed version rather than performing a live indexability test.
@@ -21,6 +25,9 @@ failure_behaviour: unavailable dependency, credential, source run, reviewer, exa
   without IP verification remain low confidence.
 - `observe passages|consensus --target <dir|URL>` performs static extraction.
 - `observe performance` imports evidence or calls CrUX with `CRUX_API_KEY`.
+  `--lighthouse` instead performs 1-5 local lab runs (default 3) using optional
+  `lighthouse` and `chrome-launcher` peers, preserving each result and a median
+  summary. Lab evidence remains separate from CrUX field evidence.
 - `observe corroboration --input <JSON>` records observable external mentions;
   controlled or unverified sources do not become authority claims.
 

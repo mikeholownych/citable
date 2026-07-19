@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 147 pass |
+| Tests | 149 pass |
 | Registries | 19 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 67 packaged files per provider |
@@ -32,7 +32,8 @@ audited property or claiming that a recommendation was implemented.
 - Prompt-to-page, entity, claim, and evidence mapping checks.
 - Source-run-bound action plans with blockers, owners, semantic review gates,
   unsafe-shortcut warnings, and verification commands.
-- Immutable observation collectors for optional browser rendering, Google or
+- Immutable observation collectors for optional desktop/mobile/JavaScript-disabled
+  Chromium rendering with bounded interactions and resumable partial failures, Google or
   imported index evidence, controlled citation cohorts, crawler logs, passages,
   canonical/freshness consensus, CrUX/imported performance, and corroboration.
 - Reviewed hash-locked remediation plus longitudinal evidence monitoring.
@@ -56,7 +57,7 @@ audited property or claiming that a recommendation was implemented.
 
 ### Extraction Evidence
 
-- Mobile/cross-browser rendered comparison and interaction-hidden inventory.
+- Cross-browser rendered comparison and application-specific interaction journeys.
 - Stronger main-content segmentation and reviewed passage-integrity workflows.
 - Canonical consensus matrices spanning redirects, markup, sitemaps, internal
   links, and observed search-engine selections.
@@ -75,8 +76,9 @@ audited property or claiming that a recommendation was implemented.
 - Release `v1.5.0` gates provider-neutral metric declarations, optional owner
   imports, user-defined objectives, cohorts, windows, and guardrails before live
   connector work begins.
-- Lighthouse lab execution; CrUX field collection is implemented while existing
-  CWV detectors remain infrastructure-readiness checks.
+- Repeated local Lighthouse lab execution and CrUX field collection are
+  implemented; hosted regional runners remain future work and existing CWV
+  detectors remain infrastructure-readiness checks.
 - Bounded PDF text/metadata, transcript, and image-context evidence is
   implemented with explicit provenance and optional OCR. Native video/audio
   decoding, scanned-PDF OCR, table reconstruction, and visual entailment remain

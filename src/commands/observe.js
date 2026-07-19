@@ -32,37 +32,59 @@ function canonicalReview(raw, targetOrigin) {
 
 async function observeRender(root, options) {
   if (!options.target || !/^https?:\/\//.test(options.target)) throw new Error('render requires --target <http(s) URL>');
-  let playwright;
-  try { playwright = await import('playwright'); } catch {
-    const item = envelope('render', { url: options.target }, { method: 'browser', source: 'playwright', state: 'not_evidenced', confidence: 'unknown', limitations: ['Optional Playwright dependency is not installed.'] });
-    return observationRun(root, 'observe render', options.target, [item], { incomplete: ['Rendered DOM capture unavailable: install Playwright and a Chromium browser.'] });
+  const profileNames = ['desktop', 'mobile', 'javascript_disabled'];
+  let reused = [], previousRaw = null;
+  if (options.resumeRun) {
+    const previousDir = path.join(root, '.citable', 'runs', options.resumeRun);
+    const observationsDir = path.join(previousDir, 'observations');
+    if (!fs.existsSync(observationsDir)) throw new Error(`resume run ${options.resumeRun} has no observations`);
+    reused = fs.readdirSync(observationsDir).filter((name) => name.endsWith('-render.json')).map((name) => JSON.parse(fs.readFileSync(path.join(observationsDir, name)))).filter((item) => item.state === 'observed' && profileNames.includes(item.data.profile) && item.data.url === options.target && Boolean(item.data.interaction_execution_requested) === Boolean(options.interactions));
+    previousRaw = fs.readFileSync(path.join(previousDir, 'manifest.json'), 'utf8');
   }
-  const initial = await fetchUrl(options.target, { timeoutMs: options.timeout || 30000, maxRetries: 1 });
-  const browser = await playwright.chromium.launch({ headless: true });
+  let browser = null;
+  let capture = options.captureProfile;
+  if (!capture) {
+    let playwright;
+    try { playwright = await import('playwright'); } catch {
+      const item = envelope('render', { url: options.target }, { method: 'browser', source: 'playwright', state: 'not_evidenced', confidence: 'unknown', limitations: ['Optional Playwright dependency is not installed.'] });
+      return observationRun(root, 'observe render', options.target, [item], { incomplete: ['Rendered DOM capture unavailable: install Playwright and a Chromium browser.'] });
+    }
+    browser = await playwright.chromium.launch({ headless: true });
+  }
   try {
-    const capture = async (name, viewport, isMobile = false) => {
-      const context = await browser.newContext({ viewport, isMobile });
-      const page = await context.newPage();
-      const failures = [];
-      page.on('requestfailed', (request) => failures.push({ url: request.url(), error: request.failure()?.errorText || 'unknown' }));
-      const response = await page.goto(options.target, { waitUntil: 'networkidle', timeout: options.timeout || 30000 });
-      const html = await page.content(), text = await page.locator('body').innerText(), screenshot = await page.screenshot({ fullPage: true });
-      const result = { name, final_url: page.url(), status: response?.status() ?? null, viewport, html, text, screenshot, failed_requests: failures };
-      await context.close();
-      return result;
-    };
-    const desktop = await capture('desktop', { width: 1280, height: 900 });
-    const mobile = await capture('mobile', { width: 390, height: 844 }, true);
+    if (!capture) {
+      capture = async (name, viewport, { isMobile = false, javaScriptEnabled = true } = {}) => {
+      const context = await browser.newContext({ viewport, isMobile, javaScriptEnabled });
+      try {
+        const page = await context.newPage();
+        const failures = [];
+        page.on('requestfailed', (request) => failures.push({ url: request.url(), error: request.failure()?.errorText || 'unknown' }));
+        const response = await page.goto(options.target, { waitUntil: 'networkidle', timeout: options.timeout || 30000 });
+        const discovered = await page.locator('details > summary,[aria-expanded=false],[role=tab][aria-selected=false],button').evaluateAll((nodes) => nodes.map((node) => ({ tag: node.tagName.toLowerCase(), text: (node.textContent || '').trim().slice(0, 120), role: node.getAttribute('role'), expanded: node.getAttribute('aria-expanded') })).filter((item) => item.tag !== 'button' || /load more|show more|view more/i.test(item.text)));
+        const executed = [];
+        if (options.interactions) {
+          const controls = page.locator('details:not([open]) > summary,[aria-expanded=false],[role=tab][aria-selected=false],button');
+          for (let i = 0; i < Math.min(await controls.count(), 20); i++) { const control = controls.nth(i); const label = ((await control.textContent()) || '').trim(); if ((await control.evaluate((node) => node.tagName.toLowerCase())) === 'button' && !/load more|show more|view more/i.test(label)) continue; try { await control.click({ timeout: 2000 }); executed.push(label.slice(0, 120) || `control-${i + 1}`); } catch { executed.push(`failed:${label.slice(0, 100) || i + 1}`); } }
+        }
+        const html = await page.content(), text = await page.locator('body').innerText(), screenshot = await page.screenshot({ fullPage: true });
+        return { name, final_url: page.url(), status: response?.status() ?? null, viewport, javaScriptEnabled, html, text, screenshot, failed_requests: failures, interactions: { discovered, executed } };
+      } finally {
+        await context.close();
+      }
+      };
+    }
+    const initial = await (options.fetchUrl || fetchUrl)(options.target, { timeoutMs: options.timeout || 30000, maxRetries: 1 });
     const initialText = initial.body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const data = {
-      url: options.target, initial: { final_url: initial.url, status: initial.status, html_hash: sha256(initial.body), text_hash: sha256(initialText), word_count: words(initialText).length, redirect_chain: initial.redirectChain },
-      desktop: { final_url: desktop.final_url, status: desktop.status, html_hash: sha256(desktop.html), text_hash: sha256(desktop.text), word_count: words(desktop.text).length, failed_requests: desktop.failed_requests },
-      mobile: { final_url: mobile.final_url, status: mobile.status, html_hash: sha256(mobile.html), text_hash: sha256(mobile.text), word_count: words(mobile.text).length, failed_requests: mobile.failed_requests },
-      parity: { initial_to_desktop_word_ratio: words(desktop.text).length ? Number((words(initialText).length / words(desktop.text).length).toFixed(3)) : null, mobile_to_desktop_word_ratio: words(desktop.text).length ? Number((words(mobile.text).length / words(desktop.text).length).toFixed(3)) : null },
-    };
-    const item = envelope('render', data, { method: 'browser', source: 'playwright/chromium', raw: `${initial.body}\n${desktop.html}\n${mobile.html}` });
-    return observationRun(root, 'observe render', options.target, [item], { artifacts: { 'initial/response.html': initial.body, 'rendered/desktop-dom.html': desktop.html, 'rendered/desktop-text.txt': desktop.text, 'rendered/mobile-dom.html': mobile.html, 'rendered/mobile-text.txt': mobile.text, 'screenshots/desktop.png': desktop.screenshot, 'screenshots/mobile.png': mobile.screenshot } });
-  } finally { await browser.close(); }
+    const observations = [...reused], artifacts = { 'initial/response.html': initial.body }, incomplete = [];
+    const profiles = [{ name: 'desktop', viewport: { width: 1280, height: 900 } }, { name: 'mobile', viewport: { width: 390, height: 844 }, settings: { isMobile: true } }, { name: 'javascript_disabled', viewport: { width: 1280, height: 900 }, settings: { javaScriptEnabled: false } }];
+    for (const profile of profiles.filter((item) => !reused.some((old) => old.data.profile === item.name))) {
+      try { const result = await capture(profile.name, profile.viewport, profile.settings); const count = words(result.text).length; const data = { url: options.target, profile: profile.name, final_url: result.final_url, status: result.status, viewport: result.viewport, javascript_enabled: result.javaScriptEnabled, interaction_execution_requested: Boolean(options.interactions), html_hash: sha256(result.html), text_hash: sha256(result.text), word_count: count, raw_http_word_ratio: count ? Number((words(initialText).length / count).toFixed(3)) : null, failed_requests: result.failed_requests, interactions: result.interactions }; observations.push(envelope('render', data, { method: 'browser', source: 'playwright/chromium', raw: result.html, limitations: result.interactions.executed.length ? ['Interactions were bounded to disclosure, tab, and load-more-like controls; application-specific journeys remain untested.'] : [] })); artifacts[`rendered/${profile.name}-dom.html`] = result.html; artifacts[`rendered/${profile.name}-text.txt`] = result.text; artifacts[`screenshots/${profile.name}.png`] = result.screenshot; }
+      catch (error) { incomplete.push(`${profile.name} render failed: ${error.message}`); observations.push(envelope('render', { url: options.target, profile: profile.name }, { method: 'browser', source: 'playwright/chromium', state: 'failed', confidence: 'confirmed', raw: `${profile.name}:${error.message}`, limitations: [error.message] })); }
+    }
+    const desktop = observations.find((item) => item.data.profile === 'desktop' && item.state === 'observed'), mobile = observations.find((item) => item.data.profile === 'mobile' && item.state === 'observed');
+    observations.push(envelope('render', { url: options.target, profile: 'parity', raw_http_to_desktop_word_ratio: desktop?.data.raw_http_word_ratio ?? null, mobile_to_desktop_word_ratio: desktop?.data.word_count && mobile?.data.word_count ? Number((mobile.data.word_count / desktop.data.word_count).toFixed(3)) : null, resumed_from_run_id: options.resumeRun || null }, { method: 'static_analysis', source: options.target, state: desktop && mobile ? 'observed' : 'incomplete', confidence: 'high', limitations: desktop && mobile ? [] : ['Desktop/mobile parity is incomplete because one or more profiles failed.'] }));
+    return observationRun(root, 'observe render', options.target, observations, { rawInputs: previousRaw ? { resumed_manifest: previousRaw } : {}, incomplete, warnings: reused.length ? [`${reused.length} successful profile(s) reused from immutable run ${options.resumeRun}; failed, absent, or configuration-mismatched profiles were recollected.`] : options.resumeRun ? [`No compatible successful profiles were reusable from immutable run ${options.resumeRun}; all profiles were recollected.`] : [], artifacts });
+  } finally { if (browser) await browser.close(); }
 }
 
 async function observeIndex(root, options) {
@@ -248,7 +270,75 @@ async function observeConsensus(root, options) {
   return observationRun(root, 'observe consensus', options.target, observations);
 }
 
+const median = (values) => {
+  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+};
+
+function lighthouseMetrics(lhr) {
+  const audits = lhr.audits || {};
+  const value = (id) => Number.isFinite(audits[id]?.numericValue) ? audits[id].numericValue : null;
+  return {
+    performance_score: Number.isFinite(lhr.categories?.performance?.score) ? lhr.categories.performance.score : null,
+    first_contentful_paint_ms: value('first-contentful-paint'),
+    largest_contentful_paint_ms: value('largest-contentful-paint'),
+    cumulative_layout_shift: value('cumulative-layout-shift'),
+    total_blocking_time_ms: value('total-blocking-time'),
+    speed_index_ms: value('speed-index'),
+  };
+}
+
+async function localLighthouseRunner(target, runIndex, options) {
+  let lighthouse, launcher;
+  try {
+    ({ default: lighthouse } = await import('lighthouse'));
+    launcher = await import('chrome-launcher');
+  } catch {
+    throw new Error('optional lighthouse and chrome-launcher dependencies are not installed');
+  }
+  const chrome = await launcher.launch({ chromeFlags: ['--headless', '--no-sandbox', '--disable-gpu'] });
+  try {
+    const result = await lighthouse(target, { port: chrome.port, output: 'json', logLevel: 'error', formFactor: options.deviceProfile || 'mobile' });
+    return result.lhr;
+  } finally {
+    await chrome.kill();
+  }
+}
+
+async function observeLighthouse(root, options) {
+  if (!/^https?:\/\//.test(options.target || '')) throw new Error('Lighthouse requires --target <http(s) URL>');
+  const repeat = Number.isInteger(options.repeat) && options.repeat >= 1 && options.repeat <= 5 ? options.repeat : 3;
+  const runner = options.lighthouseRunner || localLighthouseRunner;
+  const observations = [], artifacts = {}, incomplete = [];
+  for (let runIndex = 1; runIndex <= repeat; runIndex++) {
+    try {
+      const lhr = await runner(options.target, runIndex, options);
+      const metrics = lighthouseMetrics(lhr);
+      const data = {
+        url: options.target, provider: 'Lighthouse', evidence_type: 'lab', run_index: runIndex, runs_in_series: repeat,
+        lighthouse_version: lhr.lighthouseVersion || null, chrome_user_agent: lhr.userAgent || null, fetched_at: lhr.fetchTime || null,
+        final_url: lhr.finalDisplayedUrl || lhr.finalUrl || options.target,
+        configuration: { form_factor: lhr.configSettings?.formFactor || null, throttling_method: lhr.configSettings?.throttlingMethod || null, screen_emulation: lhr.configSettings?.screenEmulation || null, throttling: lhr.configSettings?.throttling || null },
+        metrics,
+      };
+      observations.push(envelope('performance', data, { method: 'browser', source: 'lighthouse/local', raw: JSON.stringify(lhr), limitations: ['This is controlled lab evidence, not field performance or a guarantee of user experience.'] }));
+      artifacts[`lighthouse/run-${String(runIndex).padStart(2, '0')}.json`] = JSON.stringify(lhr, null, 2);
+    } catch (error) {
+      incomplete.push(`Lighthouse run ${runIndex} failed: ${error.message}`);
+      observations.push(envelope('performance', { url: options.target, provider: 'Lighthouse', evidence_type: 'lab', run_index: runIndex, runs_in_series: repeat }, { method: 'browser', source: 'lighthouse/local', state: 'failed', confidence: 'confirmed', raw: `run-${runIndex}:${error.message}`, limitations: [error.message] }));
+    }
+  }
+  const successful = observations.filter((item) => item.state === 'observed');
+  const metricNames = ['performance_score', 'first_contentful_paint_ms', 'largest_contentful_paint_ms', 'cumulative_layout_shift', 'total_blocking_time_ms', 'speed_index_ms'];
+  const medians = Object.fromEntries(metricNames.map((name) => [name, median(successful.map((item) => item.data.metrics[name]))]));
+  observations.push(envelope('performance', { url: options.target, provider: 'Lighthouse', evidence_type: 'lab_summary', requested_runs: repeat, successful_runs: successful.length, median_metrics: medians }, { method: 'static_analysis', source: 'lighthouse/local', state: successful.length ? 'observed' : 'not_evidenced', confidence: successful.length === repeat ? 'high' : 'low', limitations: ['Medians summarize only successful controlled lab runs; failed runs remain separate evidence.'] }));
+  return observationRun(root, 'observe performance --lighthouse', options.target, observations, { incomplete, artifacts });
+}
+
 async function observePerformance(root, options) {
+  if (options.lighthouse) return observeLighthouse(root, options);
   if (options.input) {
     const input = readInput(options.input);
     const rows = Array.isArray(input.value) ? input.value : [input.value];

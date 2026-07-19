@@ -155,6 +155,9 @@ citable observe logs --input edge-logs.json
 citable observe bing --dataset ai_performance --input bing-ai-performance.csv
 citable observe consensus --target ./dist --base-url https://example.com
 citable observe performance --target https://example.com # CRUX_API_KEY
+citable observe performance --target https://example.com --lighthouse --repeat 3
+citable observe render --target https://example.com --interactions
+citable observe render --target https://example.com --resume-run <run-id>
 citable apply --input remediation-spec.json          # dry run
 citable apply --input remediation-spec.json --write  # reviewed + hash-locked
 citable monitor [runA runB]
@@ -212,7 +215,9 @@ citable validate              # registry schema + referential integrity
 
 Node >= 24.0.0. Network access is used for URL audits and explicitly selected
 live collectors. Render collection requires the optional `playwright` peer and
-an installed Chromium browser. Google index inspection uses `GSC_ACCESS_TOKEN`
+an installed Chromium browser. Local Lighthouse collection requires the
+optional `lighthouse` and `chrome-launcher` peers plus Chrome or Chromium.
+Google index inspection uses `GSC_ACCESS_TOKEN`
 and `--site-url`; CrUX uses `CRUX_API_KEY`. Missing dependencies or credentials
 produce incomplete evidence. Supported frameworks for auto-detection: Next.js,
 Astro, Nuxt, SvelteKit, Gatsby (other stacks: audit their built HTML output).

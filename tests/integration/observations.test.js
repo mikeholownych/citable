@@ -119,6 +119,59 @@ test('missing live credentials and browser dependency fail closed as incomplete'
   }
 });
 
+test('render profiles preserve partial failures and resume only successful immutable evidence', async () => {
+  const root = fresh();
+  const target = 'https://example.test/';
+  const fetchUrl = async () => ({ body: '<main>Raw server rendered content for parity comparison.</main>' });
+  const captured = [];
+  const captureProfile = async (name, viewport, settings = {}) => {
+    captured.push(name);
+    if (name === 'javascript_disabled') throw new Error('fixture profile failure');
+    return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: `<main>${name} rendered content</main>`, text: `${name} rendered content`, screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [{ tag: 'summary', text: 'Details' }], executed: ['Details'] } };
+  };
+  const first = await observe(root, 'render', { target, interactions: true, captureProfile, fetchUrl });
+    assert.equal(first.manifest.status, 'incomplete');
+    assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
+    assert.equal(first.observations.find((item) => item.data.profile === 'javascript_disabled').state, 'failed');
+    assert.ok(fs.existsSync(path.join(first.dir, 'screenshots', 'mobile.png')));
+
+    captured.length = 0;
+    const resumed = await observe(root, 'render', { target, interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+      captured.push(name);
+      return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Server fallback content</main>', text: 'Server fallback content', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
+    } });
+    assert.deepEqual(captured, ['javascript_disabled']);
+    assert.equal(resumed.manifest.status, 'completed');
+    assert.equal(resumed.observations.filter((item) => item.data.profile === 'desktop').length, 1);
+  assert.equal(resumed.observations.find((item) => item.data.profile === 'parity').data.resumed_from_run_id, first.runId);
+  assert.match(resumed.manifest.warnings.join(' '), /reused from immutable run/);
+
+  captured.length = 0;
+  await observe(root, 'render', { target: 'https://other.example.test/', interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+    captured.push(name);
+    return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Other target</main>', text: 'Other target', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
+  } });
+  assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
+});
+
+test('local Lighthouse execution preserves repeated lab runs and a median summary', async () => {
+  const root = fresh();
+  const scores = [0.7, 0.9, 0.8];
+  const result = await observe(root, 'performance', { target: 'https://example.test/', lighthouse: true, repeat: 3, lighthouseRunner: async (_target, runIndex) => ({
+    lighthouseVersion: '13.4.0', userAgent: 'Fixture Chrome/140', fetchTime: `2026-07-19T00:00:0${runIndex}Z`, finalDisplayedUrl: 'https://example.test/',
+    configSettings: { formFactor: 'mobile', throttlingMethod: 'simulate', screenEmulation: { mobile: true }, throttling: { rttMs: 150 } },
+    categories: { performance: { score: scores[runIndex - 1] } },
+    audits: { 'first-contentful-paint': { numericValue: 1000 + runIndex }, 'largest-contentful-paint': { numericValue: 2000 + runIndex }, 'cumulative-layout-shift': { numericValue: 0.1 * runIndex }, 'total-blocking-time': { numericValue: 100 + runIndex }, 'speed-index': { numericValue: 1500 + runIndex } },
+  }) });
+  assert.equal(result.manifest.status, 'completed');
+  assert.equal(result.observations.length, 4);
+  assert.equal(result.observations.at(-1).data.median_metrics.performance_score, 0.8);
+  assert.equal(result.observations.at(-1).data.median_metrics.largest_contentful_paint_ms, 2002);
+  assert.equal(result.observations[0].data.evidence_type, 'lab');
+  assert.equal(result.observations[0].data.configuration.throttling_method, 'simulate');
+  assert.ok(fs.existsSync(path.join(result.dir, 'lighthouse', 'run-03.json')));
+});
+
 test('guarded remediation requires source run, reviewer, exact hash, and unique match', async () => {
   const root = fresh();
   const source = path.join(root, 'page.html');

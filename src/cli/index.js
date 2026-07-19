@@ -84,6 +84,9 @@ Options
   --access-token <token>    OAuth token (prefer provider environment variables)
   --endpoint <url>          Controlled citation adapter endpoint
   --repeat <count>          Repetitions per prompt for citation experiments
+  --interactions            Exercise bounded disclosure, tab, and load-more controls
+  --resume-run <run-id>     Reuse successful immutable render profiles
+  --lighthouse              Run local, repeated Lighthouse lab observations
   --ocr                     Explicitly request optional OCR for media images
   --write                   Persist registry changes (map-claims, substantiate)
   --json                    Machine-readable output only
@@ -98,6 +101,8 @@ function parseArgs(argv) {
     if (a === '--write') args.write = true;
     else if (a === '--json') args.json = true;
     else if (a === '--ocr') args.ocr = true;
+    else if (a === '--interactions') args.interactions = true;
+    else if (a === '--lighthouse') args.lighthouse = true;
     else if (a === '--target') args.target = argv[++i];
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
@@ -114,6 +119,7 @@ function parseArgs(argv) {
     else if (a === '--access-token') args.accessToken = argv[++i];
     else if (a === '--endpoint') args.endpoint = argv[++i];
     else if (a === '--repeat') args.repeat = Number(argv[++i]);
+    else if (a === '--resume-run') args.resumeRun = argv[++i];
     else if (a === '--timeout') args.timeout = Number(argv[++i]);
     else if (a === '--force') args.force = true;
     else args._.push(a);
