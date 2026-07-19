@@ -22,6 +22,18 @@
   environment-specific fields from fingerprints, and compare property,
   detector, configuration, observation-method, tool, and external-system drift
   independently.
+- Real-property corpus authorization, architecture, collection, retention,
+  sanitization, publication, and run-evidence contracts, plus a fail-closed
+  public projection with a hash-bound owner-authorized publication receipt.
+
+### Migration — Acceptance Corpus Schema v2
+
+- Acceptance corpus manifests must migrate `schema_version` from `1` to `2`.
+  Replace `owner_authorized` with the structured `authorization` record; add
+  `architecture`, `collection_methods`, `publication`, `sanitization`,
+  intentional-incompleteness and contradiction state; add run artifact and
+  governance references; and declare false-negative discovery and causal
+  limitations. Schema v1 manifests are rejected rather than inferred.
 
 ### Changed — Release Evidence Governance
 

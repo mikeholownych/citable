@@ -122,6 +122,7 @@ citable project github <run-id>
 citable observe media --input <manifest.json> [--ocr]
 citable observe representation --input <release-manifest.json> --target <controlled-url>
 citable corpus evaluate --input <acceptance-corpus.json>
+citable corpus publish --input <acceptance-corpus.json> --output <public-corpus.json>
 citable corpus receipt --run <run-id> [--input <execution-context.json>]
 citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
 ```
@@ -168,6 +169,8 @@ operator data or future adapters.
 Use `commands/observe-and-act.md` for collector prerequisites, evidence labels,
 the controlled citation adapter protocol, remediation refusal conditions, and
 monitoring interpretation.
+Use `commands/field-validation.md` for acceptance-corpus authorization,
+sanitization, publication refusal, reproducibility, and evidence boundaries.
 
 ## Command workflows
 

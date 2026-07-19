@@ -1,11 +1,27 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "corpus_id": "CORPUS-V1-INITIAL",
   "version": "1.0.0",
   "created_at": "2026-07-19T09:00:00Z",
   "properties": [
-    { "property_id": "PROP-A", "property_class": "static_marketing", "owner_authorized": true, "evidence_package_refs": ["RUN-A"], "unavailable_evidence": [], "limitations": ["Initial controlled fixture."] },
-    { "property_id": "PROP-B", "property_class": "publisher_surface", "owner_authorized": true, "evidence_package_refs": ["RUN-B"], "unavailable_evidence": ["independent intermediary internals"], "limitations": ["Intermediary state is externally unverified."] }
+    {
+      "property_id": "PROP-A", "property_class": "static",
+      "architecture": { "platform": "fixture-static", "rendering": "static", "protections": [], "languages": ["en"], "content_types": ["html"] },
+      "authorization": { "status": "owner_authorized", "authorized_by": "owner-role-a", "authorized_at": "2026-07-19T08:00:00Z", "expires_at": null, "scope": ["collect", "retain", "review", "publish_artifacts"], "evidence_ref": "RUN-A/AUTHORIZATION" },
+      "collection_methods": [{ "method": "local_fixture_audit", "authority": "owner_controlled", "collector": "citable-1.12.0", "collected_at": "2026-07-19T08:30:00Z", "limitations": ["Controlled fixture, not a production property."] }],
+      "publication": { "level": "sanitized_artifacts", "approved_by": "publication-role-a", "approved_at": "2026-07-19T08:45:00Z", "retention_days": 365, "allowed_artifact_refs": ["RUN-A", "RUN-A/AUTHORIZATION", "RUN-A/SANITIZATION", "RUN-A/F-1", "RUN-A/F-2", "RUN-A/SEM-1", "RUN-A/ASSIGNMENT-1", "RUN-A/RAW", "RUN-A/DETERMINISTIC", "RUN-A/HEURISTIC", "RUN-A/EXCEPTION", "RUN-A/INTERVENTION", "RUN-A/VERIFY", "RUN-A/RECEIPT", "RUN-A-POST"] },
+      "sanitization": { "reviewed_by": "privacy-role-a", "reviewed_at": "2026-07-19T08:40:00Z", "pii_status": "none_detected", "credential_status": "none_detected", "source_identifiers": "pseudonymized", "evidence_ref": "RUN-A/SANITIZATION" },
+      "evidence_package_refs": ["RUN-A"], "unavailable_evidence": [], "intentionally_incomplete": false, "contradiction_status": "none_observed", "limitations": ["Initial controlled fixture."]
+    },
+    {
+      "property_id": "PROP-B", "property_class": "publisher_surface",
+      "architecture": { "platform": "fixture-publisher", "rendering": "hybrid", "protections": ["simulated_edge"], "languages": ["en"], "content_types": ["html", "text"] },
+      "authorization": { "status": "owner_authorized", "authorized_by": "owner-role-b", "authorized_at": "2026-07-19T08:00:00Z", "expires_at": null, "scope": ["collect", "retain", "review", "publish_artifacts"], "evidence_ref": "RUN-B/AUTHORIZATION" },
+      "collection_methods": [{ "method": "synthetic_representation_probe", "authority": "external_unverified", "collector": "citable-1.12.0", "collected_at": "2026-07-19T08:30:00Z", "limitations": ["Intermediary state and production crawler identity are not verified."] }],
+      "publication": { "level": "sanitized_artifacts", "approved_by": "publication-role-b", "approved_at": "2026-07-19T08:45:00Z", "retention_days": 365, "allowed_artifact_refs": ["RUN-B", "RUN-B/AUTHORIZATION", "RUN-B/SANITIZATION", "RUN-B/F-1", "RUN-B/F-2", "RUN-B/INCOMPLETE", "RUN-B/SEM-2", "RUN-B/ASSIGNMENT-2", "RUN-B/DISAGREEMENT-2", "RUN-B/RAW", "RUN-B/DETERMINISTIC", "RUN-B/HEURISTIC", "RUN-B/EXCEPTION", "RUN-B/INTERVENTION", "RUN-B/VERIFY", "RUN-B/RECEIPT", "RUN-B-POST"] },
+      "sanitization": { "reviewed_by": "privacy-role-b", "reviewed_at": "2026-07-19T08:40:00Z", "pii_status": "redacted", "credential_status": "none_detected", "source_identifiers": "pseudonymized", "evidence_ref": "RUN-B/SANITIZATION" },
+      "evidence_package_refs": ["RUN-B"], "unavailable_evidence": ["independent intermediary internals"], "intentionally_incomplete": true, "contradiction_status": "observed", "limitations": ["Intermediary state is externally unverified."]
+    }
   ],
   "detector_cases": [
     { "case_id": "CASE-1", "property_id": "PROP-A", "detector_id": "TECH-001", "namespace": "TECH", "expected": "detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-1"] },
@@ -15,16 +31,18 @@
     { "case_id": "CASE-5", "property_id": "PROP-B", "detector_id": "CRAWL-001", "namespace": "CRAWL", "expected": "detection", "observed": "incomplete", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/INCOMPLETE"] }
   ],
   "semantic_reviews": [
-    { "review_id": "SEM-1", "property_id": "PROP-A", "review_type": "claim_support", "reviewer_verdicts": ["supported", "supported"], "adjudicated": false, "evidence_refs": ["RUN-A/SEM-1"] },
-    { "review_id": "SEM-2", "property_id": "PROP-B", "review_type": "citation_correctness", "reviewer_verdicts": ["supported", "unsupported"], "adjudicated": true, "evidence_refs": ["RUN-B/SEM-2"] }
+    { "review_id": "SEM-1", "property_id": "PROP-A", "review_type": "claim_support", "reviewer_verdicts": ["supported", "supported"], "reviewer_assignment_refs": ["RUN-A/ASSIGNMENT-1"], "disagreement_refs": [], "adjudicated": false, "evidence_refs": ["RUN-A/SEM-1"] },
+    { "review_id": "SEM-2", "property_id": "PROP-B", "review_type": "citation_correctness", "reviewer_verdicts": ["supported", "unsupported"], "reviewer_assignment_refs": ["RUN-B/ASSIGNMENT-2"], "disagreement_refs": ["RUN-B/DISAGREEMENT-2"], "adjudicated": true, "evidence_refs": ["RUN-B/SEM-2"] }
   ],
   "executions": [
-    { "property_id": "PROP-A", "run_id": "RUN-A", "runtime_ms": 1000, "peak_memory_bytes": 1000000, "evidence_bytes": 5000, "reproducible": true, "incomplete": false },
-    { "property_id": "PROP-B", "run_id": "RUN-B", "runtime_ms": 3000, "peak_memory_bytes": 2000000, "evidence_bytes": 7000, "reproducible": false, "incomplete": true }
+    { "property_id": "PROP-A", "run_id": "RUN-A", "raw_artifact_refs": ["RUN-A/RAW"], "deterministic_finding_refs": ["RUN-A/DETERMINISTIC"], "heuristic_finding_refs": ["RUN-A/HEURISTIC"], "reviewer_assignment_refs": ["RUN-A/ASSIGNMENT-1"], "disagreement_refs": [], "exception_refs": ["RUN-A/EXCEPTION"], "intervention_refs": ["RUN-A/INTERVENTION"], "verification_refs": ["RUN-A/VERIFY"], "reproducibility_receipt_ref": "RUN-A/RECEIPT", "runtime_ms": 1000, "peak_memory_bytes": 1000000, "evidence_bytes": 5000, "reproducible": true, "incomplete": false },
+    { "property_id": "PROP-B", "run_id": "RUN-B", "raw_artifact_refs": ["RUN-B/RAW"], "deterministic_finding_refs": ["RUN-B/DETERMINISTIC"], "heuristic_finding_refs": ["RUN-B/HEURISTIC"], "reviewer_assignment_refs": ["RUN-B/ASSIGNMENT-2"], "disagreement_refs": ["RUN-B/DISAGREEMENT-2"], "exception_refs": ["RUN-B/EXCEPTION"], "intervention_refs": ["RUN-B/INTERVENTION"], "verification_refs": ["RUN-B/VERIFY"], "reproducibility_receipt_ref": "RUN-B/RECEIPT", "runtime_ms": 3000, "peak_memory_bytes": 2000000, "evidence_bytes": 7000, "reproducible": false, "incomplete": true }
   ],
   "remediation_verifications": [
     { "verification_id": "VERIFY-1", "property_id": "PROP-A", "status": "verified", "evidence_refs": ["RUN-A-POST"] },
     { "verification_id": "VERIFY-2", "property_id": "PROP-B", "status": "incomplete", "evidence_refs": ["RUN-B-POST"] }
   ],
-  "limitations": ["This fixture validates metric semantics and is not a published field corpus."]
+  "false_negative_discovery_limitations": ["Only adjudicated expected detections can reveal false negatives; unknown false negatives are not counted as zero."],
+  "causal_limitations": ["Observed remediation verification does not establish that an intervention caused an external search or citation outcome."],
+  "limitations": ["This fixture validates metric and publication semantics and is not a published field corpus."]
 }

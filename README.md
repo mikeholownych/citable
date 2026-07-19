@@ -179,6 +179,7 @@ citable project github <run-id>
 citable observe media --input media-manifest.json # add --ocr explicitly when required
 citable observe representation --input release-manifest.json --target https://example.com/llms.txt
 citable corpus evaluate --input acceptance-corpus.json
+citable corpus publish --input acceptance-corpus.json --output public-corpus.json
 citable corpus receipt --run <run-id> --input execution-context.json
 citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
 citable substantiate          # claim/evidence assessment (dry run)
