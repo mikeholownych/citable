@@ -9,6 +9,7 @@ import { crawlerIdentity } from '../observations/crawlerIdentity.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import { observeMedia } from '../observations/media.js';
 import { parse as parseHtml } from 'node-html-parser';
+import { verifyManifestIntegrity } from '../release/governance.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -376,6 +377,71 @@ function observeCorroboration(root, options) {
   return observationRun(root, 'observe corroboration', input.file, observations, { rawInputs: { corroboration_export: input.raw } });
 }
 
+async function observeRepresentation(root, options) {
+  const input = readInput(options.input);
+  const manifest = input.value;
+  const integrity = verifyManifestIntegrity(manifest);
+  if (!integrity.ok) throw new Error(`release manifest is invalid: ${integrity.failures.join('; ')}`);
+  if (!options.target) throw new Error('representation observation requires --target <controlled surface URL>');
+  const surface = manifest.controlled_surfaces.find((item) => item.url === options.target || item.surface_id === options.surfaceId);
+  if (!surface) throw new Error('target is not a controlled surface in the release manifest');
+  const expected = manifest.projections.find((item) => item.projection_id === surface.projection_id);
+  if (!expected) throw new Error(`expected projection ${surface.projection_id} is missing`);
+  const collector = options.fetchUrl || fetchUrl;
+  const paths = [
+    { path: 'direct', url: surface.url },
+    { path: 'cache_busted', url: `${surface.url}${surface.url.includes('?') ? '&' : '?'}citable_manifest=${manifest.manifest_hash.slice(0, 16)}` },
+  ];
+  const observations = [];
+  const artifacts = {};
+  const incomplete = [];
+  for (const item of paths) {
+    try {
+      const response = await collector(item.url, { userAgent: options.userAgent || 'CitableRepresentationProbe/1.0', maxRetries: 1 });
+      const observedHash = sha256(response.body);
+      const representationState = response.status >= 200 && response.status < 300
+        ? observedHash === expected.sha256 ? 'consistent' : 'divergent'
+        : response.status === 403 || response.status === 429 ? 'challenged' : 'failed';
+      const data = {
+        release_id: manifest.release_id,
+        manifest_hash: manifest.manifest_hash,
+        surface_id: surface.surface_id,
+        projection_id: expected.projection_id,
+        retrieval_path: item.path,
+        requested_url: item.url,
+        final_url: response.url,
+        status: response.status,
+        redirect_chain: response.redirectChain || [],
+        headers: response.headers || {},
+        expected_projection_hash: expected.sha256,
+        observed_response_hash: observedHash,
+        representation_state: representationState,
+        authority_label: 'external_unverified',
+        gates_release_finalization: false,
+        request_identity: options.userAgent || 'CitableRepresentationProbe/1.0',
+        region: options.region || 'local_unspecified',
+      };
+      observations.push(envelope('representation_drift', data, {
+        method: 'synthetic_fetch', source: item.url, raw: response.body,
+        confidence: 'confirmed',
+        limitations: ['One synthetic retrieval does not represent all caches, indexes, products, accounts, geographies, or users.'],
+        authority: { source_authority: 'unknown', collection_authority: 'synthetic_probe', authenticity_status: 'unverified', representativeness: 'single_observation' },
+      }));
+      artifacts[`representation/${item.path}-response.txt`] = response.body;
+      artifacts[`representation/${item.path}-headers.json`] = response.headers || {};
+    } catch (error) {
+      incomplete.push(`${item.path} representation retrieval failed: ${error.message}`);
+      observations.push(envelope('representation_drift', {
+        release_id: manifest.release_id, manifest_hash: manifest.manifest_hash, surface_id: surface.surface_id,
+        projection_id: expected.projection_id, retrieval_path: item.path, requested_url: item.url,
+        representation_state: 'failed', authority_label: 'external_unverified', gates_release_finalization: false,
+        request_identity: options.userAgent || 'CitableRepresentationProbe/1.0', region: options.region || 'local_unspecified',
+      }, { method: 'synthetic_fetch', source: item.url, state: 'failed', confidence: 'confirmed', raw: error.message, limitations: [error.message], authority: { source_authority: 'unknown', collection_authority: 'synthetic_probe', authenticity_status: 'unverified', representativeness: 'single_observation' } }));
+    }
+  }
+  return observationRun(root, 'observe representation', surface.url, observations, { rawInputs: { release_manifest: input.raw }, incomplete, artifacts });
+}
+
 export async function observe(root, mode, options = {}) {
   switch (mode) {
     case 'render': return observeRender(root, options);
@@ -388,6 +454,7 @@ export async function observe(root, mode, options = {}) {
     case 'performance': return observePerformance(root, options);
     case 'corroboration': return observeCorroboration(root, options);
     case 'media': return observeMedia(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, or media');
+    case 'representation': return observeRepresentation(root, options);
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, media, or representation');
   }
 }

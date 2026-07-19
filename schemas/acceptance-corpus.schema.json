@@ -1,0 +1,97 @@
+{
+  "$id": "citable://schemas/acceptance-corpus.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Real-property acceptance corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "corpus_id", "version", "created_at", "properties", "detector_cases", "semantic_reviews", "executions", "remediation_verifications", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "corpus_id": { "type": "string", "pattern": "^CORPUS-" },
+    "version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "properties": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["property_id", "property_class", "owner_authorized", "evidence_package_refs", "unavailable_evidence", "limitations"],
+        "properties": {
+          "property_id": { "type": "string", "minLength": 1 },
+          "property_class": { "type": "string", "minLength": 1 },
+          "owner_authorized": { "type": "boolean" },
+          "evidence_package_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "unavailable_evidence": { "type": "array", "items": { "type": "string" } },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "detector_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "property_id", "detector_id", "namespace", "expected", "observed", "adjudicator", "evidence_refs"],
+        "properties": {
+          "case_id": { "type": "string", "minLength": 1 },
+          "property_id": { "type": "string", "minLength": 1 },
+          "detector_id": { "type": "string", "minLength": 1 },
+          "namespace": { "type": "string", "minLength": 1 },
+          "expected": { "enum": ["detection", "non_detection"] },
+          "observed": { "enum": ["detected", "not_detected", "incomplete"] },
+          "adjudicator": { "type": "string", "minLength": 1 },
+          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "semantic_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["review_id", "property_id", "review_type", "reviewer_verdicts", "adjudicated", "evidence_refs"],
+        "properties": {
+          "review_id": { "type": "string", "minLength": 1 },
+          "property_id": { "type": "string", "minLength": 1 },
+          "review_type": { "type": "string", "minLength": 1 },
+          "reviewer_verdicts": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 } },
+          "adjudicated": { "type": "boolean" },
+          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "executions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["property_id", "run_id", "runtime_ms", "peak_memory_bytes", "evidence_bytes", "reproducible", "incomplete"],
+        "properties": {
+          "property_id": { "type": "string" },
+          "run_id": { "type": "string" },
+          "runtime_ms": { "type": "number", "minimum": 0 },
+          "peak_memory_bytes": { "type": "integer", "minimum": 0 },
+          "evidence_bytes": { "type": "integer", "minimum": 0 },
+          "reproducible": { "type": "boolean" },
+          "incomplete": { "type": "boolean" }
+        }
+      }
+    },
+    "remediation_verifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["verification_id", "property_id", "status", "evidence_refs"],
+        "properties": {
+          "verification_id": { "type": "string" },
+          "property_id": { "type": "string" },
+          "status": { "enum": ["verified", "failed", "incomplete"] },
+          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  }
+}

@@ -108,12 +108,26 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Evidence package layout (§13) | src/evidence/run.js; T: integration test asserts manifest/findings/report/checksums/robots |
 | Severity ≠ confidence (§11) | Finding schema separate enums; framework defaults |
 | 6-way finding classification (§3.2) | finding_type enum; deterministic flag per detector |
-| ≥60 meaningful detectors (§9) | 102 detectors / 15 namespaces; T: count + per-namespace assertions |
+| ≥60 meaningful detectors (§9) | 123 detectors / 18 namespaces; T: count + per-namespace assertions |
 | Positive and negative fixtures (§17) | tests/fixtures/site-clean vs site-broken, registries-good vs registries-bad |
 | Detector that flags everything is defective (§17) | T: "flags every page" sanity test on clean fixture |
 | Repeated runs stable (§21.21) | T: deterministic rerun test (identical finding IDs) |
 | Fail-closed behaviours (§16) | substantiate outcomes, schema blocked list, init unresolved_assumptions, audit incomplete_checks; T: multiple |
-| Multi-agent distribution (§18) | scripts/build-dist.js → dist/{claude-code,codex,cursor,gemini,generic} |
+| Multi-agent distribution (§18) | `scripts/build-dist.js` → 12 provider-specific managed skill locations under `dist/universal/` |
+
+## ADR-002 — Release evidence and representation drift
+
+| Requirement | Controls |
+| --- | --- |
+| One canonical release manifest | R: `release-manifest.schema.json`; C: `scripts/release-governance.js manifest`; V: executable facts and projection hashes recomputed before publish |
+| Phase-one projection consistency fails closed | C: `release-governance validate`; T: projection tampering and stale documented registry count are refused |
+| Two-phase release state with bounded dwell | R: `release-state.schema.json`; C: candidate → published_unfinalized → finalized/superseded/withdrawn transition policy |
+| Finalization is immutable | V: terminal states reject every later transition; post-finalization drift remains a separate observation |
+| Publisher receipts are owner-controlled execution evidence | R: `deployment-receipt.schema.json`; V: exact surface, manifest, projection, expiry, status, and receipt-hash binding |
+| Required receipts gate finalization | C: protected `finalize-release.yml`; V: missing, duplicate, expired, contradictory, malformed, and tampered receipts fail closed |
+| Intermediary observations cannot gate | C: `observe representation`; P: `authority_label: external_unverified`, `gates_release_finalization: false`; T: direct/cache-busted integration fixture |
+| Representation drift is longitudinal | C: `monitor`; V: stable surface/path/region/request key plus observed divergence and convergence intervals |
+| Corpus metrics preserve denominators | R: `acceptance-corpus.schema.json`; C: `corpus evaluate`; V: confusion matrix, incomplete evidence, reviewer, execution, reproducibility, and remediation metrics |
 
 ## Executive Reporting Suite (feat/executive-reporting-suite)
 
@@ -132,4 +146,3 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Initiative prioritization with transparent scoring | C: `prioritize rank` — scoring formula and weights exposed in output; rejects `transformative` + `assumption` combination; T: test asserts |
 | Competitive intelligence provenance controls | R: competitors.yaml extended; V: `competitive-intel validate` requires `observation_date`, `source`, `claim_type`; unreliable sources require `independent_verification` |
 | Chief-of-staff routing with audit trail | C: `executive` routes 11 patterns; max depth 1; logs to `.citable/executive-log.yaml`; T: 7 routing tests |
-

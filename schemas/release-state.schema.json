@@ -1,0 +1,40 @@
+{
+  "$id": "citable://schemas/release-state.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Governed release state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "state", "max_dwell_hours", "created_at", "transitions", "receipt_refs", "state_hash"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "release_id": { "type": "string", "pattern": "^RELEASE-v" },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "state": { "enum": ["candidate", "published_unfinalized", "finalized", "superseded", "withdrawn"] },
+    "max_dwell_hours": { "type": "integer", "minimum": 1, "maximum": 168 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "published_at": { "type": ["string", "null"], "format": "date-time" },
+    "finalized_at": { "type": ["string", "null"], "format": "date-time" },
+    "resolved_at": { "type": ["string", "null"], "format": "date-time" },
+    "resolution_reason": { "type": ["string", "null"] },
+    "superseding_release_id": { "type": ["string", "null"] },
+    "receipt_refs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^RECEIPT-" } },
+    "state_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "actor", "timestamp", "reason", "policy_version", "evidence_refs"],
+        "properties": {
+          "from": { "type": ["string", "null"], "enum": [null, "candidate", "published_unfinalized"] },
+          "to": { "enum": ["candidate", "published_unfinalized", "finalized", "superseded", "withdrawn"] },
+          "actor": { "type": "string", "minLength": 1 },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string", "minLength": 1 },
+          "policy_version": { "type": "string", "minLength": 1 },
+          "evidence_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

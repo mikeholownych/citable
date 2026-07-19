@@ -1,0 +1,72 @@
+name: Finalize release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version without the v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    name: Verify receipts and finalize v${{ inputs.version }}
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download release evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/release-evidence
+          gh release download "v${RELEASE_VERSION}" \
+            --pattern 'release-manifest.json' \
+            --pattern 'release-state.json' \
+            --pattern 'resource-data.json' \
+            --pattern 'llms.txt' \
+            --pattern 'deployment-receipt-*.json' \
+            --dir /tmp/release-evidence
+
+      - name: Fail closed on controlled-surface drift
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/release-governance.js validate /tmp/release-evidence/release-manifest.json /tmp/release-evidence
+          mapfile -t receipts < <(find /tmp/release-evidence -maxdepth 1 -name 'deployment-receipt-*.json' -print | sort)
+          test "${#receipts[@]}" -gt 0
+          node scripts/release-governance.js state-finalize \
+            /tmp/release-evidence/release-manifest.json \
+            /tmp/release-evidence/release-state.json \
+            "github:${GITHUB_ACTOR}" \
+            "${receipts[@]}"
+
+      - name: Publish finalized release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          gh release upload "v${RELEASE_VERSION}" /tmp/release-evidence/release-state.json --clobber
+          gh release edit "v${RELEASE_VERSION}" --draft=false --latest

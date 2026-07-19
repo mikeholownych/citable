@@ -1,9 +1,6 @@
 name: npm publish
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
@@ -11,9 +8,7 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 concurrency:
   group: npm-publish-${{ github.ref }}
@@ -24,6 +19,9 @@ jobs:
     name: Publish citable to npm
     runs-on: ubuntu-latest
     environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,11 +44,9 @@ jobs:
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
-          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            expected="${GITHUB_REF_NAME#v}"
-          else
-            expected="${{ inputs.version }}"
-          fi
+          expected="${{ inputs.version }}"
+          test "${GITHUB_REF_TYPE}" = "tag"
+          test "${GITHUB_REF_NAME}" = "v${expected}"
           if [[ "${package_version}" != "${expected}" ]]; then
             echo "::error::package.json version ${package_version} does not match requested release ${expected}"
             exit 1
@@ -58,7 +54,6 @@ jobs:
           node scripts/release-process.js validate "${expected}"
 
       - name: Verify tag is based on main
-        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           git fetch origin main --no-tags
@@ -91,3 +86,35 @@ jobs:
 
       - name: Publish
         run: npm publish --access public --provenance
+
+  record-state:
+    name: Record published-unfinalized state
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Record published-unfinalized state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          test "${GITHUB_REF_TYPE}" = "tag"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+          npm run build:dist
+          mkdir -p /tmp/release-evidence
+          gh release download "v${version}" --pattern 'release-manifest.json' --pattern 'release-state.json' --pattern 'resource-data.json' --pattern 'llms.txt' --dir /tmp/release-evidence
+          node scripts/release-governance.js state-publish /tmp/release-evidence/release-manifest.json /tmp/release-evidence/release-state.json "github:${GITHUB_ACTOR}"
+          gh release upload "v${version}" /tmp/release-evidence/release-state.json --clobber
