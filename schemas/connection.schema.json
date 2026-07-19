@@ -19,6 +19,7 @@
           "connection_id": { "type": "string", "pattern": "^CONNECTION-[A-Z0-9][A-Z0-9_-]*$" },
           "provider": { "type": "string", "minLength": 1 },
           "property_id": { "type": ["string", "null"] },
+          "credential_env": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
           "state": { "type": "string", "enum": ["not_configured", "configured", "synchronized", "partial", "authorization_expired", "permission_denied", "quota_limited", "temporarily_unavailable"] },
           "authentication": { "type": "string", "enum": ["none", "environment", "os_keychain", "external_secret_manager", "owner_import"] },
           "scopes": { "type": "array", "items": { "type": "string" } },

@@ -89,6 +89,12 @@ citable observe <mode> [options]      # render/index/citation/log/passage/consen
 citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
 citable monitor [runA runB]           # observation regression alerts
 citable metrics import --provider <name> --input <csv|json>
+citable connect status
+citable connect configure --provider <gsc|ga4> --connection-id <id> --property-id <id> [--credential-env <name>] [--write]
+citable connect discover --provider <gsc|ga4>
+citable connect validate --connection-id <id>
+citable connect sync --connection-id <id> --start-date YYYY-MM-DD --end-date YYYY-MM-DD
+citable connect disconnect --connection-id <id> [--write]
 citable objectives init --input <json|yaml> [--write]
 citable objectives validate
 citable evaluate [objective-id] [--ref-date YYYY-MM-DD]

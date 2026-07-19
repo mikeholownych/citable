@@ -153,6 +153,8 @@ citable apply --input remediation-spec.json          # dry run
 citable apply --input remediation-spec.json --write  # reviewed + hash-locked
 citable monitor [runA runB]
 citable metrics import --provider gsc --input metrics.csv
+citable connect configure --provider gsc --connection-id CONNECTION-GSC --property-id sc-domain:example.com --write
+GSC_ACCESS_TOKEN=... citable connect sync --connection-id CONNECTION-GSC --start-date 2026-06-01 --end-date 2026-06-30
 citable objectives init --input objective.json --write
 citable objectives validate
 citable evaluate OBJECTIVE-PRODUCT_DISCOVERY --ref-date 2026-07-18

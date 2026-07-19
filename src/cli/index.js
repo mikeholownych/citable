@@ -16,6 +16,7 @@ import { observe } from '../commands/observe.js';
 import { applyRemediation } from '../commands/applyRemediation.js';
 import { monitor } from '../commands/monitor.js';
 import { evaluateObjective, importMetrics, initializeObjective, validateObjectives } from '../commands/measurement.js';
+import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -43,6 +44,12 @@ Commands
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
   metrics import            Import declared metric observations from CSV/JSON
+  connect status            List optional connectors and configured connections
+  connect configure         Configure non-secret connection state (--write to save)
+  connect discover          Discover provider properties using environment auth
+  connect validate          Verify configured property access
+  connect sync              Collect declared metrics into immutable observations
+  connect disconnect        Remove optional connection state (--write to confirm)
   objectives init           Validate/add one objective from --input (--write to save)
   objectives validate       Validate objective contracts and metric references
   evaluate [objective-id]   Compare objective baseline and evaluation windows
@@ -54,6 +61,11 @@ Options
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
   --input <file>            Import file or remediation specification
   --provider <name>         Provider label for imported observations
+  --connection-id <id>      Connection registry identifier
+  --property-id <id>        Provider property or site identifier
+  --credential-env <name>   Environment variable containing the access token
+  --start-date <YYYY-MM-DD> Connector collection window start
+  --end-date <YYYY-MM-DD>   Connector collection window end
   --api-key <key>           API key (prefer provider environment variables)
   --site-url <property>     Search Console property for live URL inspection
   --access-token <token>    OAuth token (prefer provider environment variables)
@@ -76,6 +88,11 @@ function parseArgs(argv) {
     else if (a === '--ref-date') args.refDate = argv[++i];
     else if (a === '--input') args.input = argv[++i];
     else if (a === '--provider') args.provider = argv[++i];
+    else if (a === '--connection-id') args.connectionId = argv[++i];
+    else if (a === '--property-id') args.propertyId = argv[++i];
+    else if (a === '--credential-env') args.credentialEnv = argv[++i];
+    else if (a === '--start-date') args.startDate = argv[++i];
+    else if (a === '--end-date') args.endDate = argv[++i];
     else if (a === '--api-key') args.apiKey = argv[++i];
     else if (a === '--site-url') args.siteUrl = argv[++i];
     else if (a === '--access-token') args.accessToken = argv[++i];
@@ -176,6 +193,30 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         if (args._[0] !== 'import') throw new Error('usage: citable metrics import --provider <name> --input <csv|json>');
         const r = importMetrics(root, { input: args.input, provider: args.provider });
         out(args, `metrics import: ${r.summary.total} observation(s) from ${args.provider}\nEvidence package: ${r.dir}`, r);
+        break;
+      }
+      case 'connect': {
+        const mode = args._[0];
+        if (mode === 'status') {
+          const r = connectionStatus(root);
+          out(args, `connect status: ${r.connections.length} configured connection(s)\n` + r.available.map((item) => `  ${item.provider}: token via ${item.credential_env}`).join('\n'), r);
+        } else if (mode === 'configure') {
+          const r = configureConnection(root, args);
+          out(args, `connect configure: ${r.connection.connection_id} ${r.written ? 'written' : 'valid (dry run; use --write to save)'}`, r);
+        } else if (mode === 'discover') {
+          const r = await discoverConnections(root, args);
+          out(args, `connect discover ${r.provider}: ${r.properties.length} accessible property/properties`, r);
+        } else if (mode === 'validate') {
+          const r = await validateConnection(root, args);
+          out(args, `connect validate ${r.connection_id}: ${r.valid ? 'accessible' : 'not accessible'}`, r);
+          if (!r.valid) process.exitCode = 1;
+        } else if (mode === 'sync') {
+          const r = await syncConnection(root, args);
+          out(args, `connect sync ${r.connection_id}: ${r.summary.total} metric observation(s)\nEvidence package: ${r.dir}`, r);
+        } else if (mode === 'disconnect') {
+          const r = disconnectConnection(root, args);
+          out(args, `connect disconnect ${r.connection_id}: ${r.disconnected ? 'removed' : 'dry run; use --write to remove'}`, r);
+        } else throw new Error('usage: citable connect <status|configure|discover|validate|sync> [options]');
         break;
       }
       case 'objectives': {

@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 122 pass |
+| Tests | 128 pass |
 | Registries | 13 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 52 canonical skill files per provider |
@@ -73,7 +73,8 @@ audited property or claiming that a recommendation was implemented.
 - Multimodal extraction for images, video, audio, and PDFs with explicit
   provenance and confidence.
 - Optional analytics integrations using aggregate data and documented consent
-  boundaries.
+  boundaries. GSC Search Analytics and GA4 organic acquisition are implemented;
+  additional providers remain version-gated.
 
 ## Release Policy
 
