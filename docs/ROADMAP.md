@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 134 pass |
-| Registries | 13 schema-validated |
+| Tests | 138 pass |
+| Registries | 16 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 56 canonical skill files per provider |
+| Distribution | 60 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -36,6 +36,9 @@ audited property or claiming that a recommendation was implemented.
   imported index evidence, controlled citation cohorts, crawler logs, passages,
   canonical/freshness consensus, CrUX/imported performance, and corroboration.
 - Reviewed hash-locked remediation plus longitudinal evidence monitoring.
+- Policy-driven reviewer authority and governed exceptions that preserve failed
+  technical state while independently recording enforcement disposition,
+  validity, residual risk, expiry, renewal, and invalidation evidence.
 
 ## Next Priorities
 
@@ -77,6 +80,13 @@ audited property or claiming that a recommendation was implemented.
 - Optional analytics integrations using aggregate data and documented consent
   boundaries. GSC Search Analytics and GA4 organic acquisition are implemented;
   additional providers remain version-gated.
+
+### Review Scale
+
+- Materiality-ranked semantic review queues with recorded population, sampling
+  method, seed, assignment, disagreement, and extrapolation limits.
+- Expiring, evidence-backed exception renewal workflows and reviewer
+  reassignment without weakening immutable source findings.
 
 ## Release Policy
 

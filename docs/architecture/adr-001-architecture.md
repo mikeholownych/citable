@@ -12,7 +12,7 @@ root) are the source of controls.
 
 ## Decisions
 
-1. **Node 22 ESM, minimal dependencies** (js-yaml, ajv + formats,
+1. **Node 24 ESM, minimal dependencies** (js-yaml, ajv + formats,
    node-html-parser). Node's built-in test runner, fetch, and crypto remove
    the need for heavier tooling; every dependency is parse/validate-only, so
    the audit path has no network or binary dependencies beyond optional URL
@@ -59,6 +59,11 @@ root) are the source of controls.
    statistical caution. Google URL Inspection, CrUX, and custom citation
    adapters retain their exact interface labels. No API is presented as
    equivalent to a consumer answer product without evidence.
+10. **Findings and enforcement dispositions are separate.** A governed
+   exception never changes a failed technical finding to passed. Reviewer and
+   risk authority are policy-driven, approvals bind to exact finding, policy,
+   and evidence hashes, and stale, expired, conflicted, or ambiguous exceptions
+   fail closed.
 
 ## Consequences
 

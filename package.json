@@ -71,7 +71,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=22.22.2"
+    "node": ">=24.0.0"
   },
   "license": "Apache-2.0",
   "repository": {

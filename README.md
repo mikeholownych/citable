@@ -18,7 +18,8 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 
 - **Persistent registries** (`.citable/`): queries, prompts, entities, claims,
   evidence, pages, crawler policies, competitors, experiments, metrics,
-  objectives, interventions, and optional connections — all
+  objectives, interventions, optional connections, reviewers, review policies,
+  and governed exceptions — all
   JSON-Schema validated with referential integrity and history-preserving saves.
 - **123 detectors** across 18 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
@@ -163,6 +164,8 @@ GSC_ACCESS_TOKEN=... citable connect sync --connection-id CONNECTION-GSC --start
 citable objectives init --input objective.json --write
 citable objectives validate
 citable evaluate OBJECTIVE-PRODUCT_DISCOVERY --ref-date 2026-07-18
+citable governance validate --ref-date 2026-07-19
+citable governance evaluate <run-id> --ref-date 2026-07-19
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -173,7 +176,7 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 13 registries plus findings, runs, observations, remediation, config, and prompt results |
+| `schemas/` | JSON Schemas: 16 registries plus findings, runs, observations, remediation, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |
@@ -191,10 +194,13 @@ citable validate              # registry schema + referential integrity
   partial, operator-supplied, and missing evidence boundaries
 - [Measurement objectives](docs/measurement-objectives.md) — optional metric
   imports, user-owned objectives, comparison windows, and guardrails
+- [Reviewer and exception governance](docs/governance/reviewer-exceptions.md) —
+  policy-driven authority, separation of duties, expiry, invalidation, and
+  immutable enforcement dispositions
 
 ## Requirements
 
-Node >= 22.22.2. Network access is used for URL audits and explicitly selected
+Node >= 24.0.0. Network access is used for URL audits and explicitly selected
 live collectors. Render collection requires the optional `playwright` peer and
 an installed Chromium browser. Google index inspection uses `GSC_ACCESS_TOKEN`
 and `--site-url`; CrUX uses `CRUX_API_KEY`. Missing dependencies or credentials

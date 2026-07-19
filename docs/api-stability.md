@@ -12,7 +12,7 @@ Changes to any of the following require a **MAJOR** version bump:
 | `manifest` schema | `manifest.json` envelope fields required by downstream consumers |
 | Detector IDs | `detector_id` values (e.g. `TECH-001`) — referenced in suppressions and reports |
 | Namespace names | `TECH`, `CRAWL`, `ARCH`, etc. — used in `--scope` flag |
-| CLI commands | `audit`, `init`, `inspect`, `map-claims`, `substantiate`, `schema`, `validate`, `compare-snapshots`, `action-plan` |
+| CLI commands | `audit`, `init`, `inspect`, `map-claims`, `substantiate`, `schema`, `validate`, `compare-snapshots`, `action-plan`, `governance` |
 | CLI flags | `--scope`, `--target`, `--output-dir`, `--providers`, `--yes`, `--dry-run`, `--force` |
 | Exit codes | `0` = success, `1` = findings at or above threshold, `2` = tool error |
 | Registry schemas | JSON-Schema files in `schemas/` — changes to required fields |
@@ -47,4 +47,6 @@ Changes to any of the following require a **MAJOR** version bump:
 1. Deprecated in a MINOR release (documented, still runs, emits `deprecated: true` field)
 2. Removed in the next MAJOR release
 
-This ensures suppressions in `.citable/` registries don't silently stop working.
+This ensures governed exceptions in `.citable/exceptions.yaml` do not silently
+stop matching. An exception match never changes a finding's technical state;
+it creates a separately checksummed enforcement disposition.
