@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 224 pass in v1.12.0; 238 pass on the current development branch |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 79 packaged files per provider |
+| Distribution | 81 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -56,6 +56,10 @@ audited property or claiming that a recommendation was implemented.
 - Acceptance-corpus evaluation preserves detector confusion matrices,
   incomplete evidence, reviewer agreement, execution cost, reproducibility,
   and remediation-verification denominators.
+- Acceptance-run receipts bind verified run-package checksums to property,
+  detector, configuration, observation-method, tool, and external-system
+  dimensions. Environment-specific execution context remains visible but is
+  excluded from canonical reproducibility fingerprints.
 
 These capabilities are unreleased until the v1.13 release gates pass. Their
 presence on `main` is not evidence that hosted collectors, independent

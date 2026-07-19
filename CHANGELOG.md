@@ -17,6 +17,11 @@
 - Acceptance-corpus contracts and bounded accuracy metrics covering detector
   confusion matrices, incomplete evidence, reviewer agreement, execution cost,
   reproducibility, and remediation verification.
+- Acceptance-run reproducibility receipts that verify sealed run packages,
+  preserve partial and unavailable observations, exclude disclosed
+  environment-specific fields from fingerprints, and compare property,
+  detector, configuration, observation-method, tool, and external-system drift
+  independently.
 
 ### Changed — Release Evidence Governance
 
