@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Optional read-only connector SDK with explicit non-secret connection state,
+  property discovery, access validation, bounded synchronization, and disconnect.
+- Google Search Console Search Analytics and GA4 Data API adapters that collect
+  declared metrics into immutable observations without storing access tokens.
+
 ## 1.5.1 — 2026-07-18
 
 ### Fixed

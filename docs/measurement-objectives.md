@@ -76,7 +76,23 @@ Citable does not claim that an intervention caused them.
 
 ## Optional Connections
 
-Live connectors are a later additive capability. Their state contract exists so
-future adapters share one vocabulary, but a connection is never required. A
-missing connection is `not_configured`, not a finding, failed audit, or evidence
-that the provider observed no activity. Owner exports remain a supported path.
+GSC and GA4 read-only connectors are available but never required. A missing
+connection is `not_configured`, not a finding, failed audit, or evidence that
+the provider observed no activity. Owner exports remain supported.
+
+```bash
+citable connect status
+citable connect configure --provider gsc --connection-id CONNECTION-GSC \
+  --property-id sc-domain:example.com --write
+GSC_ACCESS_TOKEN=... citable connect validate --connection-id CONNECTION-GSC
+GSC_ACCESS_TOKEN=... citable connect sync --connection-id CONNECTION-GSC \
+  --start-date 2026-06-01 --end-date 2026-06-30
+```
+
+GA4 uses `GA4_ACCESS_TOKEN` by default and a numeric property id. Override the
+environment variable name with `--credential-env`; only its name is stored.
+Tokens are never written to registries or evidence. GSC Search Analytics is
+subject to provider aggregation, privacy filtering, and top-row availability;
+pagination does not prove exhaustive data. GA4 sync is restricted
+to the `Organic Search` channel and remains subject to reporting identity,
+thresholding, attribution, and consent configuration.

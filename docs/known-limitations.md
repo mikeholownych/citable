@@ -5,7 +5,8 @@ surface.
 
 ## Not implemented (documented gaps)
 
-- **Provider coverage is uneven.** Google URL Inspection and CrUX have live API
+- **Provider coverage is uneven.** Google URL Inspection, GSC Search Analytics,
+  GA4 Data API, and CrUX have live API
   paths. Bing index evidence and consumer answer-product observations still
   require owner exports or a disclosed custom adapter. An API adapter is not
   presumed equivalent to ChatGPT, Perplexity, Copilot, or another consumer mode.
@@ -27,6 +28,9 @@ surface.
 - **Performance collection is partial.** CrUX field data or owner exports can be
   collected. Lighthouse lab execution is not bundled; CWV-001..003 remain
   infrastructure-readiness checks.
+- **Connector authentication is operator-managed.** Citable accepts existing
+  OAuth access tokens through environment variables. It does not run an OAuth
+  consent server, store refresh tokens, or guarantee uninterrupted access.
 - **No multimodal detectors.** Image/video/transcript evidence surfaces are
   un-audited beyond alt text (PAGE-007).
 - **Screenshots/rendered directories** in the evidence package layout are
