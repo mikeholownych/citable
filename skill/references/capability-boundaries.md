@@ -10,6 +10,7 @@ Use the narrowest supported state. Never promote evidence across rows.
 | Observed in production logs | Imported evidence | Timestamped `observe logs` artifact with URL, status, bytes, latency, cache result, UA, and verification result |
 | Indexed | Google API or imported evidence | `observe index`; Google inspection covers the indexed version, other engines require owner exports |
 | Rendered profile observed | Optional local browser evidence | Successful profile-specific Chromium DOM, text, screenshot, failed requests, interactions, viewport, and configuration; failed profiles remain independent |
+| Browser journey observed | Schema-validated local browser plan | Engine/version, device, JavaScript, locale, consent, authentication declaration, steps, DOM, text, accessibility snapshot, screenshots, and failures remain separate; differences do not establish semantic or citation impact |
 | Render parity compared | Bounded local comparison | Raw/desktop and mobile/desktop word ratios from the same run or explicitly resumed immutable profiles; not semantic equivalence |
 | Returned by retrieval | Operator supplied | Provider observation containing retrieved source URL |
 | Cited | Import or disclosed adapter | Complete `observe citations` answer with citation URL and product/adapter mode |

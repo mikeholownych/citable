@@ -35,13 +35,15 @@ surface.
 - **Bing AI Performance is owner-export only.** Citable has not captured a
   supported API contract for the public-preview dashboard. Its citation counts
   do not prove ranking, authority, placement, importance, or material support.
-- **Browser rendering is optional and Chromium-bounded.** `observe render`
+- **Browser rendering is optional.** `observe render`
   captures independent desktop, mobile, and JavaScript-disabled DOM, text,
   screenshot, failed-request, and parity evidence when Playwright and Chromium
-  are installed. Interaction execution is limited to visible disclosure,
-  inactive-tab, and load-more-like controls. Cross-browser comparison,
-  authenticated journeys, consent decisions, and application-specific flows
-  remain unproven.
+  are installed. Target-only interaction execution is limited to visible
+  disclosure, inactive-tab, and load-more-like controls. Schema-validated plans
+  can execute Chromium, Firefox, and WebKit journeys, but browser binaries must
+  be installed. Authenticated states require a disclosed custom adapter;
+  consent state is recorded and changes only through explicit steps. Browser
+  differences do not establish semantic, retrieval, or citation impact.
 - **Passage analysis is heuristic.** `observe passages` creates candidates and
   noise ratios, but semantic independence and support still require review.
 - **Citation correctness remains human-authoritative.** Citable normalizes

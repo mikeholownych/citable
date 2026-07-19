@@ -10,6 +10,7 @@ import { validateAgainst } from '../shared/schemaValidator.js';
 import { observeMedia } from '../observations/media.js';
 import { parse as parseHtml } from 'node-html-parser';
 import { verifyManifestIntegrity } from '../release/governance.js';
+import { observeBrowserPlan } from '../observations/browserJourney.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -39,6 +40,7 @@ function canonicalReview(raw, targetOrigin) {
 }
 
 async function observeRender(root, options) {
+  if (options.input) return observeBrowserPlan(root, options);
   if (!options.target || !/^https?:\/\//.test(options.target)) throw new Error('render requires --target <http(s) URL>');
   const profileNames = ['desktop', 'mobile', 'javascript_disabled'];
   let reused = [], previousRaw = null;

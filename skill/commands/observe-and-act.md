@@ -14,6 +14,11 @@ failure_behaviour: unavailable dependency, credential, source run, reviewer, exa
   disclosure, inactive-tab, and load-more-like controls; it does not prove an
   application-specific journey. `--resume-run` reuses only successful profile
   observations from the named immutable run and recollects failed/absent ones.
+  `observe render --input <browser-evidence-plan.json>` executes an
+  explicit Chromium, Firefox, or WebKit profile matrix. Each plan records the
+  browser version, device, JavaScript, locale, consent, authentication state,
+  and ordered interaction steps. Fill/select values are referenced by
+  environment-variable name and are never written to the plan or artifacts.
 - `observe index --input <JSON>` imports owner exports. With `--target`,
   `--site-url`, and `GSC_ACCESS_TOKEN`, it calls Google URL Inspection, which
   reports the indexed version rather than performing a live indexability test.
