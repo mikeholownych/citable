@@ -1,0 +1,765 @@
+{
+  "schema_version": 2,
+  "corpus_id": "CORPUS-V1.13-FIELD-20260719",
+  "version": "1.0.0",
+  "created_at": "2026-07-19T14:43:31Z",
+  "evaluation_design": {
+    "mode": "sample",
+    "population_definition": "All critical and high findings emitted by the selected v1.12.0 bounded URL audits of the four authorized properties, plus four predeclared negative-control cases on the Nebula Components homepage.",
+    "selection_method": "Complete adjudication of emitted critical and high findings; negative controls selected before metric evaluation from deterministic HTML-page eligibility detectors.",
+    "sampling_plan_ref": "CORPUS/SAMPLING-PLAN",
+    "inclusion_criteria": [
+      "Every critical or high finding emitted by the selected acceptance run for each property.",
+      "Four deterministic negative-control cases on an observed HTTP 200 HTML homepage."
+    ],
+    "exclusion_criteria": [
+      "Medium and low findings were not adjudicated in this initial precision sample.",
+      "Semantic findings were excluded because two independent reviewers were not available.",
+      "Sitemap URLs beyond the 50-page crawl ceiling were excluded from accuracy metrics."
+    ],
+    "extrapolation_limits": [
+      "Metrics apply only to the disclosed cases, properties, detector version, and collection window.",
+      "The sample does not estimate precision for medium or low findings or quantify unknown false negatives.",
+      "Owner adjudication is not independent validation."
+    ],
+    "collection_started_at": "2026-07-19T14:30:00Z",
+    "collection_ended_at": "2026-07-19T14:48:58Z"
+  },
+  "properties": [
+    {
+      "property_id": "PROP-GOFAULTLINE",
+      "property_class": "static",
+      "architecture": {
+        "platform": "Amazon S3 and CloudFront inferred from response headers",
+        "rendering": "static",
+        "protections": [
+          "CloudFront"
+        ],
+        "languages": [
+          "en"
+        ],
+        "content_types": [
+          "html",
+          "markdown",
+          "json",
+          "csv"
+        ]
+      },
+      "authorization": {
+        "status": "owner_authorized",
+        "authorized_by": "mikeholownych",
+        "authorized_at": "2026-07-19T14:30:00Z",
+        "expires_at": "2027-07-19T23:59:59Z",
+        "scope": [
+          "collect",
+          "retain",
+          "review",
+          "publish_aggregate",
+          "publish_artifacts"
+        ],
+        "evidence_ref": "CORPUS/AUTHORIZATION"
+      },
+      "collection_methods": [
+        {
+          "method": "bounded same-origin HTTP audit with direct header rechecks",
+          "authority": "owner_controlled",
+          "collector": "citable-1.12.0 on Node 24.18.0",
+          "collected_at": "2026-07-19T14:33:58Z",
+          "limitations": [
+            "Maximum 50 pages; synthetic owner-operated fetches do not establish provider crawler access."
+          ]
+        }
+      ],
+      "publication": {
+        "level": "sanitized_artifacts",
+        "approved_by": "mikeholownych",
+        "approved_at": "2026-07-19T14:43:31Z",
+        "retention_days": 365,
+        "allowed_artifact_refs": [
+          "CORPUS/AUTHORIZATION",
+          "CORPUS/SANITIZATION",
+          "CORPUS/SAMPLING-PLAN",
+          "GOFAULTLINE/RUN",
+          "GOFAULTLINE/RAW",
+          "GOFAULTLINE/DETERMINISTIC",
+          "GOFAULTLINE/HEURISTIC",
+          "GOFAULTLINE/RECEIPT",
+          "GOFAULTLINE/ADJUDICATION"
+        ]
+      },
+      "sanitization": {
+        "reviewed_by": "mikeholownych",
+        "reviewed_at": "2026-07-19T14:43:31Z",
+        "pii_status": "none_detected",
+        "credential_status": "none_detected",
+        "source_identifiers": "approved",
+        "evidence_ref": "CORPUS/SANITIZATION"
+      },
+      "evidence_package_refs": [
+        "GOFAULTLINE/RUN"
+      ],
+      "unavailable_evidence": [
+        "owner search and analytics exports",
+        "production crawler logs",
+        "consumer answer-engine observations",
+        "browser-rendered and field-performance observations"
+      ],
+      "intentionally_incomplete": false,
+      "contradiction_status": "none_observed",
+      "limitations": [
+        "Architecture is inferred from public responses; non-HTML sitemap resources exposed detector applicability defects."
+      ]
+    },
+    {
+      "property_id": "PROP-AISYNDICATE",
+      "property_class": "waf_protected",
+      "architecture": {
+        "platform": "Framework-rendered site behind Cloudflare inferred from public responses",
+        "rendering": "hybrid",
+        "protections": [
+          "Cloudflare",
+          "email address obfuscation"
+        ],
+        "languages": [
+          "en"
+        ],
+        "content_types": [
+          "html",
+          "rss"
+        ]
+      },
+      "authorization": {
+        "status": "owner_authorized",
+        "authorized_by": "mikeholownych",
+        "authorized_at": "2026-07-19T14:30:00Z",
+        "expires_at": "2027-07-19T23:59:59Z",
+        "scope": [
+          "collect",
+          "retain",
+          "review",
+          "publish_aggregate",
+          "publish_artifacts"
+        ],
+        "evidence_ref": "CORPUS/AUTHORIZATION"
+      },
+      "collection_methods": [
+        {
+          "method": "bounded same-origin HTTP audit",
+          "authority": "owner_controlled",
+          "collector": "citable-1.12.0 on Node 24.18.0",
+          "collected_at": "2026-07-19T14:47:47Z",
+          "limitations": [
+            "An earlier preflight returned Cloudflare HTTP 530 error 1033; the selected audit later observed HTTP 200. Both observations are owner-controlled."
+          ]
+        }
+      ],
+      "publication": {
+        "level": "sanitized_artifacts",
+        "approved_by": "mikeholownych",
+        "approved_at": "2026-07-19T14:43:31Z",
+        "retention_days": 365,
+        "allowed_artifact_refs": [
+          "CORPUS/AUTHORIZATION",
+          "CORPUS/SANITIZATION",
+          "CORPUS/SAMPLING-PLAN",
+          "AISYNDICATE/RUN",
+          "AISYNDICATE/RAW",
+          "AISYNDICATE/DETERMINISTIC",
+          "AISYNDICATE/HEURISTIC",
+          "AISYNDICATE/RECEIPT",
+          "AISYNDICATE/ADJUDICATION"
+        ]
+      },
+      "sanitization": {
+        "reviewed_by": "mikeholownych",
+        "reviewed_at": "2026-07-19T14:43:31Z",
+        "pii_status": "none_detected",
+        "credential_status": "none_detected",
+        "source_identifiers": "approved",
+        "evidence_ref": "CORPUS/SANITIZATION"
+      },
+      "evidence_package_refs": [
+        "AISYNDICATE/RUN"
+      ],
+      "unavailable_evidence": [
+        "owner search and analytics exports",
+        "production crawler logs",
+        "consumer answer-engine observations",
+        "browser-rendered and field-performance observations",
+        "independent confirmation of the 530-to-200 transition"
+      ],
+      "intentionally_incomplete": true,
+      "contradiction_status": "observed",
+      "limitations": [
+        "The audit establishes collector-visible responses only; it does not establish global availability or origin state. One high render-dependency inference remains incomplete without browser evidence."
+      ]
+    },
+    {
+      "property_id": "PROP-MIKEHOLOWNYCH",
+      "property_class": "large_sitemap",
+      "architecture": {
+        "platform": "Static framework output behind Cloudflare inferred from response content and headers",
+        "rendering": "static",
+        "protections": [
+          "Cloudflare",
+          "email address obfuscation"
+        ],
+        "languages": [
+          "en"
+        ],
+        "content_types": [
+          "html"
+        ]
+      },
+      "authorization": {
+        "status": "owner_authorized",
+        "authorized_by": "mikeholownych",
+        "authorized_at": "2026-07-19T14:30:00Z",
+        "expires_at": "2027-07-19T23:59:59Z",
+        "scope": [
+          "collect",
+          "retain",
+          "review",
+          "publish_aggregate",
+          "publish_artifacts"
+        ],
+        "evidence_ref": "CORPUS/AUTHORIZATION"
+      },
+      "collection_methods": [
+        {
+          "method": "bounded same-origin HTTP audit with direct utility-path recheck",
+          "authority": "owner_controlled",
+          "collector": "citable-1.12.0 on Node 24.18.0",
+          "collected_at": "2026-07-19T14:34:30Z",
+          "limitations": [
+            "The 50-page ceiling prevented a census of sitemap URLs; Cloudflare email-protection utility URLs entered link discovery."
+          ]
+        }
+      ],
+      "publication": {
+        "level": "sanitized_artifacts",
+        "approved_by": "mikeholownych",
+        "approved_at": "2026-07-19T14:43:31Z",
+        "retention_days": 365,
+        "allowed_artifact_refs": [
+          "CORPUS/AUTHORIZATION",
+          "CORPUS/SANITIZATION",
+          "CORPUS/SAMPLING-PLAN",
+          "MIKEHOLOWNYCH/RUN",
+          "MIKEHOLOWNYCH/RAW",
+          "MIKEHOLOWNYCH/DETERMINISTIC",
+          "MIKEHOLOWNYCH/HEURISTIC",
+          "MIKEHOLOWNYCH/RECEIPT",
+          "MIKEHOLOWNYCH/ADJUDICATION"
+        ]
+      },
+      "sanitization": {
+        "reviewed_by": "mikeholownych",
+        "reviewed_at": "2026-07-19T14:43:31Z",
+        "pii_status": "none_detected",
+        "credential_status": "none_detected",
+        "source_identifiers": "approved",
+        "evidence_ref": "CORPUS/SANITIZATION"
+      },
+      "evidence_package_refs": [
+        "MIKEHOLOWNYCH/RUN"
+      ],
+      "unavailable_evidence": [
+        "complete sitemap census",
+        "owner search and analytics exports",
+        "production crawler logs",
+        "consumer answer-engine observations",
+        "browser-rendered and field-performance observations"
+      ],
+      "intentionally_incomplete": true,
+      "contradiction_status": "observed",
+      "limitations": [
+        "Sitemap-only findings beyond the crawl ceiling are excluded; the Cloudflare utility URL exposed an index-target classification defect."
+      ]
+    },
+    {
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "property_class": "framework_rendered",
+      "architecture": {
+        "platform": "Next.js behind Cloudflare inferred from response headers and markup",
+        "rendering": "hybrid",
+        "protections": [
+          "Cloudflare"
+        ],
+        "languages": [
+          "en"
+        ],
+        "content_types": [
+          "html",
+          "plain text",
+          "xml"
+        ]
+      },
+      "authorization": {
+        "status": "owner_authorized",
+        "authorized_by": "mikeholownych",
+        "authorized_at": "2026-07-19T14:30:00Z",
+        "expires_at": "2027-07-19T23:59:59Z",
+        "scope": [
+          "collect",
+          "retain",
+          "review",
+          "publish_aggregate",
+          "publish_artifacts"
+        ],
+        "evidence_ref": "CORPUS/AUTHORIZATION"
+      },
+      "collection_methods": [
+        {
+          "method": "bounded same-origin HTTP audit and publisher-surface preflight",
+          "authority": "owner_controlled",
+          "collector": "citable-1.12.0 on Node 24.18.0",
+          "collected_at": "2026-07-19T14:34:34Z",
+          "limitations": [
+            "Historical v1.12.0 surfaces predate an ADR-002 release manifest, so historical projection consensus cannot be established."
+          ]
+        }
+      ],
+      "publication": {
+        "level": "sanitized_artifacts",
+        "approved_by": "mikeholownych",
+        "approved_at": "2026-07-19T14:43:31Z",
+        "retention_days": 365,
+        "allowed_artifact_refs": [
+          "CORPUS/AUTHORIZATION",
+          "CORPUS/SANITIZATION",
+          "CORPUS/SAMPLING-PLAN",
+          "NEBULA/RUN",
+          "NEBULA/RAW",
+          "NEBULA/DETERMINISTIC",
+          "NEBULA/HEURISTIC",
+          "NEBULA/RECEIPT",
+          "NEBULA/ADJUDICATION"
+        ]
+      },
+      "sanitization": {
+        "reviewed_by": "mikeholownych",
+        "reviewed_at": "2026-07-19T14:43:31Z",
+        "pii_status": "none_detected",
+        "credential_status": "none_detected",
+        "source_identifiers": "approved",
+        "evidence_ref": "CORPUS/SANITIZATION"
+      },
+      "evidence_package_refs": [
+        "NEBULA/RUN"
+      ],
+      "unavailable_evidence": [
+        "historical manifest-bound representation consensus",
+        "owner search and analytics exports",
+        "production crawler logs",
+        "consumer answer-engine observations",
+        "browser-rendered and field-performance observations"
+      ],
+      "intentionally_incomplete": true,
+      "contradiction_status": "observed",
+      "limitations": [
+        "Publisher-controlled observations are not independent attestation; external intermediary divergence remains external and unverified."
+      ]
+    }
+  ],
+  "detector_cases": [
+    {
+      "case_id": "AI-TECH-001",
+      "property_id": "PROP-AISYNDICATE",
+      "detector_id": "TECH-001",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "AISYNDICATE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "AI-TECH-002",
+      "property_id": "PROP-AISYNDICATE",
+      "detector_id": "TECH-002",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "AISYNDICATE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "AI-TECH-011",
+      "property_id": "PROP-AISYNDICATE",
+      "detector_id": "TECH-011",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "detection",
+      "observed": "incomplete",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "AISYNDICATE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "AI-TECH-012",
+      "property_id": "PROP-AISYNDICATE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "AISYNDICATE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-1",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-2",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-3",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-4",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-5",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-TECH-012-6",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-1",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-2",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-3",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-4",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-5",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "FAULTLINE-PAGE-001-6",
+      "property_id": "PROP-GOFAULTLINE",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "GOFAULTLINE/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "MIKE-TECH-001",
+      "property_id": "PROP-MIKEHOLOWNYCH",
+      "detector_id": "TECH-001",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "MIKEHOLOWNYCH/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "MIKE-TECH-002",
+      "property_id": "PROP-MIKEHOLOWNYCH",
+      "detector_id": "TECH-002",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "MIKEHOLOWNYCH/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "NEBULA-TECH-001",
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "detector_id": "TECH-001",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "not_detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "NEBULA/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "NEBULA-TECH-002",
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "detector_id": "TECH-002",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "not_detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "NEBULA/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "NEBULA-TECH-012",
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "detector_id": "TECH-012",
+      "detector_version": "1.12.0",
+      "namespace": "TECH",
+      "expected": "non_detection",
+      "observed": "not_detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "NEBULA/ADJUDICATION"
+      ]
+    },
+    {
+      "case_id": "NEBULA-PAGE-001",
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "detector_id": "PAGE-001",
+      "detector_version": "1.12.0",
+      "namespace": "PAGE",
+      "expected": "non_detection",
+      "observed": "not_detected",
+      "adjudicator": "mikeholownych",
+      "evidence_refs": [
+        "NEBULA/ADJUDICATION"
+      ]
+    }
+  ],
+  "semantic_reviews": [],
+  "executions": [
+    {
+      "property_id": "PROP-GOFAULTLINE",
+      "run_id": "20260719T143358-audit-rhww",
+      "raw_artifact_refs": [
+        "GOFAULTLINE/RAW"
+      ],
+      "deterministic_finding_refs": [
+        "GOFAULTLINE/DETERMINISTIC"
+      ],
+      "heuristic_finding_refs": [
+        "GOFAULTLINE/HEURISTIC"
+      ],
+      "reviewer_assignment_refs": [],
+      "disagreement_refs": [],
+      "exception_refs": [],
+      "intervention_refs": [],
+      "verification_refs": [],
+      "reproducibility_receipt_ref": "GOFAULTLINE/RECEIPT",
+      "runtime_ms": 4920,
+      "peak_memory_bytes": 123445248,
+      "evidence_bytes": 214555,
+      "reproducible": false,
+      "incomplete": true
+    },
+    {
+      "property_id": "PROP-AISYNDICATE",
+      "run_id": "20260719T144747-audit-41dw",
+      "raw_artifact_refs": [
+        "AISYNDICATE/RAW"
+      ],
+      "deterministic_finding_refs": [
+        "AISYNDICATE/DETERMINISTIC"
+      ],
+      "heuristic_finding_refs": [
+        "AISYNDICATE/HEURISTIC"
+      ],
+      "reviewer_assignment_refs": [],
+      "disagreement_refs": [],
+      "exception_refs": [],
+      "intervention_refs": [],
+      "verification_refs": [],
+      "reproducibility_receipt_ref": "AISYNDICATE/RECEIPT",
+      "runtime_ms": 6470,
+      "peak_memory_bytes": 177532928,
+      "evidence_bytes": 814185,
+      "reproducible": false,
+      "incomplete": true
+    },
+    {
+      "property_id": "PROP-MIKEHOLOWNYCH",
+      "run_id": "20260719T143430-audit-6yeh",
+      "raw_artifact_refs": [
+        "MIKEHOLOWNYCH/RAW"
+      ],
+      "deterministic_finding_refs": [
+        "MIKEHOLOWNYCH/DETERMINISTIC"
+      ],
+      "heuristic_finding_refs": [
+        "MIKEHOLOWNYCH/HEURISTIC"
+      ],
+      "reviewer_assignment_refs": [],
+      "disagreement_refs": [],
+      "exception_refs": [],
+      "intervention_refs": [],
+      "verification_refs": [],
+      "reproducibility_receipt_ref": "MIKEHOLOWNYCH/RECEIPT",
+      "runtime_ms": 4170,
+      "peak_memory_bytes": 208822272,
+      "evidence_bytes": 1063941,
+      "reproducible": false,
+      "incomplete": true
+    },
+    {
+      "property_id": "PROP-NEBULACOMPONENTS",
+      "run_id": "20260719T143434-audit-1eui",
+      "raw_artifact_refs": [
+        "NEBULA/RAW"
+      ],
+      "deterministic_finding_refs": [
+        "NEBULA/DETERMINISTIC"
+      ],
+      "heuristic_finding_refs": [
+        "NEBULA/HEURISTIC"
+      ],
+      "reviewer_assignment_refs": [],
+      "disagreement_refs": [],
+      "exception_refs": [],
+      "intervention_refs": [],
+      "verification_refs": [],
+      "reproducibility_receipt_ref": "NEBULA/RECEIPT",
+      "runtime_ms": 3250,
+      "peak_memory_bytes": 146620416,
+      "evidence_bytes": 304197,
+      "reproducible": false,
+      "incomplete": true
+    }
+  ],
+  "remediation_verifications": [],
+  "false_negative_discovery_limitations": [
+    "Unknown false negatives are not quantified; only four predeclared negative controls were evaluated.",
+    "The 50-page URL-audit ceiling prevented complete sitemap adjudication on mikeholownych.com."
+  ],
+  "causal_limitations": [
+    "No property intervention was performed, so this corpus establishes no causal effect on search, citation, traffic, or conversion outcomes."
+  ],
+  "limitations": [
+    "All collection and adjudication were owner-controlled and are not independent attestation.",
+    "Fingerprint equality was not observed across repeated live runs even though declared comparability dimensions were stable.",
+    "The corpus intentionally preserves detector applicability defects and incomplete observations rather than correcting the historical v1.12.0 cohort."
+  ]
+}

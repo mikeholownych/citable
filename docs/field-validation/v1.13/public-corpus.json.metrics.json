@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "corpus_id": "CORPUS-V1.13-FIELD-20260719",
+  "version": "1.0.0",
+  "provenance": {
+    "corpus_hash": "6cacf173b1f4c63a29ca024e1a272c0a727902bcc8f5d6c1408cecbe8cbdf228",
+    "corpus_created_at": "2026-07-19T14:43:31Z",
+    "collection_started_at": "2026-07-19T14:30:00Z",
+    "collection_ended_at": "2026-07-19T14:48:58Z"
+  },
+  "evaluation_design": {
+    "mode": "sample",
+    "population_definition": "All critical and high findings emitted by the selected v1.12.0 bounded URL audits of the four authorized properties, plus four predeclared negative-control cases on the Nebula Components homepage.",
+    "selection_method": "Complete adjudication of emitted critical and high findings; negative controls selected before metric evaluation from deterministic HTML-page eligibility detectors.",
+    "sampling_plan_ref": "CORPUS/SAMPLING-PLAN",
+    "inclusion_criteria": [
+      "Every critical or high finding emitted by the selected acceptance run for each property.",
+      "Four deterministic negative-control cases on an observed HTTP 200 HTML homepage."
+    ],
+    "exclusion_criteria": [
+      "Medium and low findings were not adjudicated in this initial precision sample.",
+      "Semantic findings were excluded because two independent reviewers were not available.",
+      "Sitemap URLs beyond the 50-page crawl ceiling were excluded from accuracy metrics."
+    ],
+    "extrapolation_limits": [
+      "Metrics apply only to the disclosed cases, properties, detector version, and collection window.",
+      "The sample does not estimate precision for medium or low findings or quantify unknown false negatives.",
+      "Owner adjudication is not independent validation."
+    ],
+    "collection_started_at": "2026-07-19T14:30:00Z",
+    "collection_ended_at": "2026-07-19T14:48:58Z"
+  },
+  "population": {
+    "properties": 4,
+    "detector_cases": 22,
+    "semantic_reviews": 0,
+    "executions": 4,
+    "remediation_verifications": 0
+  },
+  "detector_versions": {
+    "versions": [
+      "1.12.0"
+    ],
+    "mixed_versions": false,
+    "cases_by_version": {
+      "1.12.0": {
+        "true_positive": 0,
+        "false_positive": 17,
+        "true_negative": 4,
+        "false_negative": 0,
+        "incomplete": 1,
+        "evaluated": 21,
+        "precision": 0,
+        "recall": null,
+        "false_positive_rate": 0.8095238095238095,
+        "discovered_false_negative_rate": null,
+        "incomplete_rate": 0.045454545454545456
+      }
+    }
+  },
+  "detector_accuracy": {
+    "overall": {
+      "true_positive": 0,
+      "false_positive": 17,
+      "true_negative": 4,
+      "false_negative": 0,
+      "incomplete": 1,
+      "evaluated": 21,
+      "precision": 0,
+      "recall": null,
+      "false_positive_rate": 0.8095238095238095,
+      "discovered_false_negative_rate": null,
+      "incomplete_rate": 0.045454545454545456
+    },
+    "by_namespace": {
+      "PAGE": {
+        "true_positive": 0,
+        "false_positive": 6,
+        "true_negative": 1,
+        "false_negative": 0,
+        "incomplete": 0,
+        "evaluated": 7,
+        "precision": 0,
+        "recall": null,
+        "false_positive_rate": 0.8571428571428571,
+        "discovered_false_negative_rate": null,
+        "incomplete_rate": 0
+      },
+      "TECH": {
+        "true_positive": 0,
+        "false_positive": 11,
+        "true_negative": 3,
+        "false_negative": 0,
+        "incomplete": 1,
+        "evaluated": 14,
+        "precision": 0,
+        "recall": null,
+        "false_positive_rate": 0.7857142857142857,
+        "discovered_false_negative_rate": null,
+        "incomplete_rate": 0.06666666666666667
+      }
+    }
+  },
+  "reviewer_metrics": {
+    "reviewable_items": 0,
+    "exact_agreement_items": 0,
+    "exact_agreement_rate": null,
+    "adjudicated_items": 0,
+    "adjudication_rate": null
+  },
+  "execution_metrics": {
+    "average_runtime_ms": 4702.5,
+    "p95_runtime_ms": 6470,
+    "peak_memory_bytes": 208822272,
+    "evidence_storage_bytes": 2396878,
+    "reproducibility_rate": 0,
+    "incomplete_evidence_rate": 1
+  },
+  "remediation_metrics": {
+    "evaluated": 0,
+    "verified": 0,
+    "verification_success_rate": null,
+    "incomplete": 0
+  },
+  "metric_definitions": {
+    "detector_precision": {
+      "value": 0,
+      "numerator": 0,
+      "denominator": 17,
+      "population": "Adjudicated detector cases with detected outcomes.",
+      "exclusions": [
+        "Incomplete cases and non-detected outcomes."
+      ],
+      "confidence_limitations": [
+        "Precision applies only to the disclosed expected-case population."
+      ]
+    },
+    "discovered_false_negative_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "population": "Adjudicated cases expected to produce a detection.",
+      "exclusions": [
+        "Unknown and incomplete expected detections."
+      ],
+      "confidence_limitations": [
+        "Unknown false negatives are not quantified; only four predeclared negative controls were evaluated.",
+        "The 50-page URL-audit ceiling prevented complete sitemap adjudication on mikeholownych.com."
+      ]
+    },
+    "false_positive_rate": {
+      "value": 0.8095238095238095,
+      "numerator": 17,
+      "denominator": 21,
+      "population": "Adjudicated cases expected not to produce a detection.",
+      "exclusions": [
+        "Incomplete cases and expected detections."
+      ],
+      "confidence_limitations": [
+        "Rate applies only to represented non-detection cases."
+      ]
+    },
+    "reviewer_exact_agreement": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "population": "Semantic reviews with at least two verdicts.",
+      "exclusions": [
+        "Reviews with fewer than two verdicts."
+      ],
+      "confidence_limitations": [
+        "Exact agreement does not establish reviewer correctness."
+      ]
+    },
+    "adjudication_rate": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "population": "Semantic reviews with at least two verdicts.",
+      "exclusions": [
+        "Reviews with fewer than two verdicts."
+      ],
+      "confidence_limitations": [
+        "Adjudication rate describes workflow, not semantic accuracy."
+      ]
+    },
+    "average_runtime_ms": {
+      "value": 4702.5,
+      "numerator": 18810,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Runtime depends on disclosed execution environments."
+      ]
+    },
+    "p95_runtime_ms": {
+      "value": 6470,
+      "numerator": null,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Nearest-rank p95 is unstable for small populations."
+      ]
+    },
+    "peak_memory_bytes": {
+      "value": 208822272,
+      "numerator": null,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Peak memory is the maximum owner-reported execution value."
+      ]
+    },
+    "evidence_storage_bytes": {
+      "value": 2396878,
+      "numerator": 2396878,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Storage excludes unavailable or undisclosed evidence."
+      ]
+    },
+    "run_reproducibility": {
+      "value": 0,
+      "numerator": 0,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Reproducibility is bounded by each run receipt and declared exclusions."
+      ]
+    },
+    "incomplete_evidence_rate": {
+      "value": 1,
+      "numerator": 4,
+      "denominator": 4,
+      "population": "Recorded corpus executions.",
+      "exclusions": [],
+      "confidence_limitations": [
+        "Incomplete status depends on declared unavailable evidence."
+      ]
+    },
+    "remediation_verification_success": {
+      "value": null,
+      "numerator": 0,
+      "denominator": 0,
+      "population": "Remediation verifications with a completed verdict.",
+      "exclusions": [
+        "Incomplete verifications."
+      ],
+      "confidence_limitations": [
+        "Verification does not establish external outcome causation."
+      ]
+    }
+  },
+  "unknown_false_negatives": {
+    "status": "not_quantified",
+    "reason": "Cases absent from the disclosed and adjudicated expected-detection population cannot be counted."
+  },
+  "false_negative_discovery_limitations": [
+    "Unknown false negatives are not quantified; only four predeclared negative controls were evaluated.",
+    "The 50-page URL-audit ceiling prevented complete sitemap adjudication on mikeholownych.com."
+  ],
+  "causal_limitations": [
+    "No property intervention was performed, so this corpus establishes no causal effect on search, citation, traffic, or conversion outcomes."
+  ],
+  "limitations": [
+    "All collection and adjudication were owner-controlled and are not independent attestation.",
+    "Fingerprint equality was not observed across repeated live runs even though declared comparability dimensions were stable.",
+    "The corpus intentionally preserves detector applicability defects and incomplete observations rather than correcting the historical v1.12.0 cohort."
+  ],
+  "metrics_hash": "1bd2c3addf80fa8723eb35ddf3011e2c9f723e5b6aeeba10926f260f8eba30a3"
+}
