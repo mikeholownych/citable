@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 141 pass |
-| Registries | 18 schema-validated |
+| Tests | 144 pass |
+| Registries | 19 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 63 packaged files per provider |
+| Distribution | 65 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -39,6 +39,8 @@ audited property or claiming that a recommendation was implemented.
 - Policy-driven reviewer authority and governed exceptions that preserve failed
   technical state while independently recording enforcement disposition,
   validity, residual risk, expiry, renewal, and invalidation evidence.
+- Version-pinned canonical audit schedules, hash-bound GitHub projections, and
+  differential comparability dimensions without causal attribution.
 
 ## Next Priorities
 

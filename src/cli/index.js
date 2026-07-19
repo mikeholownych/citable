@@ -19,6 +19,7 @@ import { evaluateObjective, importMetrics, initializeObjective, validateObjectiv
 import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
 import { evaluateDispositions, validateGovernance } from '../commands/governance.js';
 import { evaluateReviews, initializeSamplingPlan, prioritizeReviews, queueReviews, selectSample } from '../commands/reviews.js';
+import { projectGithub, runSchedule } from '../commands/delivery.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -62,6 +63,8 @@ Commands
   reviews plan              Validate/add a sampling plan from --input
   reviews sample [plan]     Select a reproducible census or seeded random sample
   reviews evaluate          Detect stale decisions and require disagreement adjudication
+  schedules run [id]        Execute an active version-pinned audit schedule
+  project github [run]      Render non-authoritative GitHub annotations from a run
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
@@ -270,6 +273,18 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         else if(mode==='evaluate') { r=evaluateReviews(root); if(!r.ok) process.exitCode=1; }
         else throw new Error('usage: citable reviews <queue|prioritize|plan|sample|evaluate> [options]');
         out(args,`reviews ${mode}: ${r.created?.length ?? r.items?.length ?? r.selected_item_ids?.length ?? r.results?.length ?? 1} item(s)${args.write?' written':' (dry run)'}`,r);
+        break;
+      }
+      case 'schedules': {
+        if(args._[0]!=='run') throw new Error('usage: citable schedules run <schedule-id> [--ref-date YYYY-MM-DD]');
+        const r=await runSchedule(root,{scheduleId:args._[1],refDate:args.refDate});
+        out(args,`schedule ${r.schedule_execution.schedule_id}: audit ${r.runId}\nEvidence package: ${r.dir}\nExecution record: ${r.execution_file}`,r);
+        break;
+      }
+      case 'project': {
+        if(args._[0]!=='github') throw new Error('usage: citable project github <run-id>');
+        const r=projectGithub(root,{runId:args._[1]});
+        out(args,`project github ${r.source_run_id}: ${r.annotations.length} annotation(s)\nProjection: ${path.join(r.dir,'annotations.json')}`,r);
         break;
       }
       case 'self-upgrade': {
