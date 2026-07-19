@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 151 pass |
-| Registries | 19 schema-validated |
+| Tests | 224 pass in v1.12.0; 238 pass on the current development branch |
+| Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 67 packaged files per provider |
+| Distribution | 79 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -42,6 +42,24 @@ audited property or claiming that a recommendation was implemented.
   validity, residual risk, expiry, renewal, and invalidation evidence.
 - Version-pinned canonical audit schedules, hash-bound GitHub projections, and
   differential comparability dimensions without causal attribution.
+
+## v1.13 Validation Gates In Progress
+
+- Canonical release manifests bind executable facts and controlled projections
+  to the release commit; mismatched counts, versions, generated artifacts, or
+  checksums fail closed.
+- Releases use an explicit `published_unfinalized` phase. Publisher-controlled
+  deployment receipts gate irreversible finalization, while later drift creates
+  a new finding and never rewrites historical release state.
+- Direct and cache-busted representation probes remain `external_unverified`
+  longitudinal observations and cannot satisfy release gates.
+- Acceptance-corpus evaluation preserves detector confusion matrices,
+  incomplete evidence, reviewer agreement, execution cost, reproducibility,
+  and remediation-verification denominators.
+
+These capabilities are unreleased until the v1.13 release gates pass. Their
+presence on `main` is not evidence that hosted collectors, independent
+attestation, or the four-property field corpus have been completed.
 
 ## Next Priorities
 

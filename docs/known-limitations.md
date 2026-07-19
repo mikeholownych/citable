@@ -65,6 +65,19 @@ surface.
   depends on the optional `_citable-transport.json` sidecar; without it,
   status/header detectors see defaults (recorded in audit assumptions).
 
+## Release projections and representation drift
+
+Citable can bind controlled build projections to a release manifest, validate
+publisher deployment receipts, and compare direct and cache-busted retrieval
+observations over time. A publisher receipt is owner-controlled execution
+evidence, not independent attestation. Representation observations are labelled
+`external_unverified`, sample only the disclosed request path, identity, region,
+and time, and never prove that all caches, indexes, answer products, accounts,
+or geographies are current. They cannot finalize a release.
+
+Finalization is a point-in-time attestation. Later drift creates a new finding;
+it does not invalidate or rewrite the historical finalized state.
+
 ## Probabilistic checks (by design)
 
 Heuristic detectors (deterministic: false) — TECH-011/014/015, PAGE-008/009,

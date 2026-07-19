@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   ship:
-    name: Tag and release v${{ inputs.version }}
+    name: Publish unfinalized v${{ inputs.version }}
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -47,8 +47,12 @@ jobs:
             exit 1
           fi
           npm test
+          npm run build:dist
           npm pack --dry-run --json >/tmp/npm-pack.json
           node scripts/release-process.js notes "${RELEASE_VERSION}" /tmp/release-notes.md
+          node scripts/release-governance.js manifest /tmp/release-evidence "${GITHUB_SHA}"
+          node scripts/release-governance.js validate /tmp/release-evidence/release-manifest.json /tmp/release-evidence
+          node scripts/release-governance.js state-init /tmp/release-evidence/release-manifest.json /tmp/release-evidence/release-state.json "github:${GITHUB_ACTOR}"
 
       - name: Create protected release reference
         env:
@@ -62,8 +66,13 @@ jobs:
           git push origin "v${RELEASE_VERSION}"
           gh release create "v${RELEASE_VERSION}" \
             --verify-tag \
+            --draft \
             --title "v${RELEASE_VERSION}" \
-            --notes-file /tmp/release-notes.md
+            --notes-file /tmp/release-notes.md \
+            /tmp/release-evidence/release-manifest.json \
+            /tmp/release-evidence/release-state.json \
+            /tmp/release-evidence/resource-data.json \
+            /tmp/release-evidence/llms.txt
           gh workflow run npm-publish.yml \
             --ref "v${RELEASE_VERSION}" \
             -f "version=${RELEASE_VERSION}"

@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Added — Release Evidence Governance
+
+- Canonical release manifests that bind executable detector, namespace,
+  registry, provider, distribution, documentation, and generated publisher
+  projections to the release commit with fail-closed checksum validation.
+- Two-phase release governance with `published_unfinalized`, immutable
+  finalization, bounded dwell, terminal withdrawal or supersession, and
+  owner-controlled deployment receipts that cannot be mistaken for independent
+  attestation.
+- Direct and cache-busted representation-drift observations with longitudinal
+  divergence and convergence evidence that remains `external_unverified` and
+  cannot satisfy release gates.
+- Acceptance-corpus contracts and bounded accuracy metrics covering detector
+  confusion matrices, incomplete evidence, reviewer agreement, execution cost,
+  reproducibility, and remediation verification.
+
+### Changed — Release Evidence Governance
+
+- Release shipping now creates a draft release, records npm publication as an
+  explicit unfinalized state, and requires valid controlled-surface receipts in
+  a separate protected workflow before publishing the GitHub release as latest.
+
 ### Added — Executive Reporting Suite
 
 **Governed input registries (8 new schemas + registry specs)**

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "corpus_id": "CORPUS-V1-INITIAL",
+  "version": "1.0.0",
+  "created_at": "2026-07-19T09:00:00Z",
+  "properties": [
+    { "property_id": "PROP-A", "property_class": "static_marketing", "owner_authorized": true, "evidence_package_refs": ["RUN-A"], "unavailable_evidence": [], "limitations": ["Initial controlled fixture."] },
+    { "property_id": "PROP-B", "property_class": "publisher_surface", "owner_authorized": true, "evidence_package_refs": ["RUN-B"], "unavailable_evidence": ["independent intermediary internals"], "limitations": ["Intermediary state is externally unverified."] }
+  ],
+  "detector_cases": [
+    { "case_id": "CASE-1", "property_id": "PROP-A", "detector_id": "TECH-001", "namespace": "TECH", "expected": "detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-1"] },
+    { "case_id": "CASE-2", "property_id": "PROP-A", "detector_id": "TECH-002", "namespace": "TECH", "expected": "non_detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-2"] },
+    { "case_id": "CASE-3", "property_id": "PROP-B", "detector_id": "AGENT-003", "namespace": "AGENT", "expected": "detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-1"] },
+    { "case_id": "CASE-4", "property_id": "PROP-B", "detector_id": "AGENT-001", "namespace": "AGENT", "expected": "non_detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-2"] },
+    { "case_id": "CASE-5", "property_id": "PROP-B", "detector_id": "CRAWL-001", "namespace": "CRAWL", "expected": "detection", "observed": "incomplete", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/INCOMPLETE"] }
+  ],
+  "semantic_reviews": [
+    { "review_id": "SEM-1", "property_id": "PROP-A", "review_type": "claim_support", "reviewer_verdicts": ["supported", "supported"], "adjudicated": false, "evidence_refs": ["RUN-A/SEM-1"] },
+    { "review_id": "SEM-2", "property_id": "PROP-B", "review_type": "citation_correctness", "reviewer_verdicts": ["supported", "unsupported"], "adjudicated": true, "evidence_refs": ["RUN-B/SEM-2"] }
+  ],
+  "executions": [
+    { "property_id": "PROP-A", "run_id": "RUN-A", "runtime_ms": 1000, "peak_memory_bytes": 1000000, "evidence_bytes": 5000, "reproducible": true, "incomplete": false },
+    { "property_id": "PROP-B", "run_id": "RUN-B", "runtime_ms": 3000, "peak_memory_bytes": 2000000, "evidence_bytes": 7000, "reproducible": false, "incomplete": true }
+  ],
+  "remediation_verifications": [
+    { "verification_id": "VERIFY-1", "property_id": "PROP-A", "status": "verified", "evidence_refs": ["RUN-A-POST"] },
+    { "verification_id": "VERIFY-2", "property_id": "PROP-B", "status": "incomplete", "evidence_refs": ["RUN-B-POST"] }
+  ],
+  "limitations": ["This fixture validates metric semantics and is not a published field corpus."]
+}

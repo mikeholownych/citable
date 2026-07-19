@@ -54,6 +54,7 @@
     "build:dist": "node scripts/build-dist.js",
     "release:prepare": "node scripts/release-process.js prepare",
     "release:validate": "node scripts/release-process.js validate",
+    "release:manifest": "node scripts/release-governance.js manifest",
     "prepack": "npm run build:dist"
   },
   "bin": {
@@ -66,6 +67,8 @@
     "schemas/",
     "skill/",
     "scripts/build-dist.js",
+    "scripts/release-governance.js",
+    "release/",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

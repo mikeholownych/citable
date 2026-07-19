@@ -177,6 +177,8 @@ citable reviews evaluate
 citable schedules run <schedule-id> --ref-date 2026-07-19
 citable project github <run-id>
 citable observe media --input media-manifest.json # add --ocr explicitly when required
+citable observe representation --input release-manifest.json --target https://example.com/llms.txt
+citable corpus evaluate --input acceptance-corpus.json
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -187,7 +189,7 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 19 registries plus findings, runs, observations, remediation, config, and prompt results |
+| `schemas/` | JSON Schemas: 27 registries plus findings, runs, observations, release governance, remediation, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |

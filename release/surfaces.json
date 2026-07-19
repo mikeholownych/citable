@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "controlled_surfaces": [
+    {
+      "surface_id": "nebula-citable-resource",
+      "url": "https://nebulacomponents.shop/resources/citable",
+      "projection_id": "resource-data",
+      "required_for_finalization": true
+    },
+    {
+      "surface_id": "nebula-llms-txt",
+      "url": "https://nebulacomponents.shop/llms.txt",
+      "projection_id": "llms-txt",
+      "required_for_finalization": true
+    }
+  ]
+}

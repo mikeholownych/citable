@@ -1,0 +1,73 @@
+name: Resolve unfinalized release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version without the v prefix
+        required: true
+        type: string
+      disposition:
+        description: Terminal disposition after dwell expiry
+        required: true
+        type: choice
+        options:
+          - withdrawn
+          - superseded
+      reason:
+        description: Evidence-backed resolution reason
+        required: true
+        type: string
+      superseding_release_id:
+        description: Required for superseded, for example RELEASE-v1.13.1
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: resolve-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve v${{ inputs.version }} as ${{ inputs.disposition }}
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve only after bounded dwell expires
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          DISPOSITION: ${{ inputs.disposition }}
+          RESOLUTION_REASON: ${{ inputs.reason }}
+          SUPERSEDING_RELEASE_ID: ${{ inputs.superseding_release_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/release-evidence
+          gh release download "v${RELEASE_VERSION}" --pattern 'release-state.json' --dir /tmp/release-evidence
+          args=(state-resolve /tmp/release-evidence/release-state.json "${DISPOSITION}" "github:${GITHUB_ACTOR}" "${RESOLUTION_REASON}")
+          if [[ "${DISPOSITION}" == "superseded" ]]; then
+            test -n "${SUPERSEDING_RELEASE_ID}"
+            args+=("${SUPERSEDING_RELEASE_ID}")
+          fi
+          node scripts/release-governance.js "${args[@]}"
+          gh release upload "v${RELEASE_VERSION}" /tmp/release-evidence/release-state.json --clobber
+          gh release edit "v${RELEASE_VERSION}" \
+            --title "v${RELEASE_VERSION} (${DISPOSITION})" \
+            --draft=false \
+            --prerelease \
+            --latest=false

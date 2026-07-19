@@ -5,9 +5,9 @@ Citable publishes to npm as `@nebulacomponents/citable`.
 Trusted publishing uses GitHub Actions OIDC instead of a long-lived npm publish
 token. The repository workflow is `.github/workflows/npm-publish.yml`.
 
-The package is published. Releases use the tag-triggered workflow and the
-package-scoped trusted-publisher binding described below; maintainers should not
-add a long-lived npm token to repository or environment secrets.
+The package is published. Releases use package-scoped trusted publishing and a
+two-phase finalization process; maintainers should not add a long-lived npm
+token to repository or environment secrets.
 
 ## npm Settings
 
@@ -84,15 +84,50 @@ same environment name.
 4. Merge the release PR through normal protected-branch checks.
 5. Dispatch `Ship release` with the same version. The protected `release`
    environment gates tagging. The workflow revalidates version consistency,
-   tests, and the packed artifact before creating the tag and GitHub release.
+   tests, builds distributions, creates and validates the canonical release
+   manifest, and creates the tag plus a **draft** GitHub release. The release is
+   now a candidate; it is not finalized or latest.
 6. `Ship release` explicitly dispatches `.github/workflows/npm-publish.yml` at
-   the new `vX.Y.Z` tag. This is required because GitHub suppresses workflow
-   events caused by tags created with the repository `GITHUB_TOKEN`. The publish
-   workflow refuses duplicate versions, tests again, and publishes with npm
-   OIDC provenance after the `npm-publish` environment review.
-7. Verify the GitHub release, npm version, provenance, and install from the
-   registry. Record workflow URLs and the released commit SHA in release notes
-   or the release issue.
+   the new `vX.Y.Z` tag. The publishing workflow accepts only an explicit
+   dispatch at that immutable tag; direct tag pushes cannot invoke npm
+   publication. It refuses duplicate versions, tests again, and publishes with
+   npm OIDC provenance after the `npm-publish` environment review.
+7. After npm publishes, the publishing workflow records
+   `published_unfinalized` in the release-state asset. Published npm artifacts
+   are immutable, but release promotion remains blocked.
+8. Deploy the generated `resource-data.json` and `llms.txt` projections through
+   the controlled website pipeline. That pipeline must post-fetch each live
+   surface, validate the observed projection hash against the release manifest,
+   and upload one `deployment-receipt-<surface>.json` asset per required surface.
+   Receipts are publisher-controlled execution evidence, not independent
+   attestation.
+9. Dispatch `Finalize release`. It downloads the manifest, state, generated
+   projections, and receipts; refuses missing, duplicate, expired,
+   contradictory, malformed, or hash-mismatched evidence; then records the
+   immutable `finalized` transition and publishes the draft release as latest.
+10. Verify the finalized GitHub release, npm version and provenance, registry
+    install, release-state asset, and controlled surfaces. Record workflow URLs
+    and the released commit SHA in the release issue.
+
+Finalization is a one-way point-in-time attestation. Later receipt expiry,
+rollback, or projection drift creates a new observation or finding and never
+reopens the historical release.
+
+The controlled deployment pipeline creates each receipt from a captured
+observation document:
+
+```bash
+node scripts/release-governance.js receipt \
+  release-manifest.json \
+  deployment-observation.json \
+  deployment-receipt-nebula-llms-txt.json
+```
+
+The observation supplies the exact controlled URL, observed projection hash,
+raw response hash, HTTP status/final URL/redirects/headers, collector identity
+and version, request identity, region, collection and expiry timestamps, and
+limitations. The command derives authority and verification status; callers
+cannot promote the receipt to independent attestation.
 
 Local preparation is available for diagnosis only:
 
@@ -110,34 +145,32 @@ Do not push a locally prepared release directly to `main`; use the release PR.
 - If tagging fails, no npm publication should occur. Correct the workflow or
   environment control and redispatch after confirming the tag is absent.
 - If npm publication fails after the tag exists, do not move or recreate the
-  tag. Fix the publishing path and rerun the failed tag workflow for the same
-  immutable source version.
-- If the ship workflow created the tag but did not dispatch publishing, use the
-  manual npm workflow at that immutable tag. This recovery path was required for
-  `v1.5.0` before explicit dispatch was added.
+  tag. The GitHub release remains a draft candidate. Fix the publishing path and
+  rerun the failed workflow for the same immutable source version.
+- If the ship workflow created the tag but did not dispatch publishing,
+  dispatch the npm workflow manually at that immutable tag with the exact
+  version. The workflow rejects branch refs and mismatched tags.
 - Published npm versions are immutable. Any package defect requires a new patch
   release; deprecate the defective version when appropriate.
+- If controlled deployment cannot be verified before the configured dwell
+  deadline, preserve every failed receipt and resolve the release as
+  `withdrawn` or `superseded`. Never delete the tag, package, or evidence to hide
+  the failed finalization. Use the protected `Resolve unfinalized release`
+  workflow; it refuses resolution before the deadline and publishes the
+  terminal record as non-latest prerelease evidence.
 
 ## Manual Fallback
 
-The normal release path is the two-workflow process above. The commands below
-are emergency-only and still require every release check and repository
-protection:
-
-Publish from a version tag:
-
-```bash
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin vX.Y.Z
-```
-
-The npm publish workflow can also be dispatched manually with the exact version
-from `package.json`, but this does not create a tag or GitHub release and should
-only recover an already-reviewed release.
+The normal release path is the prepare, ship, publish, controlled-deployment,
+and finalize workflow sequence above. Direct tag pushes are not a publishing
+fallback. The npm workflow may be dispatched manually only at an immutable tag
+and exact version already created by `Ship release`; it refuses branch refs and
+does not replace the draft release or candidate-state requirements.
 
 The workflow fails closed if:
 
 - the requested version does not match `package.json`
+- the workflow ref is not the exact requested release tag
 - the version already exists on npm
 - tests fail
 - the package dry-run fails

@@ -120,6 +120,8 @@ citable reviews evaluate
 citable schedules run <schedule-id> [--ref-date YYYY-MM-DD]
 citable project github <run-id>
 citable observe media --input <manifest.json> [--ocr]
+citable observe representation --input <release-manifest.json> --target <controlled-url>
+citable corpus evaluate --input <acceptance-corpus.json>
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema

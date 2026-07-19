@@ -33,6 +33,7 @@ import { scenarioCommand } from '../commands/scenario.js';
 import { prioritizeCommand } from '../commands/prioritize.js';
 import { competitiveIntelCommand } from '../commands/competitiveIntel.js';
 import { executiveCommand } from '../commands/executive.js';
+import { evaluateCorpus } from '../commands/corpus.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -56,7 +57,7 @@ Commands
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
   observe <mode>            Collect render, index, citation, log, Bing, passage,
-                            consensus, performance, corroboration, or media evidence
+                            consensus, performance, corroboration, media evidence, or representation evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
   metrics import            Import declared metric observations from CSV/JSON
@@ -78,6 +79,7 @@ Commands
   reviews evaluate          Detect stale decisions and require disagreement adjudication
   schedules run [id]        Execute an active version-pinned audit schedule
   project github [run]      Render non-authoritative GitHub annotations from a run
+  corpus evaluate           Evaluate a disclosed real-property acceptance corpus
   self-upgrade              Check for a newer version and upgrade the npx cache
   kpi [list|show|validate]  KPI architecture — govern metric definitions, sources, targets
   variance [list|validate|material]  Variance analysis — explain target-vs-actual without narrative smoothing
@@ -111,6 +113,9 @@ Options
   --repeat <count>          Repetitions per prompt for citation experiments
   --interactions            Exercise bounded disclosure, tab, and load-more controls
   --resume-run <run-id>     Reuse successful immutable render profiles
+  --surface-id <id>         Controlled publisher surface for representation evidence
+  --region <label>          Disclosed collector region for representation evidence
+  --user-agent <value>      Disclosed request identity for representation evidence
   --lighthouse              Run local, repeated Lighthouse lab observations
   --ocr                     Explicitly request optional OCR for media images
   --write                   Persist registry changes (map-claims, substantiate)
@@ -145,6 +150,9 @@ function parseArgs(argv) {
     else if (a === '--endpoint') args.endpoint = argv[++i];
     else if (a === '--repeat') args.repeat = Number(argv[++i]);
     else if (a === '--resume-run') args.resumeRun = argv[++i];
+    else if (a === '--surface-id') args.surfaceId = argv[++i];
+    else if (a === '--region') args.region = argv[++i];
+    else if (a === '--user-agent') args.userAgent = argv[++i];
     else if (a === '--timeout') args.timeout = Number(argv[++i]);
     else if (a === '--force') args.force = true;
     else args._.push(a);
@@ -318,6 +326,12 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         if(args._[0]!=='github') throw new Error('usage: citable project github <run-id>');
         const r=projectGithub(root,{runId:args._[1]});
         out(args,`project github ${r.source_run_id}: ${r.annotations.length} annotation(s)\nProjection: ${path.join(r.dir,'annotations.json')}`,r);
+        break;
+      }
+      case 'corpus': {
+        if(args._[0] !== 'evaluate') throw new Error('usage: citable corpus evaluate --input <json>');
+        const r = evaluateCorpus(root, { input: args.input });
+        out(args, `corpus evaluate ${r.metrics.corpus_id}: ${r.metrics.population.detector_cases} detector case(s)\nEvidence package: ${r.dir}`, r);
         break;
       }
       case 'self-upgrade': {
