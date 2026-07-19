@@ -5,12 +5,16 @@
       "surface_id": "nebula-citable-resource",
       "url": "https://nebulacomponents.shop/resources/citable",
       "projection_id": "resource-data",
+      "verification_method": "response_header",
+      "verification_header": "x-citable-projection-sha256",
       "required_for_finalization": true
     },
     {
       "surface_id": "nebula-llms-txt",
       "url": "https://nebulacomponents.shop/llms.txt",
       "projection_id": "llms-txt",
+      "verification_method": "exact_response_body",
+      "verification_header": null,
       "required_for_finalization": true
     }
   ]

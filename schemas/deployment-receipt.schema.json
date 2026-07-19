@@ -4,7 +4,7 @@
   "title": "Publisher-controlled deployment receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "receipt_id", "release_id", "manifest_hash", "surface_id", "url", "projection_id", "expected_projection_hash", "observed_projection_hash", "response_hash", "http", "collector", "collected_at", "expires_at", "authority", "verification_status", "limitations", "receipt_hash"],
+  "required": ["schema_version", "receipt_id", "release_id", "manifest_hash", "surface_id", "url", "projection_id", "verification_method", "verification_header", "expected_projection_hash", "observed_projection_hash", "response_hash", "http", "collector", "collected_at", "expires_at", "authority", "verification_status", "limitations", "receipt_hash"],
   "properties": {
     "schema_version": { "const": 1 },
     "receipt_id": { "type": "string", "pattern": "^RECEIPT-[A-F0-9]+$" },
@@ -13,6 +13,8 @@
     "surface_id": { "type": "string", "minLength": 1 },
     "url": { "type": "string", "format": "uri", "pattern": "^https://" },
     "projection_id": { "type": "string", "minLength": 1 },
+    "verification_method": { "enum": ["exact_response_body", "response_header"] },
+    "verification_header": { "type": ["string", "null"], "pattern": "^[a-z0-9-]+$" },
     "expected_projection_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "observed_projection_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
     "response_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },

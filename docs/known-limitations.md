@@ -75,6 +75,10 @@ evidence, not independent attestation. Representation observations are labelled
 and time, and never prove that all caches, indexes, answer products, accounts,
 or geographies are current. They cannot finalize a release.
 
+Exact-response surfaces can be compared by body hash. Transformed surfaces must
+expose the manifest-declared projection hash through the configured response
+header; an absent header is insufficient evidence, not proof of divergence.
+
 Finalization is a point-in-time attestation. Later drift creates a new finding;
 it does not invalidate or rewrite the historical finalized state.
 

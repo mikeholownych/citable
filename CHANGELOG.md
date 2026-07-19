@@ -43,6 +43,9 @@
 
 ### Changed — Release Evidence Governance
 
+- Controlled surfaces now declare exact-body or projection-hash-header
+  verification. Rendered pages without the declared header produce
+  `insufficient_evidence` instead of a false body-hash divergence.
 - Release shipping now creates a draft release, records npm publication as an
   explicit unfinalized state, and requires valid controlled-surface receipts in
   a separate protected workflow before publishing the GitHub release as latest.

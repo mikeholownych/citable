@@ -54,13 +54,19 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["surface_id", "url", "projection_id", "required_for_finalization"],
+        "required": ["surface_id", "url", "projection_id", "verification_method", "verification_header", "required_for_finalization"],
         "properties": {
           "surface_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
           "url": { "type": "string", "format": "uri", "pattern": "^https://" },
           "projection_id": { "type": "string", "minLength": 1 },
+          "verification_method": { "enum": ["exact_response_body", "response_header"] },
+          "verification_header": { "type": ["string", "null"], "pattern": "^[a-z0-9-]+$" },
           "required_for_finalization": { "type": "boolean" }
-        }
+        },
+        "allOf": [
+          { "if": { "properties": { "verification_method": { "const": "exact_response_body" } } }, "then": { "properties": { "verification_header": { "type": "null" } } } },
+          { "if": { "properties": { "verification_method": { "const": "response_header" } } }, "then": { "properties": { "verification_header": { "type": "string", "minLength": 1 } } } }
+        ]
       }
     },
     "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }

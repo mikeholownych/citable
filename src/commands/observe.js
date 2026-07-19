@@ -398,9 +398,12 @@ async function observeRepresentation(root, options) {
   for (const item of paths) {
     try {
       const response = await collector(item.url, { userAgent: options.userAgent || 'CitableRepresentationProbe/1.0', maxRetries: 1 });
-      const observedHash = sha256(response.body);
+      const responseHash = sha256(response.body);
+      const observedProjectionHash = surface.verification_method === 'exact_response_body'
+        ? responseHash
+        : response.headers?.[surface.verification_header] || null;
       const representationState = response.status >= 200 && response.status < 300
-        ? observedHash === expected.sha256 ? 'consistent' : 'divergent'
+        ? !observedProjectionHash ? 'insufficient_evidence' : observedProjectionHash === expected.sha256 ? 'consistent' : 'divergent'
         : response.status === 403 || response.status === 429 ? 'challenged' : 'failed';
       const data = {
         release_id: manifest.release_id,
@@ -413,8 +416,11 @@ async function observeRepresentation(root, options) {
         status: response.status,
         redirect_chain: response.redirectChain || [],
         headers: response.headers || {},
+        verification_method: surface.verification_method,
+        verification_header: surface.verification_header,
         expected_projection_hash: expected.sha256,
-        observed_response_hash: observedHash,
+        observed_projection_hash: observedProjectionHash,
+        observed_response_hash: responseHash,
         representation_state: representationState,
         authority_label: 'external_unverified',
         gates_release_finalization: false,

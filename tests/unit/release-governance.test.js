@@ -59,12 +59,14 @@ test('release validation fails closed on projection tampering and documentation 
 
 function validReceipt(manifest, surface, at = '2026-07-19T10:00:00Z') {
   const expected = manifest.projections.find((item) => item.projection_id === surface.projection_id);
+  const headers = { 'content-type': 'text/plain' };
+  if (surface.verification_method === 'response_header') headers[surface.verification_header] = expected.sha256;
   return createDeploymentReceipt(manifest, {
     surface_id: surface.surface_id,
     url: surface.url,
     observed_projection_hash: expected.sha256,
-    response_hash: 'b'.repeat(64),
-    http: { status: 200, final_url: surface.url, redirect_chain: [], headers: { 'content-type': 'text/plain' } },
+    response_hash: surface.verification_method === 'exact_response_body' ? expected.sha256 : 'b'.repeat(64),
+    http: { status: 200, final_url: surface.url, redirect_chain: [], headers },
     collector: { identity: 'nebula-release-probe', version: '1.0.0', method: 'https_fetch', request_identity: 'CitableReleaseProbe/1.0', region: 'us-east' },
     collected_at: at,
     expires_at: '2026-07-20T10:00:00Z',
@@ -87,6 +89,7 @@ test('finalization requires one valid unexpired owner-controlled receipt per req
 test('contradictory, tampered, and expired receipts fail closed', () => {
   const { manifest } = generateReleaseManifest(releaseFixtureRoot(), { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   const receipt = validReceipt(manifest, manifest.controlled_surfaces[0]);
+  assert.equal(receipt.verification_method, manifest.controlled_surfaces[0].verification_method);
   assert.equal(verifyDeploymentReceipt(manifest, receipt, { at: new Date('2026-07-19T11:00:00Z') }).ok, true);
   assert.equal(verifyDeploymentReceipt(manifest, receipt, { at: new Date('2026-07-21T00:00:00Z') }).ok, false);
   const tampered = { ...receipt, observed_projection_hash: 'c'.repeat(64) };
@@ -95,7 +98,9 @@ test('contradictory, tampered, and expired receipts fail closed', () => {
   authorityEscalated.authority.source_authority = 'independently_controlled';
   authorityEscalated.receipt_hash = 'e'.repeat(64);
   assert.equal(verifyDeploymentReceipt(manifest, authorityEscalated).ok, false);
-  const contradictory = createDeploymentReceipt(manifest, { ...receipt, surface_id: receipt.surface_id, url: receipt.url, observed_projection_hash: 'd'.repeat(64) });
+  const contradictoryInput = { ...receipt, surface_id: receipt.surface_id, url: receipt.url, observed_projection_hash: null, http: structuredClone(receipt.http) };
+  contradictoryInput.http.headers[receipt.verification_header] = 'd'.repeat(64);
+  const contradictory = createDeploymentReceipt(manifest, contradictoryInput);
   assert.equal(contradictory.verification_status, 'contradictory');
 });
 
