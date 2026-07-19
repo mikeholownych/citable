@@ -1,5 +1,19 @@
 # Known limitations
 
+## Media evidence
+
+- PDF collection extracts native text, basic metadata, and page anchors. It does
+  not fully validate reading order, tables, footnotes, signatures, revisions,
+  accessibility tags, scanned text, or visual meaning.
+- Transcript collection preserves imported cues and provenance but does not
+  prove speaker identity, transcription accuracy, timing accuracy, or parity
+  with the original audio or video.
+- Image collection relates visible `alt`, `figcaption`, and nearby figure text.
+  OCR is disabled unless explicitly requested and requires optional
+  `tesseract.js`; extracted text does not establish semantic equivalence.
+- Media-to-claim links establish declared relationships only. Human semantic
+  review remains authoritative for whether media supports a claim.
+
 Stated plainly so nobody mistakes the MVP's coverage for the full requirement
 surface.
 
@@ -36,8 +50,10 @@ surface.
 - **Connector authentication is operator-managed.** Citable accepts existing
   OAuth access tokens through environment variables. It does not run an OAuth
   consent server, store refresh tokens, or guarantee uninterrupted access.
-- **No multimodal detectors.** Image/video/transcript evidence surfaces are
-  un-audited beyond alt text (PAGE-007).
+- **No visual or media-entailment detectors.** Bounded PDF, transcript, and
+  image-context collectors preserve extraction evidence, but they do not judge
+  whether visual or media content supports a claim. Video/audio decoding and
+  sampled-media parity remain unimplemented.
 - **Screenshots/rendered directories** in the evidence package layout are
   created only when an external tool supplies content.
 - **URL-mode redirects/headers** are captured live, but static-dir mode

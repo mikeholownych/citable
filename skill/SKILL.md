@@ -117,6 +117,7 @@ citable reviews sample <sampling-plan-id> [--write]
 citable reviews evaluate
 citable schedules run <schedule-id> [--ref-date YYYY-MM-DD]
 citable project github <run-id>
+citable observe media --input <manifest.json> [--ocr]
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema

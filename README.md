@@ -173,6 +173,7 @@ citable reviews sample <sampling-plan-id> --write
 citable reviews evaluate
 citable schedules run <schedule-id> --ref-date 2026-07-19
 citable project github <run-id>
+citable observe media --input media-manifest.json # add --ocr explicitly when required
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
 ```
@@ -204,6 +205,8 @@ citable validate              # registry schema + referential integrity
 - [Reviewer and exception governance](docs/governance/reviewer-exceptions.md) —
   policy-driven authority, separation of duties, expiry, invalidation, and
   immutable enforcement dispositions
+- [Known limitations](docs/known-limitations.md) includes medium-specific PDF,
+  transcript, image-context, and optional OCR boundaries.
 
 ## Requirements
 

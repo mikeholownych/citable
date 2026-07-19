@@ -43,7 +43,7 @@ Commands
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
   observe <mode>            Collect render, index, citation, log, Bing, passage,
-                            consensus, performance, or corroboration evidence
+                            consensus, performance, corroboration, or media evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
   metrics import            Import declared metric observations from CSV/JSON
@@ -84,6 +84,7 @@ Options
   --access-token <token>    OAuth token (prefer provider environment variables)
   --endpoint <url>          Controlled citation adapter endpoint
   --repeat <count>          Repetitions per prompt for citation experiments
+  --ocr                     Explicitly request optional OCR for media images
   --write                   Persist registry changes (map-claims, substantiate)
   --json                    Machine-readable output only
 
@@ -96,6 +97,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === '--write') args.write = true;
     else if (a === '--json') args.json = true;
+    else if (a === '--ocr') args.ocr = true;
     else if (a === '--target') args.target = argv[++i];
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
