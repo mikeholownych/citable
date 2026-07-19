@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Added
+
+- Schema-validated reviewer, review-policy, and governed-exception registries
+  with role authorization, declared conflicts, separation-of-duty controls,
+  expiry, renewal limits, supersession, compensating controls, and audit history.
+- `citable governance validate` and `citable governance evaluate` for
+  policy validation and immutable enforcement-disposition evidence packages.
+- Finding, policy, and evidence hash binding so stale approvals fail closed.
+
+### Changed
+
+- Accepted exceptions no longer alter technical finding state. Reports preserve
+  `technical_state: failed` and record `accepted_exception` only as a separate
+  enforcement disposition with explicit residual risk and validity.
+- The supported runtime floor is Node.js 24, matching all CI, package, release,
+  and trusted-publishing gates.
+
 ## 1.7.0 — 2026-07-19
 
 ### Added

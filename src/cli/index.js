@@ -17,6 +17,7 @@ import { applyRemediation } from '../commands/applyRemediation.js';
 import { monitor } from '../commands/monitor.js';
 import { evaluateObjective, importMetrics, initializeObjective, validateObjectives } from '../commands/measurement.js';
 import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
+import { evaluateDispositions, validateGovernance } from '../commands/governance.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -53,6 +54,8 @@ Commands
   objectives init           Validate/add one objective from --input (--write to save)
   objectives validate       Validate objective contracts and metric references
   evaluate [objective-id]   Compare objective baseline and evaluation windows
+  governance validate       Validate reviewer, policy, and exception controls
+  governance evaluate [run] Produce immutable enforcement dispositions without changing findings
   self-upgrade              Check for a newer version and upgrade the npx cache
 
 Options
@@ -236,6 +239,20 @@ export async function main(argv = process.argv.slice(2), options = {}) {
       case 'evaluate': {
         const r = evaluateObjective(root, { objectiveId: args._[0], refDate: args.refDate });
         out(args, `evaluate ${r.objective_id}: ${r.status}\n` + r.metrics.map((metric) => `  ${metric.metric_id}: ${metric.state}${metric.state === 'observed' ? ` (${metric.baseline} → ${metric.evaluation})` : ''}`).join('\n') + `\n${r.interpretation}`, r);
+        break;
+      }
+      case 'governance': {
+        const mode = args._[0];
+        if (mode === 'validate') {
+          const r = validateGovernance(root, { refDate: args.refDate });
+          out(args, `governance validate: ${r.ok ? 'OK' : 'PROBLEMS'} (${r.counts.reviewers} reviewer(s), ${r.counts.policies} policy/policies, ${r.counts.exceptions} exception(s))${r.problems.length ? `\n${r.problems.map((problem) => `  - ${problem}`).join('\n')}` : ''}`, r);
+          if (!r.ok) process.exitCode = 1;
+        } else if (mode === 'evaluate') {
+          const r = evaluateDispositions(root, { runId: args._[1], refDate: args.refDate });
+          const accepted = r.dispositions.filter((item) => item.enforcement_disposition === 'accepted_exception').length;
+          out(args, `governance evaluate ${r.source_run_id}: ${r.dispositions.length} failed finding(s), ${accepted} accepted exception(s)\nEvidence package: ${r.dir}`, r);
+          if (r.dispositions.some((item) => item.enforcement_disposition === 'blocked_ambiguous_exception')) process.exitCode = 1;
+        } else throw new Error('usage: citable governance <validate|evaluate [run-id]> [--ref-date YYYY-MM-DD]');
         break;
       }
       case 'self-upgrade': {

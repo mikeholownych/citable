@@ -13,11 +13,16 @@ Use the narrowest supported state. Never promote evidence across rows.
 | Cited | Import or disclosed adapter | Complete `observe citations` answer with citation URL and product/adapter mode |
 | Materially supports answer | Human review required | `citation_review` maps answer claim to source passage and names the reviewer |
 | Recommended | Operator supplied + review | Explicit recommendation, constraints, provider/mode/locale/time |
+| Accepted exception | Governed owner record | Active policy, authorized reviewers, separation-of-duty checks, exact finding/policy/evidence hashes, expiry, controls, and documented residual risk |
 
 URL audit mode alone does not prove crawler identity, WAF allowlisting,
 production-log access, index presence, selected canonical, rendered DOM parity,
 or provider citation behavior. Observation collectors can supply narrower
 evidence for these states; unavailable inputs remain `not_evidenced`.
+
+An accepted exception changes enforcement disposition only. It does not change
+the source finding, prove remediation, or establish that reviewer identity,
+competence, independence, or legal authority was externally authenticated.
 
 Primary-source lineage for these boundaries:
 

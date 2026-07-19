@@ -1,0 +1,70 @@
+{
+  "$id": "citable://schemas/exception.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Governed exception registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "updated", "entries"],
+  "properties": {
+    "version": { "const": 1 },
+    "kind": { "const": "exceptions" },
+    "updated": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["exception_id", "policy_id", "policy_hash", "status", "source_run_id", "finding_ids", "finding_hashes", "reason", "risk_statement", "residual_risk", "compensating_controls", "evidence_ids", "evidence_hashes", "owner_reviewer_id", "reviewer_assignments", "reviewer_independence", "created_at", "expires_at", "renewal_count", "renewal_limit", "invalidation_conditions", "audit_history"],
+        "properties": {
+          "exception_id": { "type": "string", "pattern": "^EXCEPTION-[A-Z0-9][A-Z0-9_-]*$" },
+          "policy_id": { "type": "string", "pattern": "^POLICY-" },
+          "policy_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "status": { "type": "string", "enum": ["proposed", "approved", "revoked", "superseded"] },
+          "source_run_id": { "type": "string", "minLength": 1 },
+          "finding_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "finding_hashes": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+          "reason": { "type": "string", "minLength": 1 },
+          "risk_statement": { "type": "string", "minLength": 1 },
+          "residual_risk": { "type": "string", "enum": ["documented", "not_documented"] },
+          "compensating_controls": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "evidence_ids": { "type": "array", "items": { "type": "string" } },
+          "evidence_hashes": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+          "owner_reviewer_id": { "type": "string", "pattern": "^REVIEWER-" },
+          "reviewer_assignments": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["reviewer_id", "role"],
+              "properties": {
+                "reviewer_id": { "type": "string", "pattern": "^REVIEWER-" },
+                "role": { "type": "string", "enum": ["technical_reviewer", "subject_matter_reviewer", "independent_reviewer", "approver", "risk_acceptor", "remediation_implementer", "content_author"] }
+              }
+            }
+          },
+          "reviewer_independence": { "type": "string", "enum": ["established", "not_established", "conflicted"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "renewal_count": { "type": "integer", "minimum": 0 },
+          "renewal_limit": { "type": "integer", "minimum": 0 },
+          "invalidation_conditions": {
+            "type": "array", "minItems": 1, "uniqueItems": true,
+            "items": { "type": "string", "enum": ["finding_changed", "evidence_changed", "policy_changed", "resource_changed", "intervention_changed"] }
+          },
+          "related_intervention_id": { "type": ["string", "null"] },
+          "supersedes_exception_id": { "type": ["string", "null"] },
+          "superseded_by_exception_id": { "type": ["string", "null"] },
+          "audit_history": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["timestamp", "actor_reviewer_id", "action", "note"],
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "actor_reviewer_id": { "type": "string", "pattern": "^REVIEWER-" },
+                "action": { "type": "string", "enum": ["proposed", "approved", "renewed", "revoked", "superseded"] },
+                "note": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

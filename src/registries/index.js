@@ -17,6 +17,9 @@ export const REGISTRY_SPECS = [
   { file: 'objectives.yaml', kind: 'objectives', schema: 'objective.schema.json', idField: 'objective_id' },
   { file: 'interventions.yaml', kind: 'interventions', schema: 'intervention.schema.json', idField: 'intervention_id' },
   { file: 'connections.yaml', kind: 'connections', schema: 'connection.schema.json', idField: 'connection_id' },
+  { file: 'reviewers.yaml', kind: 'reviewers', schema: 'reviewer.schema.json', idField: 'reviewer_id' },
+  { file: 'review-policies.yaml', kind: 'review_policies', schema: 'review-policy.schema.json', idField: 'policy_id' },
+  { file: 'exceptions.yaml', kind: 'exceptions', schema: 'exception.schema.json', idField: 'exception_id' },
 ];
 
 export function contextDir(root) {
@@ -103,6 +106,20 @@ export function checkReferentialIntegrity(registries) {
   }
   for (const intervention of registries.interventions?.entries || []) {
     for (const ref of intervention.objective_ids || []) if (!objectiveIds.has(ref)) problems.push(`interventions/${intervention.intervention_id}: references unknown objective id "${ref}"`);
+  }
+  const reviewerIds = ids.reviewers || new Set();
+  const policyIds = ids.review_policies || new Set();
+  const evidenceIds = ids.evidence || new Set();
+  const interventionIds = ids.interventions || new Set();
+  const exceptionIds = ids.exceptions || new Set();
+  for (const exception of registries.exceptions?.entries || []) {
+    const prefix = `exceptions/${exception.exception_id}`;
+    if (!policyIds.has(exception.policy_id)) problems.push(`${prefix}: references unknown review policy id "${exception.policy_id}"`);
+    const reviewerRefs = [exception.owner_reviewer_id, ...(exception.reviewer_assignments || []).map((item) => item.reviewer_id), ...(exception.audit_history || []).map((item) => item.actor_reviewer_id)];
+    for (const ref of reviewerRefs) if (ref && !reviewerIds.has(ref)) problems.push(`${prefix}: references unknown reviewer id "${ref}"`);
+    for (const ref of exception.evidence_ids || []) if (!evidenceIds.has(ref)) problems.push(`${prefix}: references unknown evidence id "${ref}"`);
+    if (exception.related_intervention_id && !interventionIds.has(exception.related_intervention_id)) problems.push(`${prefix}: references unknown intervention id "${exception.related_intervention_id}"`);
+    for (const ref of [exception.supersedes_exception_id, exception.superseded_by_exception_id]) if (ref && !exceptionIds.has(ref)) problems.push(`${prefix}: references unknown exception id "${ref}"`);
   }
   return problems;
 }

@@ -108,6 +108,8 @@ citable connect disconnect --connection-id <id> [--write]
 citable objectives init --input <json|yaml> [--write]
 citable objectives validate
 citable evaluate [objective-id] [--ref-date YYYY-MM-DD]
+citable governance validate [--ref-date YYYY-MM-DD]
+citable governance evaluate <run-id> [--ref-date YYYY-MM-DD]
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -165,8 +167,9 @@ mandatory.
 ## Registries are the source of truth
 
 `.citable/` holds YAML registries for queries, prompts, entities, claims,
-evidence, pages, crawlers, competitors, experiments, metrics, objectives,
-interventions, and optional connection state, all schema-validated
+  evidence, pages, crawlers, competitors, experiments, metrics, objectives,
+  interventions, optional connection state, reviewers, review policies, and
+  governed exceptions, all schema-validated
 (`schemas/*.schema.json`) with referential integrity checks. Rules:
 
 - Never overwrite registry content without history — use the loader/saver in
@@ -175,6 +178,9 @@ interventions, and optional connection state, all schema-validated
   competitors, pricing). Mark entities `incomplete` and list `required_input`.
 - Claim status transitions toward `verified` require existing verified evidence
   plus human semantic review; automation only downgrades (fail-closed).
+- Never encode an accepted exception as a passed or resolved finding. Validate
+  reviewer authority and separation of duties, bind approval to exact source
+  finding/policy/evidence hashes, and report enforcement disposition separately.
 
 ## Fail-closed behaviour
 

@@ -21,7 +21,7 @@ const FETCH_TIMEOUT_MS = 10_000;
 
 /**
  * Fetch the latest published version from the npm registry.
- * Uses Node's built-in fetch (Node 22+); no extra dependencies.
+ * Uses Node's built-in fetch (Node 24+); no extra dependencies.
  *
  * @returns {Promise<string>} latest semver string
  */
