@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.6.0 — 2026-07-19
+
 ### Added
 
 - Optional read-only connector SDK with explicit non-secret connection state,
