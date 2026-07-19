@@ -14,13 +14,20 @@ test('community files and forms satisfy the repository contract', () => {
 
 test('community validation fails closed for missing files and unsafe security routing', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-community-'));
-  for (const relative of REQUIRED_COMMUNITY_FILES) {
-    const source = path.join(ROOT, relative), destination = path.join(root, relative);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.copyFileSync(source, destination);
+  try {
+    for (const relative of REQUIRED_COMMUNITY_FILES) {
+      const source = path.join(ROOT, relative), destination = path.join(root, relative);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(source, destination);
+    }
+    fs.rmSync(path.join(root, 'CODE_OF_CONDUCT.md'));
+    fs.writeFileSync(path.join(root, 'SECURITY.md'), 'Open a confidential issue.');
+
+    const errors = validateCommunity(root);
+    assert.ok(errors.some((error) => /missing CODE_OF_CONDUCT\.md/.test(error)));
+    assert.ok(errors.some((error) => /private vulnerability reporting/.test(error)));
+    assert.ok(errors.some((error) => /must not claim public issues are confidential/.test(error)));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
-  fs.writeFileSync(path.join(root, 'SECURITY.md'), 'Open a confidential issue.');
-  const errors = validateCommunity(root);
-  assert.ok(errors.some((error) => /private vulnerability reporting/.test(error)));
-  assert.ok(errors.some((error) => /must not claim public issues are confidential/.test(error)));
 });
