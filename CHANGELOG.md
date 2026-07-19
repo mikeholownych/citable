@@ -2,6 +2,75 @@
 
 ## Unreleased
 
+### Added — Executive Reporting Suite
+
+**Governed input registries (8 new schemas + registry specs)**
+
+- `kpi` command — KPI Architecture registry: govern metric definitions, sources,
+  targets, calculation, known limitations, and restatement policy. Refuses metrics
+  lacking executive definitions or empty `known_limitations`.
+- `variance` command — Variance analysis registry: enforces four-act narrative
+  (plan → actual → cause → response). Rejects vague causes (`market conditions`,
+  `timing`, `customer behaviour`) as primary drivers. Material/critical variances
+  require `management_response`.
+- `outcomes` command — Customer Outcomes registry: separates activity from
+  validated impact. Enforces `finding_produced → finding_accepted →
+  answer_engine_changed → commercial_value_claimed →
+  causal_relationship_established` progression. Blocks `commercial_value` at
+  `finding_produced` stage.
+- `risk` command — Risk Register: top risks sorted by residual exposure, KRI
+  tracking, trigger thresholds, control effectiveness. Board-visible risks require
+  `trigger_threshold`. High/critical risks require `key_risk_indicators`.
+
+**Executive output commands**
+
+- `executive-review` — Monthly Executive Operating Review. Evidence ledger built
+  first (governed metrics, variance counts, outcome stages, risk counts), then
+  four-act narrative template generated. Returns `ungoverned_warning` when no KPIs
+  registered — refuses to produce narrative from ungoverned data.
+- `board-report` — Quarterly Board Pack. Every reported statement carries
+  `statement_type`, `source_records`, `period`, `confidence`, and `limitations`.
+  Returns `refused_sections` when kpis/customer-outcomes/risks are absent.
+- `decision-memo` — Bounded Decision Record. Requires: named consulted parties,
+  `what_would_change_recommendation`, real trade-offs on every option (no
+  strawmen), specific `supporting_evidence`, and `reopen_conditions` for
+  effectively-one-way decisions.
+
+**Strategic analysis commands**
+
+- `assumption-audit` — Assumption validity tracking. Validated assumptions require
+  `evidence_for`; contradicted assumptions require `evidence_against`; critical
+  importance requires `next_test` date.
+- `scenario` — Compound Risk Scenario War Room. Capped at 3 variables per
+  scenario. Requires `cascade_analysis`, all three states (base/stress/severe),
+  hedges with cost/impact/owner/deadline, and `early_warning_triggers`.
+- `prioritize` — Initiative Prioritization with transparent scoring: `(demand +
+  revenue + differentiation − engineering − operating − legal) × evidence_multiplier`.
+  Weights exposed in output. Rejects `revenue_potential=transformative` with
+  `evidence_strength=assumption`.
+- `competitive-intel` — Competitive Intelligence. Every claim requires
+  `observation_date`, `source`, and `claim_type`. Unreliable sources (G2, Capterra,
+  homepage, LLM recall) require `independent_verification`. Includes `stale`
+  subcommand.
+
+**Orchestration**
+
+- `executive` command — Chief-of-Staff Router. Routes 11 request patterns to
+  the correct reporting skill. Max orchestration depth: 1 (no recursive routing).
+  Logs all routing decisions to `.citable/executive-log.yaml` (last 100 retained).
+  `--route <command>` forces a specific route. `--log` shows recent decisions.
+
+**Infrastructure**
+
+- 8 new JSON schemas registered in `REGISTRY_SPECS`:
+  `kpi`, `variance`, `customer-outcome`, `risk`, `decision`, `assumption`,
+  `scenario`, `initiative` — all with `citable://schemas/` `$id` prefix for AJV
+  compatibility.
+- Comprehensive unit coverage in `tests/unit/executive-reporting.test.js` for
+  governed inputs, reports, cross-registry integrity, deterministic IDs, and fixed-date evaluation.
+
+## 1.12.0 — 2026-07-19
+
 ### Fixed
 
 - Replaced regex-based HTML and transcript tag stripping with structured parsing
@@ -10,8 +79,6 @@
   accepting deceptive hostname substrings.
 - Removed command-line-derived release-note regular expressions and an
   ineffective identity replacement in schema integration coverage.
-
-## 1.12.0 — 2026-07-19
 
 ### Added
 

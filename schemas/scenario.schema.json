@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/scenario.schema.json",
+  "title": "Scenario Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "scenarios"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "title",
+          "variables",
+          "domain_impact",
+          "cascade_analysis",
+          "states",
+          "early_warning_triggers",
+          "hedges",
+          "owner"
+        ],
+        "properties": {
+          "scenario_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "variables": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "required": [
+                "variable",
+                "driver"
+              ],
+              "properties": {
+                "variable": {
+                  "type": "string"
+                },
+                "driver": {
+                  "type": "string"
+                },
+                "variable_id": {
+                  "type": "string",
+                  "pattern": "^(KPI-|RISK-)",
+                  "description": "Optional KPI- or RISK-prefixed registry reference"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "domain_impact": {
+            "type": "object",
+            "properties": {
+              "commercial": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "operational": {
+                "type": "string"
+              },
+              "reputational": {
+                "type": "string"
+              }
+            }
+          },
+          "cascade_analysis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "states": {
+            "type": "object",
+            "required": [
+              "base",
+              "stress",
+              "severe"
+            ],
+            "properties": {
+              "base": {
+                "type": "string"
+              },
+              "stress": {
+                "type": "string"
+              },
+              "severe": {
+                "type": "string"
+              }
+            }
+          },
+          "early_warning_triggers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hedges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "action",
+                "cost",
+                "impact",
+                "owner",
+                "deadline"
+              ],
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "cost": {
+                  "type": "string"
+                },
+                "impact": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "deadline": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "owner": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/decision.schema.json",
+  "title": "Decision Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "decisions"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "decision_id",
+          "owner",
+          "deadline",
+          "reversibility",
+          "options",
+          "recommendation",
+          "supporting_evidence",
+          "assumptions"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "consulted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "reversibility": {
+            "type": "string",
+            "enum": [
+              "reversible",
+              "costly_to_reverse",
+              "effectively_one_way"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "description",
+                "trade_offs"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "trade_offs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "recommendation": {
+            "type": "string"
+          },
+          "supporting_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contradicting_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "what_would_change_recommendation": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cost_of_delay": {
+            "type": "string"
+          },
+          "legal_review": {
+            "type": "string"
+          },
+          "security_review": {
+            "type": "string"
+          },
+          "financial_model": {
+            "type": "string"
+          },
+          "reopen_conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "decided",
+              "deferred",
+              "superseded"
+            ]
+          },
+          "decided_at": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

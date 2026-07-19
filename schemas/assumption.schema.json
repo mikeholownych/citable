@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/assumption.schema.json",
+  "title": "Assumption Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "assumptions"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assumption_id",
+          "statement",
+          "category",
+          "owner",
+          "importance",
+          "current_status",
+          "confidence"
+        ],
+        "properties": {
+          "assumption_id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "commercial",
+              "product",
+              "customer",
+              "market",
+              "technical",
+              "regulatory",
+              "operational"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "evidence_for": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_against": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "validation_method": {
+            "type": "string"
+          },
+          "current_status": {
+            "type": "string",
+            "enum": [
+              "untested",
+              "weakly_supported",
+              "partially_validated",
+              "validated_within_scope",
+              "contradicted",
+              "invalidated",
+              "no_longer_material"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "decision_dependency": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "next_test": {
+            "type": "string"
+          },
+          "expiry": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

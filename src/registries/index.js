@@ -23,6 +23,16 @@ export const REGISTRY_SPECS = [
   { file: 'review-items.yaml', kind: 'review_items', schema: 'review-item.schema.json', idField: 'review_item_id' },
   { file: 'sampling-plans.yaml', kind: 'sampling_plans', schema: 'sampling-plan.schema.json', idField: 'sampling_plan_id' },
   { file: 'schedules.yaml', kind: 'schedules', schema: 'schedule.schema.json', idField: 'schedule_id' },
+  // Executive reporting suite — governed inputs (Phase 1)
+  { file: 'kpis.yaml',              kind: 'kpis',              schema: 'kpi.schema.json',             idField: 'metric_id' },
+  { file: 'variances.yaml',         kind: 'variances',         schema: 'variance.schema.json',        idField: 'variance_id' },
+  { file: 'customer-outcomes.yaml', kind: 'customer-outcomes', schema: 'customer-outcome.schema.json', idField: 'outcome_id' },
+  { file: 'risks.yaml',             kind: 'risks',             schema: 'risk.schema.json',            idField: 'risk_id' },
+  // Executive reporting suite — decision support (Phase 2)
+  { file: 'decisions.yaml',    kind: 'decisions',   schema: 'decision.schema.json',   idField: 'decision_id' },
+  { file: 'assumptions.yaml',  kind: 'assumptions', schema: 'assumption.schema.json', idField: 'assumption_id' },
+  { file: 'scenarios.yaml',    kind: 'scenarios',   schema: 'scenario.schema.json',   idField: 'scenario_id' },
+  { file: 'initiatives.yaml',  kind: 'initiatives', schema: 'initiative.schema.json', idField: 'initiative_id' },
 ];
 
 export function contextDir(root) {
@@ -31,6 +41,31 @@ export function contextDir(root) {
 
 export function emptyRegistry(kind) {
   return { version: 1, kind, updated: nowIso(), entries: [] };
+}
+
+const LOAD_PROBLEMS = Symbol('registryLoadProblems');
+
+/** Read one registry without allowing malformed YAML to crash a command. */
+export function loadRegistryFile(file, kind) {
+  let data = emptyRegistry(kind);
+  const problems = [];
+  if (fs.existsSync(file)) {
+    try {
+      data = readYaml(file) ?? emptyRegistry(kind);
+      if (typeof data !== 'object' || data === null || !Array.isArray(data.entries)) {
+        problems.push(`${path.basename(file)}: YAML does not match expected registry shape`);
+        data = emptyRegistry(kind);
+      }
+    } catch (error) {
+      problems.push(`${path.basename(file)}: YAML parse failure: ${error.message}`);
+    }
+  }
+  Object.defineProperty(data, LOAD_PROBLEMS, { value: problems, enumerable: false });
+  return data;
+}
+
+export function registryLoadProblems(data) {
+  return data?.[LOAD_PROBLEMS] ?? [];
 }
 
 /** Load all registries under <root>/.citable. Missing files load as empty. */
@@ -63,13 +98,21 @@ export function checkReferentialIntegrity(registries) {
   const problems = [];
   const ids = {};
   for (const spec of REGISTRY_SPECS) {
-    ids[spec.kind] = new Set((registries[spec.kind]?.entries || []).map((e) => e[spec.idField]));
-    const seen = new Set();
-    for (const e of registries[spec.kind]?.entries || []) {
-      const id = e[spec.idField];
-      if (seen.has(id)) problems.push(`${spec.kind}: duplicate id ${id}`);
-      seen.add(id);
+    const registry = registries[spec.kind] ?? emptyRegistry(spec.kind);
+    const schemaValid = (registry.entries || []).filter((entry) =>
+      validateAgainst(spec.schema, { ...registry, entries: [entry] }).valid);
+    const counts = new Map();
+    for (const entry of schemaValid) {
+      const id = entry[spec.idField];
+      counts.set(id, (counts.get(id) ?? 0) + 1);
     }
+    for (const [id, count] of counts) {
+      if (count > 1) problems.push(`${spec.kind}/${id}: duplicate id ${id}`);
+    }
+    // Only schema-valid, unambiguous records may satisfy references.
+    ids[spec.kind] = new Set(schemaValid
+      .map((entry) => entry[spec.idField])
+      .filter((id) => counts.get(id) === 1));
   }
   const refChecks = [
     ['claims', 'evidence', 'evidence', 'claim_id'],
@@ -131,6 +174,64 @@ export function checkReferentialIntegrity(registries) {
   }
   const reviewItemIds = ids.review_items || new Set();
   for (const plan of registries.sampling_plans?.entries || []) for (const ref of plan.selected_item_ids || []) if (!reviewItemIds.has(ref)) problems.push(`sampling_plans/${plan.sampling_plan_id}: references unknown review item id "${ref}"`);
+
+  // ── Executive reporting suite cross-registry checks ────────────────────────
+  const kpiIds        = ids.kpis            || new Set();
+  const outcomeIds    = ids['customer-outcomes'] || new Set();
+  const decisionIds   = ids.decisions       || new Set();
+  const assumptionIds = ids.assumptions     || new Set();
+  const riskIds       = ids.risks           || new Set();
+  const initiativeIds = ids.initiatives     || new Set();
+
+  // variances must reference a known KPI metric_id
+  for (const v of registries.variances?.entries || []) {
+    if (v.metric_id && !kpiIds.has(v.metric_id))
+      problems.push(`variances/${v.variance_id}: metric_id "${v.metric_id}" references unknown kpi`);
+  }
+
+  // decisions: supporting/contradicting evidence can reference outcome IDs
+  for (const d of registries.decisions?.entries || []) {
+    const prefix = `decisions/${d.decision_id}`;
+    for (const ref of d.supporting_evidence || []) {
+      if (typeof ref === 'string' && ref.startsWith('OUT-') && !outcomeIds.has(ref))
+        problems.push(`${prefix}: supporting_evidence references unknown customer-outcome "${ref}"`);
+    }
+    for (const ref of d.contradicting_evidence || []) {
+      if (typeof ref === 'string' && ref.startsWith('OUT-') && !outcomeIds.has(ref))
+        problems.push(`${prefix}: contradicting_evidence references unknown customer-outcome "${ref}"`);
+    }
+    for (const ref of d.assumptions || []) {
+      if (typeof ref === 'string' && ref.startsWith('ASMP-') && !assumptionIds.has(ref))
+        problems.push(`${prefix}: assumptions references unknown assumption "${ref}"`);
+    }
+  }
+
+  // initiatives: linked_kpis, linked_outcomes, linked_risks, linked_decisions
+  for (const i of registries.initiatives?.entries || []) {
+    const prefix = `initiatives/${i.initiative_id}`;
+    for (const ref of i.linked_kpis || [])
+      if (!kpiIds.has(ref)) problems.push(`${prefix}: linked_kpis references unknown kpi "${ref}"`);
+    for (const ref of i.linked_outcomes || [])
+      if (!outcomeIds.has(ref)) problems.push(`${prefix}: linked_outcomes references unknown customer-outcome "${ref}"`);
+    for (const ref of i.linked_risks || [])
+      if (!riskIds.has(ref)) problems.push(`${prefix}: linked_risks references unknown risk "${ref}"`);
+    for (const ref of i.linked_decisions || [])
+      if (!decisionIds.has(ref)) problems.push(`${prefix}: linked_decisions references unknown decision "${ref}"`);
+  }
+
+  // scenarios: variable_ids should reference known KPIs or risks
+  for (const s of registries.scenarios?.entries || []) {
+    const prefix = `scenarios/${s.scenario_id}`;
+    for (const v of s.variables || []) {
+      const ref = v.variable_id;
+      if (!ref) continue;
+      if (ref.startsWith('KPI-') && !kpiIds.has(ref))
+        problems.push(`${prefix}: variable "${ref}" references unknown kpi`);
+      if (ref.startsWith('RISK-') && !riskIds.has(ref))
+        problems.push(`${prefix}: variable "${ref}" references unknown risk`);
+    }
+  }
+
   return problems;
 }
 

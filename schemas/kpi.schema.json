@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/kpi.schema.json",
+  "title": "KPI Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "kpis"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "metric_id",
+          "name",
+          "executive_definition",
+          "calculation",
+          "unit",
+          "source_system",
+          "owner",
+          "reporting_cadence"
+        ],
+        "properties": {
+          "metric_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "executive_definition": {
+            "type": "string"
+          },
+          "calculation": {
+            "type": "string"
+          },
+          "numerator": {
+            "type": "string"
+          },
+          "denominator": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "source_system": {
+            "type": "string"
+          },
+          "source_query": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "target": {},
+          "warning_threshold": {},
+          "critical_threshold": {},
+          "reporting_cadence": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly",
+              "quarterly",
+              "annual"
+            ]
+          },
+          "restatement_policy": {
+            "type": "string"
+          },
+          "known_limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "comparison_required": {
+            "type": "boolean"
+          },
+          "comparison_basis": {
+            "type": "string",
+            "enum": [
+              "prior_period",
+              "prior_year",
+              "target",
+              "budget",
+              "forecast"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

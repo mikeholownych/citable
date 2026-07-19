@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/risk.schema.json",
+  "title": "Risk Register",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "risks"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "risk_id",
+          "title",
+          "category",
+          "cause",
+          "event",
+          "consequence",
+          "likelihood",
+          "impact",
+          "gross_exposure",
+          "controls",
+          "residual_exposure",
+          "response",
+          "response_owner",
+          "review_date",
+          "trend",
+          "board_visibility"
+        ],
+        "properties": {
+          "risk_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "commercial",
+              "product",
+              "detector_quality",
+              "evidence_integrity",
+              "customer_reliance",
+              "platform_dependency",
+              "search_engine_policy",
+              "legal_advertising",
+              "data_rights",
+              "security",
+              "supply_chain",
+              "npm_distribution",
+              "reputational",
+              "operational_capacity"
+            ]
+          },
+          "cause": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "consequence": {
+            "type": "string"
+          },
+          "likelihood": {
+            "type": "string",
+            "enum": [
+              "rare",
+              "unlikely",
+              "possible",
+              "likely",
+              "almost_certain"
+            ]
+          },
+          "impact": {
+            "type": "string",
+            "enum": [
+              "negligible",
+              "minor",
+              "moderate",
+              "major",
+              "catastrophic"
+            ]
+          },
+          "gross_exposure": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "control_owner": {
+            "type": "string"
+          },
+          "control_effectiveness": {
+            "type": "string",
+            "enum": [
+              "none",
+              "weak",
+              "partial",
+              "adequate",
+              "strong"
+            ]
+          },
+          "residual_exposure": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "key_risk_indicators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trigger_threshold": {
+            "type": "string"
+          },
+          "response": {
+            "type": "string"
+          },
+          "response_owner": {
+            "type": "string"
+          },
+          "review_date": {
+            "type": "string"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "improving",
+              "stable",
+              "deteriorating",
+              "emerging"
+            ]
+          },
+          "board_visibility": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
