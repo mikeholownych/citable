@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Independent desktop, mobile, and JavaScript-disabled Chromium render profiles
+  with raw/rendered parity artifacts and bounded interaction discovery.
+- Partial-failure evidence and `--resume-run` recovery that reuses only
+  successful profiles from an immutable source run.
+- Optional repeated local Lighthouse execution with pinned runtime metadata,
+  per-run artifacts, lab/field separation, and median metric summaries.
+
 ## 1.11.0 — 2026-07-19
 
 ### Added

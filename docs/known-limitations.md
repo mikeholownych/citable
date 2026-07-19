@@ -35,18 +35,23 @@ surface.
 - **Bing AI Performance is owner-export only.** Citable has not captured a
   supported API contract for the public-preview dashboard. Its citation counts
   do not prove ranking, authority, placement, importance, or material support.
-- **Browser rendering is optional and desktop-only.** `observe render` captures
-  Chromium DOM, text, screenshot, and failed requests when Playwright and its
-  browser are installed. Mobile parity, interaction exploration, and
-  cross-browser comparison remain.
+- **Browser rendering is optional and Chromium-bounded.** `observe render`
+  captures independent desktop, mobile, and JavaScript-disabled DOM, text,
+  screenshot, failed-request, and parity evidence when Playwright and Chromium
+  are installed. Interaction execution is limited to visible disclosure,
+  inactive-tab, and load-more-like controls. Cross-browser comparison,
+  authenticated journeys, consent decisions, and application-specific flows
+  remain unproven.
 - **Passage analysis is heuristic.** `observe passages` creates candidates and
   noise ratios, but semantic independence and support still require review.
 - **Citation correctness remains human-authoritative.** Citable normalizes
   claim/passage review records and missing reviews; automated inference never
   silently becomes a confirmed support verdict.
-- **Performance collection is partial.** CrUX field data or owner exports can be
-  collected. Lighthouse lab execution is not bundled; CWV-001..003 remain
-  infrastructure-readiness checks.
+- **Performance collection remains bounded.** CrUX field data, owner exports,
+  or repeated local Lighthouse lab runs can be collected. Lighthouse and
+  Chrome launcher are optional peers; local results vary by host and profile.
+  CWV-001..003 remain infrastructure-readiness checks rather than proof of
+  field performance.
 - **Connector authentication is operator-managed.** Citable accepts existing
   OAuth access tokens through environment variables. It does not run an OAuth
   consent server, store refresh tokens, or guarantee uninterrupted access.
@@ -54,8 +59,8 @@ surface.
   image-context collectors preserve extraction evidence, but they do not judge
   whether visual or media content supports a claim. Video/audio decoding and
   sampled-media parity remain unimplemented.
-- **Screenshots/rendered directories** in the evidence package layout are
-  created only when an external tool supplies content.
+- **Screenshots/rendered directories** are populated only for render profiles
+  that complete successfully; partial failures remain explicit observations.
 - **URL-mode redirects/headers** are captured live, but static-dir mode
   depends on the optional `_citable-transport.json` sidecar; without it,
   status/header detectors see defaults (recorded in audit assumptions).

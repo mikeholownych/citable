@@ -34,7 +34,7 @@ intent, not executability, so statuses are strict:
 | /citable ingest, map-site, map-queries, map-prompts, map-entities, map-evidence | specified (ingest.md) |
 | /citable optimize-page | specified (optimize-page.md) — requires source-to-render mapping, claim-preserving rewrites, build execution, rollback; none of that is proven yet |
 | /citable create-page, answer-block, architect, interlink, consolidate, metadata | specified (page-work.md) |
-| /citable validate-render | partially implemented by `observe render`; mobile/cross-browser and interaction exploration remain |
+| /citable validate-render | partially implemented by `observe render`; desktop/mobile/JavaScript-disabled profiles and bounded interaction exploration are implemented, while cross-browser and application-specific journeys remain |
 | /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by metric/observation imports, objective evaluation, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
 
 Shared refusal conditions (all commands): any action that would fabricate
