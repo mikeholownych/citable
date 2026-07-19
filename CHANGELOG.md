@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.13.0 — 2026-07-19
+
 ### Added — Release Evidence Governance
 
 - Canonical release manifests that bind executable detector, namespace,

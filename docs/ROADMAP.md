@@ -4,15 +4,15 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.12.0)
+## Current State (v1.13.0)
 
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 224 pass in v1.12.0; 255 pass on the current development branch |
+| Tests | 259 pass on Node 24 |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 85 packaged files per provider |
+| Distribution | 87 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
