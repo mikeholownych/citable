@@ -59,6 +59,7 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
 export async function buildSiteFromUrl(startUrl, {
   maxPages = 50, userAgent, pageMaxBytes = 5 * 1024 * 1024,
   robotsMaxBytes = 512 * 1024, sitemapMaxBytes = 5 * 1024 * 1024,
+  fetcher = fetchUrl,
 } = {}) {
   const origin = new URL(startUrl).origin;
   const seen = new Set();
@@ -71,7 +72,7 @@ export async function buildSiteFromUrl(startUrl, {
     if (seen.has(key)) continue;
     seen.add(key);
     try {
-      const res = await fetchUrl(url, { userAgent, maxBodyBytes: pageMaxBytes });
+      const res = await fetcher(url, { userAgent, maxBodyBytes: pageMaxBytes });
       const page = extractPage({
         url: res.url, html: res.body, status: res.status, headers: res.headers, redirectChain: res.redirectChain,
       });
@@ -81,7 +82,8 @@ export async function buildSiteFromUrl(startUrl, {
         for (const l of page.links) {
           try {
             const u = new URL(l.href, res.url);
-            if (u.origin === origin && !seen.has(u.href.replace(/#.*$/, ''))) queue.push(u.href);
+            u.hash = '';
+            if (u.origin === origin && !isProviderUtilityPath(u.pathname) && !seen.has(u.href)) queue.push(u.href);
           } catch { /* unresolvable href — surfaced by LINK detectors */ }
         }
       }
@@ -92,7 +94,7 @@ export async function buildSiteFromUrl(startUrl, {
   let robotsText = null;
   const sitemaps = [];
   try {
-    const r = await fetchUrl(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
+    const r = await fetcher(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
     if (r.status === 200) robotsText = r.body;
   } catch { /* recorded as missing robots */ }
   const smUrls = robotsText ? parseRobots(robotsText).sitemaps : [new URL('/sitemap.xml', origin).href];
@@ -103,16 +105,24 @@ export async function buildSiteFromUrl(startUrl, {
         errors.push(`${sitemapUrl.href}: sitemap URL leaves audited origin`);
         continue;
       }
-      const r = await fetchUrl(sitemapUrl.href, { userAgent, maxBodyBytes: sitemapMaxBytes });
+      const r = await fetcher(sitemapUrl.href, { userAgent, maxBodyBytes: sitemapMaxBytes });
       if (r.status === 200) sitemaps.push({ source: sm, parsed: parseSitemap(r.body) });
     } catch { /* absence handled by TECH detectors */ }
   }
-  const site = assembleSite({ baseUrl: origin, pages, robotsText, sitemaps, transport: {}, mode: 'url', location: startUrl });
+  const pendingUrls = [...new Set(queue.map((url) => url.replace(/#.*$/, '')).filter((url) => !seen.has(url)))];
+  const crawl = {
+    maxPages,
+    pagesFetched: pages.length,
+    truncated: pages.length >= maxPages && pendingUrls.length > 0,
+    pendingUrlCount: pendingUrls.length,
+    pendingUrls,
+  };
+  const site = assembleSite({ baseUrl: origin, pages, robotsText, sitemaps, transport: {}, mode: 'url', location: startUrl, crawl });
   site.fetchErrors = errors;
   return site;
 }
 
-function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, location }) {
+function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, location, crawl = null }) {
   const byUrl = new Map();
   for (const p of pages) byUrl.set(normalize(p.url), p);
 
@@ -168,7 +178,12 @@ function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, l
     outbound,
     depth,
     normalize,
+    crawl,
   };
+}
+
+function isProviderUtilityPath(pathname) {
+  return pathname === '/cdn-cgi' || pathname.startsWith('/cdn-cgi/');
 }
 
 export function normalize(url) {

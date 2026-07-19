@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSiteFromDir } from '../../src/extractor/site.js';
+import { extractPage } from '../../src/extractor/page.js';
 import { ALL_DETECTORS, detectorsByNamespace, selectDetectors } from '../../src/detectors/index.js';
 import { runDetectors } from '../../src/detectors/framework.js';
 import { loadRegistries } from '../../src/registries/index.js';
@@ -144,6 +145,46 @@ test('selectDetectors scope filters work', () => {
   assert.ok(selectDetectors({ scope: 'technical' }).every((d) => ['TECH', 'CRAWL', 'LINK'].includes(d.namespace)));
   assert.ok(selectDetectors({ scope: 'aeo' }).every((d) => d.discipline.includes('aeo')));
   assert.ok(selectDetectors({ scope: 'claims' }).every((d) => d.namespace === 'CLAIM'));
+});
+
+test('HTML-only detectors ignore non-HTML resources and retain positive cases', () => {
+  const fixture = JSON.parse(fs.readFileSync(path.join(FIX, 'resource-applicability.json'), 'utf8'));
+  const pages = fixture.pages.map((item) => extractPage({
+    url: item.url,
+    html: item.body,
+    headers: { 'content-type': item.content_type },
+  }));
+  const site = {
+    mode: 'url', baseUrl: 'https://example.test', pages,
+    byUrl: new Map(pages.map((page) => [page.url, page])),
+    sitemaps: [], normalize: (url) => new URL(url).href,
+  };
+  const ctx = { ...ctxFor(null, null, 'https://example.test'), site };
+  const { findings } = runDetectors(selectDetectors({ namespaces: ['TECH', 'PAGE'] }), ctx);
+
+  for (const item of fixture.pages) {
+    const actual = findings
+      .filter((finding) => finding.subject.url === item.url && ['TECH-012', 'PAGE-001'].includes(finding.detector_id))
+      .map((finding) => finding.detector_id)
+      .sort();
+    assert.deepEqual(actual, [...item.expected].sort(), item.url);
+  }
+});
+
+test('provider utility URLs are not default index targets', () => {
+  const utility = extractPage({
+    url: 'https://example.test/cdn-cgi/l/email-protection#abc',
+    html: '<html><head><meta name="robots" content="noindex,nofollow"></head></html>',
+    status: 404,
+    headers: { 'content-type': 'text/html' },
+  });
+  const site = {
+    mode: 'url', baseUrl: 'https://example.test', pages: [utility],
+    byUrl: new Map([[utility.url, utility]]), sitemaps: [], normalize: (url) => new URL(url).href,
+  };
+  const ctx = { ...ctxFor(null, null, 'https://example.test'), site };
+  const findings = runDetectors(selectDetectors({ namespaces: ['TECH', 'PAGE'] }), ctx).findings;
+  assert.ok(!findings.some((finding) => ['TECH-001', 'TECH-002', 'PAGE-001'].includes(finding.detector_id)));
 });
 
 test('CRAWL-001/002: robots vs registry policy conflicts', () => {

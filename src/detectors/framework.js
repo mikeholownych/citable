@@ -100,10 +100,47 @@ export function runDetectors(detectors, ctx) {
 /** Pages whose declared or default intent is to be indexed. */
 export function indexTargets(ctx) {
   return ctx.site.pages.filter((p) => {
+    if (isProviderUtilityUrl(p.url)) return false;
     const reg = registryPageFor(ctx, p);
     if (reg?.indexing_intent === 'noindex') return false;
     return true;
   });
+}
+
+/** Index targets whose response is an HTML document. */
+export function htmlIndexTargets(ctx) {
+  return indexTargets(ctx).filter(isHtmlDocument);
+}
+
+export function isHtmlDocument(page) {
+  const type = String(page?.contentType || '').toLowerCase();
+  return !type || type.includes('text/html') || type.includes('application/xhtml+xml');
+}
+
+/** URLs that conventionally identify HTML documents rather than media/data resources. */
+export function isHtmlDocumentUrl(url) {
+  try {
+    const pathname = new URL(url).pathname;
+    const name = pathname.split('/').pop() || '';
+    const match = name.match(/\.([a-z0-9]+)$/i);
+    return Boolean(match) && ['html', 'htm', 'xhtml'].includes(match[1].toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+export function hasHtmlDocumentMarkup(page) {
+  return /^\s*(?:<!doctype\s+html\b|<html\b)/i.test(String(page?.rawHtml || ''));
+}
+
+/** Provider-owned utility routes are link evidence, not default content pages. */
+export function isProviderUtilityUrl(url) {
+  try {
+    const { pathname } = new URL(url);
+    return pathname === '/cdn-cgi' || pathname.startsWith('/cdn-cgi/');
+  } catch {
+    return false;
+  }
 }
 
 /** Match a live page to its registry entry by URL path. */

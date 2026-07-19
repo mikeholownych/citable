@@ -1,0 +1,13 @@
+{
+  "pages": [
+    { "url": "https://example.test/article", "content_type": "text/plain", "body": "<html><head></head><body><h1>Article</h1></body></html>", "expected": ["TECH-012"] },
+    { "url": "https://example.test/data.json", "content_type": "application/json", "body": "{\"ok\":true}", "expected": [] },
+    { "url": "https://example.test/api", "content_type": "application/json", "body": "{\"ok\":true}", "expected": [] },
+    { "url": "https://example.test/feed.xml", "content_type": "application/rss+xml", "body": "<rss><channel><title>Feed</title></channel></rss>", "expected": [] },
+    { "url": "https://example.test/guide.md", "content_type": "text/markdown", "body": "# Guide", "expected": [] },
+    { "url": "https://example.test/export.csv", "content_type": "text/csv", "body": "name,value", "expected": [] },
+    { "url": "https://example.test/report.pdf", "content_type": "application/pdf", "body": "%PDF", "expected": [] },
+    { "url": "https://example.test/missing-title", "content_type": "text/html", "body": "<html><head></head><body><h1>Missing title</h1></body></html>", "expected": ["PAGE-001"] },
+    { "url": "https://example.test/valid", "content_type": "text/html", "body": "<html><head><title>Valid</title></head><body><h1>Valid</h1></body></html>", "expected": [] }
+  ]
+}

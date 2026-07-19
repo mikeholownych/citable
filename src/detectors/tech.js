@@ -1,4 +1,4 @@
-import { defineDetector, indexTargets, registryPageFor, pageSubject, safePath } from './framework.js';
+import { defineDetector, hasHtmlDocumentMarkup, indexTargets, isHtmlDocument, isHtmlDocumentUrl, registryPageFor, pageSubject, safePath } from './framework.js';
 import { isAllowed } from '../crawler/robots.js';
 
 const D = [];
@@ -177,7 +177,9 @@ D.push(defineDetector({
     for (const sm of ctx.site.sitemaps) {
       for (const u of sm.parsed.urls) {
         const page = ctx.site.byUrl.get(ctx.site.normalize(u.loc));
-        if (!page) {
+        if (!page && ctx.site.mode === 'url' && ctx.site.crawl?.truncated) {
+          continue;
+        } else if (!page) {
           hits.push({
             subject: { type: 'url', identifier: u.loc, url: u.loc, source_location: sm.source },
             summary: 'Sitemap URL not present in audited output',
@@ -227,7 +229,7 @@ D.push(defineDetector({
   verification: 'Inspect the Content-Type response header.',
   check(ctx) {
     return indexTargets(ctx)
-      .filter((p) => p.status === 200 && p.contentType && !p.contentType.includes('text/html'))
+      .filter((p) => p.status === 200 && p.contentType && (isHtmlDocumentUrl(p.url) || hasHtmlDocumentMarkup(p)) && !isHtmlDocument(p))
       .map((p) => ({
         subject: pageSubject(p),
         summary: `HTML page served with Content-Type "${p.contentType}"`,
