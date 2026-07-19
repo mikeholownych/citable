@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.8.0 — 2026-07-19
+
 ### Added
 
 - Schema-validated reviewer, review-policy, and governed-exception registries
