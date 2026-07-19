@@ -184,10 +184,16 @@ export function createDeploymentReceipt(manifest, input) {
   const collectedAt = input.collected_at || new Date().toISOString();
   const expiresAt = input.expires_at || new Date(new Date(collectedAt).getTime() + 24 * 60 * 60 * 1000).toISOString();
   if (!(new Date(expiresAt) > new Date(collectedAt))) throw new Error('receipt expiry must be after collection');
+  const observedProjectionHash = surface.verification_method === 'exact_response_body'
+    ? input.response_hash
+    : input.http.headers?.[surface.verification_header] || null;
+  if (input.observed_projection_hash && input.observed_projection_hash !== observedProjectionHash) {
+    throw new Error('supplied projection hash conflicts with the manifest-declared verification method');
+  }
   let verificationStatus = 'verified';
   if (input.http.status < 200 || input.http.status >= 300) verificationStatus = 'failed';
-  else if (!input.observed_projection_hash) verificationStatus = 'insufficient_evidence';
-  else if (input.observed_projection_hash !== expected.sha256) verificationStatus = 'contradictory';
+  else if (!observedProjectionHash) verificationStatus = 'insufficient_evidence';
+  else if (observedProjectionHash !== expected.sha256) verificationStatus = 'contradictory';
   const receipt = {
     schema_version: 1,
     receipt_id: `RECEIPT-${sha256(`${manifest.manifest_hash}:${surface.surface_id}:${collectedAt}`).slice(0, 20).toUpperCase()}`,
@@ -196,8 +202,10 @@ export function createDeploymentReceipt(manifest, input) {
     surface_id: surface.surface_id,
     url: surface.url,
     projection_id: expected.projection_id,
+    verification_method: surface.verification_method,
+    verification_header: surface.verification_header,
     expected_projection_hash: expected.sha256,
-    observed_projection_hash: input.observed_projection_hash || null,
+    observed_projection_hash: observedProjectionHash,
     response_hash: input.response_hash,
     http: input.http,
     collector: input.collector,
@@ -232,6 +240,7 @@ export function verifyDeploymentReceipt(manifest, receipt, { at = new Date() } =
   else {
     if (receipt.url !== surface.url) failures.push('receipt URL differs from controlled surface');
     if (receipt.projection_id !== surface.projection_id) failures.push('receipt projection differs from controlled surface');
+    if (receipt.verification_method !== surface.verification_method || receipt.verification_header !== surface.verification_header) failures.push('receipt verification method differs from controlled surface');
   }
   const expected = manifest.projections.find((item) => item.projection_id === receipt.projection_id);
   if (!expected || expected.sha256 !== receipt.expected_projection_hash) failures.push('receipt expected projection is inconsistent');
