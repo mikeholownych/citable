@@ -103,7 +103,7 @@ Options
   --target <dir|url>        Built output directory or deployed URL to audit
   --base-url <url>          Base URL for path resolution of a built output dir
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
-  --input <file>            Import file or remediation specification
+  --input <file>            Import evidence, remediation, or browser plan
   --output <file>           Explicit output path for a public corpus projection
   --run <run-id>            Sealed run used to create an acceptance receipt
   --provider <name>         Provider label for imported observations

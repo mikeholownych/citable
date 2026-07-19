@@ -7,7 +7,7 @@
   "required": ["observation_id", "kind", "state", "collected_at", "collection_method", "confidence", "source", "evidence_hash", "data"],
   "properties": {
     "observation_id": { "type": "string", "minLength": 1 },
-    "kind": { "type": "string", "enum": ["render", "index", "citation", "citation_review", "crawler_log", "bing_webmaster", "passage", "canonical_freshness", "performance", "corroboration", "metric", "media_pdf", "media_transcript", "media_image", "representation_drift"] },
+    "kind": { "type": "string", "enum": ["render", "browser_journey", "index", "citation", "citation_review", "crawler_log", "bing_webmaster", "passage", "canonical_freshness", "performance", "corroboration", "metric", "media_pdf", "media_transcript", "media_image", "representation_drift"] },
     "state": { "type": "string", "enum": ["observed", "not_observed", "not_evidenced", "incomplete", "review_required", "failed"] },
     "collected_at": { "type": "string", "format": "date-time" },
     "collection_method": { "type": "string", "enum": ["live_api", "browser", "owner_import", "synthetic_fetch", "static_analysis", "human_review"] },

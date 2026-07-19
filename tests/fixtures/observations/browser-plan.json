@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "plan_id": "BROWSER-PLAN-FIXTURE",
+  "target": "https://example.test/",
+  "profiles": [
+    {
+      "profile_id": "chromium-desktop",
+      "browser": { "engine": "chromium", "expected_version": null },
+      "device": { "name": "Desktop", "viewport": { "width": 1280, "height": 900 }, "is_mobile": false },
+      "javascript_enabled": true,
+      "locale": "en-US",
+      "consent_state": "not_present",
+      "authentication_state": "anonymous",
+      "steps": [
+        { "step_id": "open-details", "action": "click", "locator": "summary", "value_env": null, "key": null, "url": null, "required": true, "capture_screenshot": true }
+      ],
+      "limitations": ["Fixture profile does not represent production browser populations."]
+    },
+    {
+      "profile_id": "firefox-mobile",
+      "browser": { "engine": "firefox", "expected_version": "fixture-1" },
+      "device": { "name": "Mobile", "viewport": { "width": 390, "height": 844 }, "is_mobile": true },
+      "javascript_enabled": true,
+      "locale": "en-US",
+      "consent_state": "unresolved",
+      "authentication_state": "anonymous",
+      "steps": [],
+      "limitations": ["Consent state is recorded but not resolved automatically."]
+    }
+  ],
+  "limitations": ["Cross-browser differences do not establish semantic, retrieval, citation, or business impact."]
+}

@@ -1,0 +1,76 @@
+{
+  "$id": "citable://schemas/browser-evidence-plan.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cross-browser and interaction-journey evidence plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "target", "profiles", "limitations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string", "pattern": "^BROWSER-PLAN-[A-Z0-9_-]+$" },
+    "target": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profile_id", "browser", "device", "javascript_enabled", "locale", "consent_state", "authentication_state", "steps", "limitations"],
+        "properties": {
+          "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+          "browser": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["engine", "expected_version"],
+            "properties": {
+              "engine": { "enum": ["chromium", "firefox", "webkit"] },
+              "expected_version": { "type": ["string", "null"] }
+            }
+          },
+          "device": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "viewport", "is_mobile"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "viewport": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["width", "height"],
+                "properties": {
+                  "width": { "type": "integer", "minimum": 240, "maximum": 7680 },
+                  "height": { "type": "integer", "minimum": 240, "maximum": 7680 }
+                }
+              },
+              "is_mobile": { "type": "boolean" }
+            }
+          },
+          "javascript_enabled": { "type": "boolean" },
+          "locale": { "type": "string", "minLength": 2 },
+          "consent_state": { "enum": ["not_present", "denied", "granted", "unresolved", "unknown"] },
+          "authentication_state": { "enum": ["anonymous", "owner_authenticated", "unresolved", "unknown"] },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["step_id", "action", "locator", "value_env", "key", "url", "required", "capture_screenshot"],
+              "properties": {
+                "step_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+                "action": { "enum": ["navigate", "click", "fill", "select_option", "check", "press", "wait_for", "assert_visible", "scroll"] },
+                "locator": { "type": ["string", "null"] },
+                "value_env": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9_]*$" },
+                "key": { "type": ["string", "null"] },
+                "url": { "type": ["string", "null"], "format": "uri" },
+                "required": { "type": "boolean" },
+                "capture_screenshot": { "type": "boolean" }
+              }
+            }
+          },
+          "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  }
+}

@@ -9,7 +9,7 @@ not a prediction of citation or recommendation. Report every row as
 | State | Current evidence boundary |
 | --- | --- |
 | Retrieval eligibility | Static policy plus captured synthetic HTTP response; crawler identity remains simulated unless verified logs/IP evidence are supplied |
-| Source extraction and support suitability | Initial HTML plus registries/detectors/rubrics; optional Chromium profiles can establish bounded raw/desktop/mobile/JavaScript-disabled parity, while cross-browser and application-specific journeys remain unproven |
+| Source extraction and support suitability | Initial HTML plus registries/detectors/rubrics; optional fixed Chromium profiles and explicit Chromium/Firefox/WebKit journey plans establish bounded artifact-level parity, while semantic impact remains unproven |
 | Observed citation behavior | Operator-supplied prompt-result observations only; report cohort size and property citation presence, never infer from readiness |
 
 ## AEO checks

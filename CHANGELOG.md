@@ -29,6 +29,9 @@
   sample/census identity, detector-version cohorts, explicit numerator and
   denominator definitions, unknown-false-negative state, confidence limits,
   and hash-bound JSON and Markdown projections.
+- Schema-validated cross-browser and interaction-journey evidence plans with
+  explicit engine/version, device, JavaScript, locale, consent,
+  authentication, step, artifact, and partial-failure records.
 
 ### Migration — Acceptance Corpus Schema v2
 

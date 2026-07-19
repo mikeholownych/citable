@@ -155,6 +155,51 @@ test('render profiles preserve partial failures and resume only successful immut
   assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
 });
 
+test('browser evidence plans preserve cross-browser artifacts and partial journeys', async () => {
+  const root = fresh();
+  const planFile = path.join(OBS, 'browser-plan.json');
+  const result = await observe(root, 'render', {
+    input: planFile,
+    fetchUrl: async () => ({ body: '<main>Initial response</main>', headers: { 'content-type': 'text/html' } }),
+    captureJourney: async (profile) => {
+      if (profile.profile_id === 'firefox-mobile') throw new Error('fixture engine unavailable');
+      return {
+        final_url: 'https://example.test/', status: 200, browser_version: 'fixture-chromium',
+        dom: '<main>Rendered response</main>', text: 'Rendered response', accessibility_tree: '- main "Rendered response"',
+        screenshot: Buffer.from('final'), console_errors: ['fixture console error'], network_failures: [],
+        steps: [{ step_id: 'open-details', action: 'click', status: 'completed', failure: null, screenshot_ref: 'journeys/chromium-desktop/steps/open-details.png' }],
+        step_screenshots: { 'journeys/chromium-desktop/steps/open-details.png': Buffer.from('step') },
+      };
+    },
+  });
+  assert.equal(result.manifest.status, 'incomplete');
+  assert.equal(result.observations.filter((item) => item.state === 'observed').length, 1);
+  assert.equal(result.observations.filter((item) => item.state === 'failed').length, 1);
+  const observed = result.observations.find((item) => item.state === 'observed');
+  assert.equal(observed.data.browser.engine, 'chromium');
+  assert.equal(observed.data.consent_state, 'not_present');
+  assert.equal(observed.data.authentication_state, 'anonymous');
+  assert.match(observed.data.interpretation_boundary, /do not establish semantic/);
+  for (const relative of ['initial/response.html', 'journeys/chromium-desktop/dom.html', 'journeys/chromium-desktop/accessibility-tree.txt', 'journeys/chromium-desktop/final.png', 'journeys/chromium-desktop/failures.json', 'journeys/chromium-desktop/steps.json', 'journeys/firefox-mobile/failure.json']) {
+    assert.ok(fs.existsSync(path.join(result.dir, relative)), relative);
+  }
+});
+
+test('browser evidence plans reject ambiguous profiles and target changes', async () => {
+  const root = fresh();
+  const plan = readJson(path.join(OBS, 'browser-plan.json'));
+  plan.profiles[1].profile_id = plan.profiles[0].profile_id;
+  const duplicateFile = path.join(root, 'duplicate-browser-plan.json');
+  fs.writeFileSync(duplicateFile, JSON.stringify(plan));
+  await assert.rejects(observe(root, 'render', { input: duplicateFile, captureJourney: async () => ({}) }), /duplicate profile ids/);
+  await assert.rejects(observe(root, 'render', { input: path.join(OBS, 'browser-plan.json'), target: 'https://other.test/', captureJourney: async () => ({}) }), /differs from the plan target/);
+  const crossOrigin = readJson(path.join(OBS, 'browser-plan.json'));
+  crossOrigin.profiles[0].steps[0] = { step_id: 'leave-origin', action: 'navigate', locator: null, value_env: null, key: null, url: 'https://other.test/', required: true, capture_screenshot: false };
+  const crossOriginFile = path.join(root, 'cross-origin-browser-plan.json');
+  fs.writeFileSync(crossOriginFile, JSON.stringify(crossOrigin));
+  await assert.rejects(observe(root, 'render', { input: crossOriginFile, captureJourney: async () => ({}) }), /cross-origin navigation is not allowed/);
+});
+
 test('local Lighthouse execution preserves repeated lab runs and a median summary', async () => {
   const root = fresh();
   const scores = [0.7, 0.9, 0.8];
