@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 224 pass in v1.12.0; 238 pass on the current development branch |
+| Tests | 224 pass in v1.12.0; 247 pass on the current development branch |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 83 packaged files per provider |
+| Distribution | 84 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -64,6 +64,10 @@ audited property or claiming that a recommendation was implemented.
   collection, retention, sanitization, publication, evidence availability, and
   contradiction state. Public projection refuses private scope, unsafe or
   unapproved references, expired authority, and undeclared limitations.
+- Field-validation metrics disclose numerator, denominator, population,
+  exclusions, confidence boundaries, collection provenance, sample/census
+  design, and detector-version cohorts. JSON and Markdown are projections of
+  the same hash-bound metrics object; unknown false negatives remain unknown.
 
 These capabilities are unreleased until the v1.13 release gates pass. Their
 presence on `main` is not evidence that hosted collectors, independent

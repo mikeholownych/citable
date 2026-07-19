@@ -25,6 +25,10 @@
 - Real-property corpus authorization, architecture, collection, retention,
   sanitization, publication, and run-evidence contracts, plus a fail-closed
   public projection with a hash-bound owner-authorized publication receipt.
+- Publishable field-validation metrics with corpus and collection provenance,
+  sample/census identity, detector-version cohorts, explicit numerator and
+  denominator definitions, unknown-false-negative state, confidence limits,
+  and hash-bound JSON and Markdown projections.
 
 ### Migration — Acceptance Corpus Schema v2
 
@@ -34,6 +38,8 @@
   intentional-incompleteness and contradiction state; add run artifact and
   governance references; and declare false-negative discovery and causal
   limitations. Schema v1 manifests are rejected rather than inferred.
+  Corpus v2 manifests created before this change must also add
+  `evaluation_design`, and every detector case must add `detector_version`.
 
 ### Changed — Release Evidence Governance
 

@@ -27,7 +27,7 @@ function releaseFixtureRoot() {
     fs.copyFileSync(path.join(ROOT, relative), target);
   }
   fs.mkdirSync(path.join(root, 'dist', 'universal'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'dist', 'universal', 'manifest.json'), JSON.stringify({ providers: { fixture: { files: 83 } } }));
+  fs.writeFileSync(path.join(root, 'dist', 'universal', 'manifest.json'), JSON.stringify({ providers: { fixture: { files: 84 } } }));
   return root;
 }
 
@@ -38,7 +38,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
   assert.equal(first.manifest.facts.detectors, 123);
-  assert.equal(first.manifest.facts.distribution_files_per_provider, 83);
+  assert.equal(first.manifest.facts.distribution_files_per_provider, 84);
   assert.ok(first.manifest.projections.some((item) => item.projection_id === 'llms-txt'));
   assert.match(first.generated['release/llms.txt'], /Release commit: a{40}/);
 });

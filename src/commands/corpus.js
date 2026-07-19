@@ -46,6 +46,56 @@ function confusion(cases) {
   };
 }
 
+function metric(value, numerator, denominator, population, exclusions, confidenceLimitations) {
+  return { value, numerator, denominator, population, exclusions, confidence_limitations: confidenceLimitations };
+}
+
+function pct(value) {
+  return value == null ? 'not established' : `${(value * 100).toFixed(1)}%`;
+}
+
+export function renderCorpusMetrics(metrics) {
+  const lines = [
+    `# Field validation metrics: ${metrics.corpus_id}`,
+    '',
+    `- Corpus version: ${metrics.version}`,
+    `- Corpus hash: ${metrics.provenance.corpus_hash}`,
+    `- Collection window: ${metrics.provenance.collection_started_at} to ${metrics.provenance.collection_ended_at}`,
+    `- Evaluation design: ${metrics.evaluation_design.mode}`,
+    `- Properties: ${metrics.population.properties}; detector cases: ${metrics.population.detector_cases}`,
+    `- Detector versions: ${metrics.detector_versions.versions.join(', ') || 'none'}${metrics.detector_versions.mixed_versions ? ' (mixed)' : ''}`,
+    '',
+    '## Results',
+    '',
+    `- Detector precision: ${pct(metrics.metric_definitions.detector_precision.value)} (${metrics.metric_definitions.detector_precision.numerator}/${metrics.metric_definitions.detector_precision.denominator})`,
+    `- Discovered false-negative rate: ${pct(metrics.metric_definitions.discovered_false_negative_rate.value)} (${metrics.metric_definitions.discovered_false_negative_rate.numerator}/${metrics.metric_definitions.discovered_false_negative_rate.denominator})`,
+    `- Reviewer exact agreement: ${pct(metrics.metric_definitions.reviewer_exact_agreement.value)}`,
+    `- Run reproducibility: ${pct(metrics.metric_definitions.run_reproducibility.value)}`,
+    `- Incomplete-evidence rate: ${pct(metrics.metric_definitions.incomplete_evidence_rate.value)}`,
+    `- Remediation verification success: ${pct(metrics.metric_definitions.remediation_verification_success.value)}`,
+    '',
+    '## Boundaries',
+    '',
+    `- Unknown false negatives: ${metrics.unknown_false_negatives.status}. ${metrics.unknown_false_negatives.reason}`,
+    ...metrics.evaluation_design.extrapolation_limits.map((item) => `- ${item}`),
+    ...metrics.false_negative_discovery_limitations.map((item) => `- ${item}`),
+    ...metrics.causal_limitations.map((item) => `- ${item}`),
+    ...metrics.limitations.map((item) => `- ${item}`),
+    '',
+    `Metrics hash: ${metrics.metrics_hash}`,
+    '',
+  ];
+  return lines.join('\n');
+}
+
+export function verifyFieldValidationMetrics(metrics) {
+  const check = validateAgainst('field-validation-metrics.schema.json', metrics);
+  const failures = check.valid ? [] : [...check.errors];
+  const expected = sha256(canonicalJson({ ...metrics, metrics_hash: '' }));
+  if (metrics.metrics_hash !== expected) failures.push('field-validation metrics hash is inconsistent');
+  return { valid: failures.length === 0, failures };
+}
+
 function propertyRefs(corpus, propertyId) {
   const property = corpus.properties.find((item) => item.property_id === propertyId);
   const refs = [
@@ -81,9 +131,14 @@ export function validateCorpusData(corpus, { forPublication = false, at = new Da
   if (!corpus.properties.some((item) => item.intentionally_incomplete || ['observed', 'unresolved'].includes(item.contradiction_status))) {
     throw new Error('acceptance corpus requires at least one intentionally incomplete or contradictory property');
   }
+  const design = corpus.evaluation_design;
+  if (new Date(design.collection_ended_at) < new Date(design.collection_started_at)) throw new Error('acceptance corpus collection window ends before it starts');
+  if (design.mode === 'sample' && !design.sampling_plan_ref) throw new Error('sample evaluation requires a sampling plan reference');
+  if (design.mode === 'census' && design.sampling_plan_ref) throw new Error('census evaluation cannot claim a sampling plan reference');
   if (forPublication) {
     if (SECRET_PATTERNS.some((pattern) => pattern.test(JSON.stringify(corpus)))) throw new Error('public corpus contains credential or personal-data patterns');
     if (new Date(corpus.created_at) > at) throw new Error('public corpus creation timestamp is in the future');
+    if (new Date(design.collection_ended_at) > at) throw new Error('public corpus collection window ends in the future');
     for (const property of corpus.properties) {
       if (!PUBLICATION_LEVELS.has(property.publication.level)) throw new Error(`${property.property_id} publication level ${property.publication.level} cannot enter a public corpus`);
       const requiredScopes = ['collect', 'retain', 'review', 'publish_artifacts'];
@@ -116,9 +171,20 @@ export function evaluateCorpusData(corpus) {
   const agreeing = reviewable.filter((item) => new Set(item.reviewer_verdicts).size === 1).length;
   const executions = corpus.executions;
   const remediationComplete = corpus.remediation_verifications.filter((item) => item.status !== 'incomplete');
-  return {
+  const overall = confusion(corpus.detector_cases);
+  const versions = [...new Set(corpus.detector_cases.map((item) => item.detector_version))].sort();
+  const casesByVersion = Object.fromEntries(versions.map((version) => [version, confusion(corpus.detector_cases.filter((item) => item.detector_version === version))]));
+  const exactAgreementRate = ratio(agreeing, reviewable.length);
+  const adjudicated = reviewable.filter((item) => item.adjudicated).length;
+  const reproducible = executions.filter((item) => item.reproducible).length;
+  const incompleteExecutions = executions.filter((item) => item.incomplete).length;
+  const verifiedRemediations = remediationComplete.filter((item) => item.status === 'verified').length;
+  const metrics = {
+    schema_version: 1,
     corpus_id: corpus.corpus_id,
     version: corpus.version,
+    provenance: { corpus_hash: sha256(canonicalJson(corpus)), corpus_created_at: corpus.created_at, collection_started_at: corpus.evaluation_design.collection_started_at, collection_ended_at: corpus.evaluation_design.collection_ended_at },
+    evaluation_design: corpus.evaluation_design,
     population: {
       properties: corpus.properties.length,
       detector_cases: corpus.detector_cases.length,
@@ -126,43 +192,68 @@ export function evaluateCorpusData(corpus) {
       executions: executions.length,
       remediation_verifications: corpus.remediation_verifications.length,
     },
-    detector_accuracy: { overall: confusion(corpus.detector_cases), by_namespace: namespaces },
+    detector_versions: { versions, mixed_versions: versions.length > 1, cases_by_version: casesByVersion },
+    detector_accuracy: { overall, by_namespace: namespaces },
     reviewer_metrics: {
       reviewable_items: reviewable.length,
       exact_agreement_items: agreeing,
-      exact_agreement_rate: ratio(agreeing, reviewable.length),
-      adjudicated_items: reviewable.filter((item) => item.adjudicated).length,
-      adjudication_rate: ratio(reviewable.filter((item) => item.adjudicated).length, reviewable.length),
+      exact_agreement_rate: exactAgreementRate,
+      adjudicated_items: adjudicated,
+      adjudication_rate: ratio(adjudicated, reviewable.length),
     },
     execution_metrics: {
       average_runtime_ms: ratio(executions.reduce((sum, item) => sum + item.runtime_ms, 0), executions.length),
       p95_runtime_ms: percentile(executions.map((item) => item.runtime_ms), 95),
       peak_memory_bytes: executions.length ? Math.max(...executions.map((item) => item.peak_memory_bytes)) : null,
       evidence_storage_bytes: executions.reduce((sum, item) => sum + item.evidence_bytes, 0),
-      reproducibility_rate: ratio(executions.filter((item) => item.reproducible).length, executions.length),
-      incomplete_evidence_rate: ratio(executions.filter((item) => item.incomplete).length, executions.length),
+      reproducibility_rate: ratio(reproducible, executions.length),
+      incomplete_evidence_rate: ratio(incompleteExecutions, executions.length),
     },
     remediation_metrics: {
       evaluated: remediationComplete.length,
-      verified: remediationComplete.filter((item) => item.status === 'verified').length,
-      verification_success_rate: ratio(remediationComplete.filter((item) => item.status === 'verified').length, remediationComplete.length),
+      verified: verifiedRemediations,
+      verification_success_rate: ratio(verifiedRemediations, remediationComplete.length),
       incomplete: corpus.remediation_verifications.filter((item) => item.status === 'incomplete').length,
     },
+    metric_definitions: {
+      detector_precision: metric(overall.precision, overall.true_positive, overall.true_positive + overall.false_positive, 'Adjudicated detector cases with detected outcomes.', ['Incomplete cases and non-detected outcomes.'], ['Precision applies only to the disclosed expected-case population.']),
+      discovered_false_negative_rate: metric(overall.discovered_false_negative_rate, overall.false_negative, overall.true_positive + overall.false_negative, 'Adjudicated cases expected to produce a detection.', ['Unknown and incomplete expected detections.'], corpus.false_negative_discovery_limitations),
+      false_positive_rate: metric(overall.false_positive_rate, overall.false_positive, overall.false_positive + overall.true_negative, 'Adjudicated cases expected not to produce a detection.', ['Incomplete cases and expected detections.'], ['Rate applies only to represented non-detection cases.']),
+      reviewer_exact_agreement: metric(exactAgreementRate, agreeing, reviewable.length, 'Semantic reviews with at least two verdicts.', ['Reviews with fewer than two verdicts.'], ['Exact agreement does not establish reviewer correctness.']),
+      adjudication_rate: metric(ratio(adjudicated, reviewable.length), adjudicated, reviewable.length, 'Semantic reviews with at least two verdicts.', ['Reviews with fewer than two verdicts.'], ['Adjudication rate describes workflow, not semantic accuracy.']),
+      average_runtime_ms: metric(ratio(executions.reduce((sum, item) => sum + item.runtime_ms, 0), executions.length), executions.reduce((sum, item) => sum + item.runtime_ms, 0), executions.length, 'Recorded corpus executions.', [], ['Runtime depends on disclosed execution environments.']),
+      p95_runtime_ms: metric(percentile(executions.map((item) => item.runtime_ms), 95), null, executions.length, 'Recorded corpus executions.', [], ['Nearest-rank p95 is unstable for small populations.']),
+      peak_memory_bytes: metric(executions.length ? Math.max(...executions.map((item) => item.peak_memory_bytes)) : null, null, executions.length, 'Recorded corpus executions.', [], ['Peak memory is the maximum owner-reported execution value.']),
+      evidence_storage_bytes: metric(executions.reduce((sum, item) => sum + item.evidence_bytes, 0), executions.reduce((sum, item) => sum + item.evidence_bytes, 0), executions.length, 'Recorded corpus executions.', [], ['Storage excludes unavailable or undisclosed evidence.']),
+      run_reproducibility: metric(ratio(reproducible, executions.length), reproducible, executions.length, 'Recorded corpus executions.', [], ['Reproducibility is bounded by each run receipt and declared exclusions.']),
+      incomplete_evidence_rate: metric(ratio(incompleteExecutions, executions.length), incompleteExecutions, executions.length, 'Recorded corpus executions.', [], ['Incomplete status depends on declared unavailable evidence.']),
+      remediation_verification_success: metric(ratio(verifiedRemediations, remediationComplete.length), verifiedRemediations, remediationComplete.length, 'Remediation verifications with a completed verdict.', ['Incomplete verifications.'], ['Verification does not establish external outcome causation.']),
+    },
+    unknown_false_negatives: { status: 'not_quantified', reason: 'Cases absent from the disclosed and adjudicated expected-detection population cannot be counted.' },
     false_negative_discovery_limitations: corpus.false_negative_discovery_limitations,
     causal_limitations: corpus.causal_limitations,
     limitations: corpus.limitations,
+    metrics_hash: '',
   };
+  metrics.metrics_hash = sha256(canonicalJson(metrics));
+  const check = validateAgainst('field-validation-metrics.schema.json', metrics);
+  if (!check.valid) throw new Error(`field-validation metrics violate contract: ${check.errors.join('; ')}`);
+  return metrics;
 }
 
 export function publishCorpus(root, { input, output, at = nowIso() }) {
   if (!input || !fs.existsSync(input)) throw new Error('corpus publish requires --input <json>');
   if (!output) throw new Error('corpus publish requires --output <json>');
-  if (fs.existsSync(output)) throw new Error(`corpus publish refuses to overwrite ${output}`);
+  const plannedOutputs = [output, `${output}.metrics.json`, `${output}.metrics.md`, `${output}.receipt.json`];
+  const existingOutput = plannedOutputs.find((file) => fs.existsSync(file));
+  if (existingOutput) throw new Error(`corpus publish refuses to overwrite ${existingOutput}`);
   const raw = fs.readFileSync(input, 'utf8');
   const corpus = readJson(input);
   validateCorpusData(corpus, { forPublication: true, at: new Date(at) });
   const published = `${JSON.stringify(corpus, null, 2)}\n`;
-  writeJson(output, corpus);
+  const metrics = evaluateCorpusData(corpus);
+  const metricsJson = `${JSON.stringify(metrics, null, 2)}\n`;
+  const metricsMarkdown = renderCorpusMetrics(metrics);
   const receipt = {
     schema_version: 1,
     receipt_id: `CORPUS-PUBLICATION-${sha256(`${corpus.corpus_id}:${sha256(published)}:${at}`).slice(0, 20).toUpperCase()}`,
@@ -170,6 +261,8 @@ export function publishCorpus(root, { input, output, at = nowIso() }) {
     corpus_version: corpus.version,
     source_hash: sha256(raw),
     published_hash: sha256(published),
+    metrics_json_hash: sha256(metricsJson),
+    metrics_markdown_hash: sha256(metricsMarkdown),
     property_ids: corpus.properties.map((item) => item.property_id).sort(),
     publication_levels: [...new Set(corpus.properties.map((item) => item.publication.level))].sort(),
     generated_at: at,
@@ -183,22 +276,34 @@ export function publishCorpus(root, { input, output, at = nowIso() }) {
   const receiptCheck = validateAgainst('corpus-publication-receipt.schema.json', receipt);
   if (!receiptCheck.valid) throw new Error(`corpus publication receipt violates contract: ${receiptCheck.errors.join('; ')}`);
   const receiptFile = `${output}.receipt.json`;
+  const metricsFile = `${output}.metrics.json`;
+  const reportFile = `${output}.metrics.md`;
+  writeJson(output, corpus);
+  writeJson(metricsFile, metrics);
+  fs.writeFileSync(reportFile, metricsMarkdown);
   writeJson(receiptFile, receipt);
   const run = createRun(root, { command: 'corpus publish', argv: process.argv.slice(2), target: { kind: 'source', location: path.resolve(input), environment: 'local' } });
   run.addInput('acceptance_corpus', raw);
   run.writeArtifact('published-corpus.json', corpus);
+  run.writeArtifact('accuracy-metrics.json', metrics);
+  run.writeArtifact('accuracy-metrics.md', metricsMarkdown);
   run.writeArtifact('publication-receipt.json', receipt);
   run.manifest.warnings.push('Publication is owner-authorized and sanitization-reviewed but is not independently attested.');
-  return { runId: run.runId, dir: run.finalize('completed'), output, receiptFile, receipt };
+  return { runId: run.runId, dir: run.finalize('completed'), output, metricsFile, reportFile, receiptFile, receipt, metrics };
 }
 
-export function verifyCorpusPublicationReceipt(receipt, publishedCorpus) {
+export function verifyCorpusPublicationReceipt(receipt, publishedCorpus, { metrics = null, report = null } = {}) {
   const check = validateAgainst('corpus-publication-receipt.schema.json', receipt);
   const failures = check.valid ? [] : [...check.errors];
   const { receipt_hash: ignored, ...unsigned } = receipt;
   if (receipt.receipt_hash !== sha256(canonicalJson(unsigned))) failures.push('publication receipt hash is inconsistent');
   const published = typeof publishedCorpus === 'string' ? publishedCorpus : `${JSON.stringify(publishedCorpus, null, 2)}\n`;
   if (receipt.published_hash !== sha256(published)) failures.push('published corpus hash is inconsistent');
+  if (metrics != null) {
+    const metricsJson = typeof metrics === 'string' ? metrics : `${JSON.stringify(metrics, null, 2)}\n`;
+    if (receipt.metrics_json_hash !== sha256(metricsJson)) failures.push('published metrics JSON hash is inconsistent');
+  }
+  if (report != null && receipt.metrics_markdown_hash !== sha256(report)) failures.push('published metrics Markdown hash is inconsistent');
   return { valid: failures.length === 0, failures };
 }
 
@@ -211,6 +316,7 @@ export function evaluateCorpus(root, { input }) {
   run.addInput('acceptance_corpus', raw);
   run.writeArtifact('corpus.json', corpus);
   run.writeArtifact('accuracy-metrics.json', metrics);
+  run.writeArtifact('accuracy-metrics.md', renderCorpusMetrics(metrics));
   run.manifest.warnings.push('Metrics describe only the disclosed corpus population and do not establish performance on untested properties.');
   return { runId: run.runId, dir: run.finalize('completed'), metrics };
 }

@@ -3,6 +3,7 @@
   "corpus_id": "CORPUS-V1-INITIAL",
   "version": "1.0.0",
   "created_at": "2026-07-19T09:00:00Z",
+  "evaluation_design": { "mode": "census", "population_definition": "All disclosed detector cases and semantic reviews in this controlled fixture.", "selection_method": "Complete fixture census.", "sampling_plan_ref": null, "inclusion_criteria": ["Every declared fixture case."], "exclusion_criteria": [], "extrapolation_limits": ["Results apply only to this fixture and cannot be extrapolated to production properties."], "collection_started_at": "2026-07-19T08:30:00Z", "collection_ended_at": "2026-07-19T08:45:00Z" },
   "properties": [
     {
       "property_id": "PROP-A", "property_class": "static",
@@ -24,11 +25,11 @@
     }
   ],
   "detector_cases": [
-    { "case_id": "CASE-1", "property_id": "PROP-A", "detector_id": "TECH-001", "namespace": "TECH", "expected": "detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-1"] },
-    { "case_id": "CASE-2", "property_id": "PROP-A", "detector_id": "TECH-002", "namespace": "TECH", "expected": "non_detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-2"] },
-    { "case_id": "CASE-3", "property_id": "PROP-B", "detector_id": "AGENT-003", "namespace": "AGENT", "expected": "detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-1"] },
-    { "case_id": "CASE-4", "property_id": "PROP-B", "detector_id": "AGENT-001", "namespace": "AGENT", "expected": "non_detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-2"] },
-    { "case_id": "CASE-5", "property_id": "PROP-B", "detector_id": "CRAWL-001", "namespace": "CRAWL", "expected": "detection", "observed": "incomplete", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/INCOMPLETE"] }
+    { "case_id": "CASE-1", "property_id": "PROP-A", "detector_id": "TECH-001", "detector_version": "1.12.0", "namespace": "TECH", "expected": "detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-1"] },
+    { "case_id": "CASE-2", "property_id": "PROP-A", "detector_id": "TECH-002", "detector_version": "1.12.0", "namespace": "TECH", "expected": "non_detection", "observed": "detected", "adjudicator": "reviewer-a", "evidence_refs": ["RUN-A/F-2"] },
+    { "case_id": "CASE-3", "property_id": "PROP-B", "detector_id": "AGENT-003", "detector_version": "1.12.0", "namespace": "AGENT", "expected": "detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-1"] },
+    { "case_id": "CASE-4", "property_id": "PROP-B", "detector_id": "AGENT-001", "detector_version": "1.12.0", "namespace": "AGENT", "expected": "non_detection", "observed": "not_detected", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/F-2"] },
+    { "case_id": "CASE-5", "property_id": "PROP-B", "detector_id": "CRAWL-001", "detector_version": "1.12.0", "namespace": "CRAWL", "expected": "detection", "observed": "incomplete", "adjudicator": "reviewer-b", "evidence_refs": ["RUN-B/INCOMPLETE"] }
   ],
   "semantic_reviews": [
     { "review_id": "SEM-1", "property_id": "PROP-A", "review_type": "claim_support", "reviewer_verdicts": ["supported", "supported"], "reviewer_assignment_refs": ["RUN-A/ASSIGNMENT-1"], "disagreement_refs": [], "adjudicated": false, "evidence_refs": ["RUN-A/SEM-1"] },
