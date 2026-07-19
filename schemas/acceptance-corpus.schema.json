@@ -4,42 +4,97 @@
   "title": "Real-property acceptance corpus",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "corpus_id", "version", "created_at", "properties", "detector_cases", "semantic_reviews", "executions", "remediation_verifications", "limitations"],
+  "required": ["schema_version", "corpus_id", "version", "created_at", "properties", "detector_cases", "semantic_reviews", "executions", "remediation_verifications", "false_negative_discovery_limitations", "causal_limitations", "limitations"],
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "corpus_id": { "type": "string", "pattern": "^CORPUS-" },
     "version": { "type": "string", "minLength": 1 },
     "created_at": { "type": "string", "format": "date-time" },
     "properties": {
-      "type": "array",
-      "minItems": 1,
+      "type": "array", "minItems": 1,
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["property_id", "property_class", "owner_authorized", "evidence_package_refs", "unavailable_evidence", "limitations"],
+        "type": "object", "additionalProperties": false,
+        "required": ["property_id", "property_class", "architecture", "authorization", "collection_methods", "publication", "sanitization", "evidence_package_refs", "unavailable_evidence", "intentionally_incomplete", "contradiction_status", "limitations"],
         "properties": {
-          "property_id": { "type": "string", "minLength": 1 },
-          "property_class": { "type": "string", "minLength": 1 },
-          "owner_authorized": { "type": "boolean" },
-          "evidence_package_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "property_id": { "type": "string", "pattern": "^PROP-[A-Z0-9_-]+$" },
+          "property_class": { "enum": ["static", "framework_rendered", "cms", "ecommerce", "multilingual", "waf_protected", "large_sitemap", "javascript_heavy", "media_heavy", "publisher_surface", "other"] },
+          "architecture": {
+            "type": "object", "additionalProperties": false,
+            "required": ["platform", "rendering", "protections", "languages", "content_types"],
+            "properties": {
+              "platform": { "type": "string", "minLength": 1 },
+              "rendering": { "enum": ["static", "server", "client", "hybrid", "unknown"] },
+              "protections": { "type": "array", "items": { "type": "string" } },
+              "languages": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "content_types": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          },
+          "authorization": {
+            "type": "object", "additionalProperties": false,
+            "required": ["status", "authorized_by", "authorized_at", "expires_at", "scope", "evidence_ref"],
+            "properties": {
+              "status": { "const": "owner_authorized" },
+              "authorized_by": { "type": "string", "minLength": 1 },
+              "authorized_at": { "type": "string", "format": "date-time" },
+              "expires_at": { "type": ["string", "null"], "format": "date-time" },
+              "scope": { "type": "array", "minItems": 1, "items": { "enum": ["collect", "retain", "review", "publish_aggregate", "publish_artifacts"] } },
+              "evidence_ref": { "type": "string", "minLength": 1 }
+            }
+          },
+          "collection_methods": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["method", "authority", "collector", "collected_at", "limitations"],
+              "properties": {
+                "method": { "type": "string", "minLength": 1 },
+                "authority": { "enum": ["owner_controlled", "provider_published", "independent", "synthetic", "external_unverified"] },
+                "collector": { "type": "string", "minLength": 1 },
+                "collected_at": { "type": "string", "format": "date-time" },
+                "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+              }
+            }
+          },
+          "publication": {
+            "type": "object", "additionalProperties": false,
+            "required": ["level", "approved_by", "approved_at", "retention_days", "allowed_artifact_refs"],
+            "properties": {
+              "level": { "enum": ["private", "aggregate_only", "sanitized_artifacts", "public_artifacts"] },
+              "approved_by": { "type": ["string", "null"] },
+              "approved_at": { "type": ["string", "null"], "format": "date-time" },
+              "retention_days": { "type": "integer", "minimum": 1 },
+              "allowed_artifact_refs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+            }
+          },
+          "sanitization": {
+            "type": "object", "additionalProperties": false,
+            "required": ["reviewed_by", "reviewed_at", "pii_status", "credential_status", "source_identifiers", "evidence_ref"],
+            "properties": {
+              "reviewed_by": { "type": ["string", "null"] },
+              "reviewed_at": { "type": ["string", "null"], "format": "date-time" },
+              "pii_status": { "enum": ["not_reviewed", "none_detected", "redacted"] },
+              "credential_status": { "enum": ["not_reviewed", "none_detected", "redacted"] },
+              "source_identifiers": { "enum": ["not_reviewed", "approved", "pseudonymized"] },
+              "evidence_ref": { "type": ["string", "null"] }
+            }
+          },
+          "evidence_package_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
           "unavailable_evidence": { "type": "array", "items": { "type": "string" } },
-          "limitations": { "type": "array", "items": { "type": "string" } }
+          "intentionally_incomplete": { "type": "boolean" },
+          "contradiction_status": { "enum": ["none_observed", "observed", "unresolved", "not_evaluated"] },
+          "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
         }
       }
     },
     "detector_cases": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
+        "type": "object", "additionalProperties": false,
         "required": ["case_id", "property_id", "detector_id", "namespace", "expected", "observed", "adjudicator", "evidence_refs"],
         "properties": {
-          "case_id": { "type": "string", "minLength": 1 },
-          "property_id": { "type": "string", "minLength": 1 },
-          "detector_id": { "type": "string", "minLength": 1 },
-          "namespace": { "type": "string", "minLength": 1 },
-          "expected": { "enum": ["detection", "non_detection"] },
-          "observed": { "enum": ["detected", "not_detected", "incomplete"] },
+          "case_id": { "type": "string", "minLength": 1 }, "property_id": { "type": "string", "minLength": 1 },
+          "detector_id": { "type": "string", "minLength": 1 }, "namespace": { "type": "string", "minLength": 1 },
+          "expected": { "enum": ["detection", "non_detection"] }, "observed": { "enum": ["detected", "not_detected", "incomplete"] },
           "adjudicator": { "type": "string", "minLength": 1 },
           "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
         }
@@ -48,50 +103,51 @@
     "semantic_reviews": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["review_id", "property_id", "review_type", "reviewer_verdicts", "adjudicated", "evidence_refs"],
+        "type": "object", "additionalProperties": false,
+        "required": ["review_id", "property_id", "review_type", "reviewer_verdicts", "reviewer_assignment_refs", "disagreement_refs", "adjudicated", "evidence_refs"],
         "properties": {
-          "review_id": { "type": "string", "minLength": 1 },
-          "property_id": { "type": "string", "minLength": 1 },
+          "review_id": { "type": "string", "minLength": 1 }, "property_id": { "type": "string", "minLength": 1 },
           "review_type": { "type": "string", "minLength": 1 },
           "reviewer_verdicts": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 } },
-          "adjudicated": { "type": "boolean" },
-          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+          "reviewer_assignment_refs": { "$ref": "#/definitions/refs" }, "disagreement_refs": { "$ref": "#/definitions/refs" },
+          "adjudicated": { "type": "boolean" }, "evidence_refs": { "$ref": "#/definitions/nonempty_refs" }
         }
       }
     },
     "executions": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["property_id", "run_id", "runtime_ms", "peak_memory_bytes", "evidence_bytes", "reproducible", "incomplete"],
+        "type": "object", "additionalProperties": false,
+        "required": ["property_id", "run_id", "raw_artifact_refs", "deterministic_finding_refs", "heuristic_finding_refs", "reviewer_assignment_refs", "disagreement_refs", "exception_refs", "intervention_refs", "verification_refs", "reproducibility_receipt_ref", "runtime_ms", "peak_memory_bytes", "evidence_bytes", "reproducible", "incomplete"],
         "properties": {
-          "property_id": { "type": "string" },
-          "run_id": { "type": "string" },
-          "runtime_ms": { "type": "number", "minimum": 0 },
-          "peak_memory_bytes": { "type": "integer", "minimum": 0 },
-          "evidence_bytes": { "type": "integer", "minimum": 0 },
-          "reproducible": { "type": "boolean" },
-          "incomplete": { "type": "boolean" }
+          "property_id": { "type": "string" }, "run_id": { "type": "string" },
+          "raw_artifact_refs": { "$ref": "#/definitions/nonempty_refs" }, "deterministic_finding_refs": { "$ref": "#/definitions/refs" },
+          "heuristic_finding_refs": { "$ref": "#/definitions/refs" }, "reviewer_assignment_refs": { "$ref": "#/definitions/refs" },
+          "disagreement_refs": { "$ref": "#/definitions/refs" }, "exception_refs": { "$ref": "#/definitions/refs" },
+          "intervention_refs": { "$ref": "#/definitions/refs" }, "verification_refs": { "$ref": "#/definitions/refs" },
+          "reproducibility_receipt_ref": { "type": ["string", "null"] },
+          "runtime_ms": { "type": "number", "minimum": 0 }, "peak_memory_bytes": { "type": "integer", "minimum": 0 },
+          "evidence_bytes": { "type": "integer", "minimum": 0 }, "reproducible": { "type": "boolean" }, "incomplete": { "type": "boolean" }
         }
       }
     },
     "remediation_verifications": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
+        "type": "object", "additionalProperties": false,
         "required": ["verification_id", "property_id", "status", "evidence_refs"],
         "properties": {
-          "verification_id": { "type": "string" },
-          "property_id": { "type": "string" },
-          "status": { "enum": ["verified", "failed", "incomplete"] },
-          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          "verification_id": { "type": "string" }, "property_id": { "type": "string" },
+          "status": { "enum": ["verified", "failed", "incomplete"] }, "evidence_refs": { "$ref": "#/definitions/nonempty_refs" }
         }
       }
     },
+    "false_negative_discovery_limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "causal_limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
     "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  },
+  "definitions": {
+    "refs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "nonempty_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
   }
 }

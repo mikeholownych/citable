@@ -90,6 +90,13 @@ remain visible execution context but are explicitly excluded from fingerprint
 equality. Partial runs and unavailable observations remain partial after
 comparison.
 
+Corpus publication verifies declared owner authority, approved artifact
+references, retention, and a recorded human sanitization review. Automated
+pattern checks can reject common credentials, email addresses, unsafe paths,
+and undeclared references, but cannot prove that every form of personal,
+customer, contractual, or proprietary information has been removed. Publication
+receipts are publisher-controlled evidence and are not independent attestation.
+
 ## Probabilistic checks (by design)
 
 Heuristic detectors (deterministic: false) — TECH-011/014/015, PAGE-008/009,

@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 224 pass in v1.12.0; 238 pass on the current development branch |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 81 packaged files per provider |
+| Distribution | 83 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -60,6 +60,10 @@ audited property or claiming that a recommendation was implemented.
   detector, configuration, observation-method, tool, and external-system
   dimensions. Environment-specific execution context remains visible but is
   excluded from canonical reproducibility fingerprints.
+- Real-property corpus records require explicit architecture, owner authority,
+  collection, retention, sanitization, publication, evidence availability, and
+  contradiction state. Public projection refuses private scope, unsafe or
+  unapproved references, expired authority, and undeclared limitations.
 
 These capabilities are unreleased until the v1.13 release gates pass. Their
 presence on `main` is not evidence that hosted collectors, independent
