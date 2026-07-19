@@ -114,3 +114,22 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Repeated runs stable (§21.21) | T: deterministic rerun test (identical finding IDs) |
 | Fail-closed behaviours (§16) | substantiate outcomes, schema blocked list, init unresolved_assumptions, audit incomplete_checks; T: multiple |
 | Multi-agent distribution (§18) | scripts/build-dist.js → dist/{claude-code,codex,cursor,gemini,generic} |
+
+## Executive Reporting Suite (feat/executive-reporting-suite)
+
+| Requirement | Controls |
+| --- | --- |
+| Governed metric definitions with known limitations and restatement policy | R: `kpi.schema.json`; C: `kpi validate` rejects empty `known_limitations` and missing `executive_definition` |
+| Four-act variance narrative: plan → actual → cause → response | R: `variance.schema.json`; V: `variance validate` rejects vague causes; material variances require `management_response` |
+| Customer outcome stage progression (finding → causal) | R: `customer-outcome.schema.json` (5-stage enum); V: `outcomes validate` blocks `commercial_value` at `finding_produced` |
+| Outcome separation: activity vs validated impact | C: `outcomes summary` warns when all at `finding_produced`; `independently_verified` requires `customer_confirmed` |
+| Risk register with KRIs, triggers, controls, and board visibility | R: `risk.schema.json`; V: high/critical residual requires KRIs; board-visible requires `trigger_threshold` |
+| Executive review: evidence ledger before narrative | C: `executive-review`; returns `ungoverned_warning` when no KPIs governed; T: test asserts |
+| Board pack: every statement governed and sourced | C: `board-report`; returns `refused_sections` when kpis/outcomes/risks absent; T: test asserts |
+| Bounded decision record with trade-offs and "what would change my mind" | R: `decision.schema.json`; V: `decision-memo validate` requires consulted parties, `what_would_change_recommendation`, trade-offs; `effectively_one_way` requires `reopen_conditions` |
+| Assumption validity tracking with expiry and escalation | R: `assumption.schema.json`; V: validated status requires `evidence_for`; critical requires `next_test`; T: expired subcommand test |
+| Compound risk scenario with cascade, hedges, and early-warning triggers | R: `scenario.schema.json`; V: max 3 variables; hedges require cost/impact/owner/deadline; `cascade_analysis` required; T: triggers test |
+| Initiative prioritization with transparent scoring | C: `prioritize rank` — scoring formula and weights exposed in output; rejects `transformative` + `assumption` combination; T: test asserts |
+| Competitive intelligence provenance controls | R: competitors.yaml extended; V: `competitive-intel validate` requires `observation_date`, `source`, `claim_type`; unreliable sources require `independent_verification` |
+| Chief-of-staff routing with audit trail | C: `executive` routes 11 patterns; max depth 1; logs to `.citable/executive-log.yaml`; T: 7 routing tests |
+

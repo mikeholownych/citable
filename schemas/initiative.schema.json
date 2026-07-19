@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/initiative.schema.json",
+  "title": "Initiative Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "initiatives"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "initiative_id",
+          "title",
+          "customer_demand",
+          "revenue_potential",
+          "strategic_differentiation",
+          "evidence_strength",
+          "engineering_cost",
+          "reversibility",
+          "owner"
+        ],
+        "properties": {
+          "initiative_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "customer_demand": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "validated"
+            ]
+          },
+          "revenue_potential": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "transformative"
+            ]
+          },
+          "strategic_differentiation": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "evidence_strength": {
+            "type": "string",
+            "enum": [
+              "assumption",
+              "anecdote",
+              "proxy",
+              "validated",
+              "verified"
+            ]
+          },
+          "engineering_cost": {
+            "type": "string",
+            "enum": [
+              "trivial",
+              "low",
+              "medium",
+              "high",
+              "very_high"
+            ]
+          },
+          "operating_cost": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "maintenance_cost": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "platform_dependency": {
+            "type": "string"
+          },
+          "legal_risk": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "reversibility": {
+            "type": "string",
+            "enum": [
+              "reversible",
+              "costly_to_reverse",
+              "effectively_one_way"
+            ]
+          },
+          "time_to_value": {
+            "type": "string"
+          },
+          "opportunity_cost": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "approved",
+              "in_progress",
+              "completed",
+              "deferred",
+              "cancelled"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "scoring_weights": {
+            "type": "object",
+            "description": "Explicit weights if weighted scoring is used — weights must be visible"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

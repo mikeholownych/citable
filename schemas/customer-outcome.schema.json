@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/customer-outcome.schema.json",
+  "title": "Customer Outcomes Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "customer-outcomes"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "outcome_id",
+          "customer",
+          "property",
+          "baseline",
+          "intervention",
+          "observed_change",
+          "measurement_window",
+          "evidence_package",
+          "customer_confirmed",
+          "causal_confidence"
+        ],
+        "properties": {
+          "outcome_id": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "property": {
+            "type": "string"
+          },
+          "baseline": {
+            "type": "string"
+          },
+          "intervention": {
+            "type": "string"
+          },
+          "observed_change": {
+            "type": "string"
+          },
+          "measurement_window": {
+            "type": "string"
+          },
+          "confounders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_package": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "customer_confirmed": {
+            "type": "boolean"
+          },
+          "independently_verified": {
+            "type": "boolean"
+          },
+          "causal_confidence": {
+            "type": "string",
+            "enum": [
+              "none",
+              "weak",
+              "partial",
+              "strong",
+              "verified"
+            ]
+          },
+          "outcome_stage": {
+            "type": "string",
+            "enum": [
+              "finding_produced",
+              "finding_accepted",
+              "finding_remediated",
+              "remediation_validated",
+              "search_result_changed",
+              "answer_engine_changed",
+              "commercial_outcome_changed",
+              "causal_relationship_established"
+            ]
+          },
+          "commercial_value": {
+            "type": "string"
+          },
+          "publication_permission": {
+            "type": "boolean"
+          },
+          "period": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

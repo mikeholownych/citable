@@ -23,6 +23,16 @@ export const REGISTRY_SPECS = [
   { file: 'review-items.yaml', kind: 'review_items', schema: 'review-item.schema.json', idField: 'review_item_id' },
   { file: 'sampling-plans.yaml', kind: 'sampling_plans', schema: 'sampling-plan.schema.json', idField: 'sampling_plan_id' },
   { file: 'schedules.yaml', kind: 'schedules', schema: 'schedule.schema.json', idField: 'schedule_id' },
+  // Executive reporting suite — governed inputs (Phase 1)
+  { file: 'kpis.yaml',              kind: 'kpis',              schema: 'kpi.schema.json',             idField: 'metric_id' },
+  { file: 'variances.yaml',         kind: 'variances',         schema: 'variance.schema.json',        idField: 'variance_id' },
+  { file: 'customer-outcomes.yaml', kind: 'customer-outcomes', schema: 'customer-outcome.schema.json', idField: 'outcome_id' },
+  { file: 'risks.yaml',             kind: 'risks',             schema: 'risk.schema.json',            idField: 'risk_id' },
+  // Executive reporting suite — decision support (Phase 2)
+  { file: 'decisions.yaml',    kind: 'decisions',   schema: 'decision.schema.json',   idField: 'decision_id' },
+  { file: 'assumptions.yaml',  kind: 'assumptions', schema: 'assumption.schema.json', idField: 'assumption_id' },
+  { file: 'scenarios.yaml',    kind: 'scenarios',   schema: 'scenario.schema.json',   idField: 'scenario_id' },
+  { file: 'initiatives.yaml',  kind: 'initiatives', schema: 'initiative.schema.json', idField: 'initiative_id' },
 ];
 
 export function contextDir(root) {

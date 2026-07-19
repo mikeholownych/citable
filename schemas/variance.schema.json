@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/variance.schema.json",
+  "title": "Variance Registry",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "entries"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "string",
+      "const": "variances"
+    },
+    "updated": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "variance_id",
+          "metric_id",
+          "period",
+          "actual",
+          "target",
+          "variance_amount",
+          "variance_pct",
+          "materiality",
+          "primary_driver",
+          "controllable",
+          "evidence",
+          "owner"
+        ],
+        "properties": {
+          "variance_id": {
+            "type": "string"
+          },
+          "metric_id": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "actual": {},
+          "target": {},
+          "prior_period": {},
+          "forecast": {},
+          "variance_amount": {},
+          "variance_pct": {
+            "type": "number"
+          },
+          "materiality": {
+            "type": "string",
+            "enum": [
+              "immaterial",
+              "watch",
+              "material",
+              "critical"
+            ]
+          },
+          "primary_driver": {
+            "type": "string"
+          },
+          "secondary_drivers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "controllable": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "management_response": {
+            "type": "string"
+          },
+          "revised_forecast": {},
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "rejected_causes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

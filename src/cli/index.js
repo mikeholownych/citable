@@ -10,7 +10,7 @@ import { inspect } from '../commands/inspect.js';
 import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
-import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
+import { projectGithub, runSchedule } from '../commands/delivery.js';
 import { actionPlan } from '../commands/actionPlan.js';
 import { observe } from '../commands/observe.js';
 import { applyRemediation } from '../commands/applyRemediation.js';
@@ -19,7 +19,20 @@ import { evaluateObjective, importMetrics, initializeObjective, validateObjectiv
 import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
 import { evaluateDispositions, validateGovernance } from '../commands/governance.js';
 import { evaluateReviews, initializeSamplingPlan, prioritizeReviews, queueReviews, selectSample } from '../commands/reviews.js';
-import { projectGithub, runSchedule } from '../commands/delivery.js';
+import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
+// Executive reporting suite
+import { kpiCommand } from '../commands/kpi.js';
+import { varianceCommand } from '../commands/variance.js';
+import { outcomesCommand } from '../commands/outcomes.js';
+import { riskCommand } from '../commands/risk.js';
+import { executiveReviewCommand } from '../commands/executiveReview.js';
+import { boardReportCommand } from '../commands/boardReport.js';
+import { decisionMemoCommand } from '../commands/decisionMemo.js';
+import { assumptionAuditCommand } from '../commands/assumptionAudit.js';
+import { scenarioCommand } from '../commands/scenario.js';
+import { prioritizeCommand } from '../commands/prioritize.js';
+import { competitiveIntelCommand } from '../commands/competitiveIntel.js';
+import { executiveCommand } from '../commands/executive.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -66,6 +79,18 @@ Commands
   schedules run [id]        Execute an active version-pinned audit schedule
   project github [run]      Render non-authoritative GitHub annotations from a run
   self-upgrade              Check for a newer version and upgrade the npx cache
+  kpi [list|show|validate]  KPI architecture — govern metric definitions, sources, targets
+  variance [list|validate|material]  Variance analysis — explain target-vs-actual without narrative smoothing
+  outcomes [list|summary|validate]   Customer outcomes — separate activity from validated impact
+  risk [list|top|validate]  Risk register — top risks, controls, residual exposure, KRIs
+  executive-review [--period YYYY-MM]  Monthly executive operating review (evidence-first)
+  board-report [--quarter YYYY-QN]     Quarterly board pack (governed statements only)
+  decision-memo [list|show|validate|new]  Bounded decision record with trade-offs and evidence
+  assumption-audit [list|expired|critical|validate]  Assumption validity tracking
+  scenario [list|show|triggers|validate]  Compound risk scenario war room
+  prioritize [list|rank|validate]     Initiative prioritization with transparent scoring
+  competitive-intel [list|stale|validate]  Competitive intelligence (provenance-controlled)
+  executive <request>       Chief-of-staff router — routes to the correct reporting skill
 
 Options
   --target <dir|url>        Built output directory or deployed URL to audit
@@ -299,6 +324,67 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const output = await selfUpgradeCommand(argv.slice(1));
         console.log(output);
         process.exitCode = selfUpgradeExitCode(output);
+        break;
+      }
+      // Executive reporting suite
+      case 'kpi': {
+        const r = await kpiCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'variance': {
+        const r = await varianceCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'outcomes': {
+        const r = await outcomesCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'risk': {
+        const r = await riskCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'executive-review': {
+        const r = await executiveReviewCommand(argv.slice(1), root);
+        out(args, typeof r === 'string' ? r : JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'board-report': {
+        const r = await boardReportCommand(argv.slice(1), root);
+        out(args, typeof r === 'string' ? r : JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'decision-memo': {
+        const r = await decisionMemoCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'assumption-audit': {
+        const r = await assumptionAuditCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'scenario': {
+        const r = await scenarioCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'prioritize': {
+        const r = await prioritizeCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'competitive-intel': {
+        const r = await competitiveIntelCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'executive': {
+        const r = await executiveCommand(argv.slice(1), root);
+        out(args, JSON.stringify(r, null, 2), r);
         break;
       }
       case undefined:
