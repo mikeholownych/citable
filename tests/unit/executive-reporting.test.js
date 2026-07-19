@@ -58,6 +58,7 @@ import { scenarioCommand } from '../../src/commands/scenario.js';
 import { prioritizeCommand } from '../../src/commands/prioritize.js';
 import { competitiveIntelCommand } from '../../src/commands/competitiveIntel.js';
 import { executiveCommand } from '../../src/commands/executive.js';
+import { validateAgainst } from '../../src/shared/schemaValidator.js';
 
 // =======================================================================
 // KPI
@@ -838,5 +839,124 @@ describe('--as-of flag produces deterministic temporal evaluation', () => {
     const root = tmpProject();
     const r = await executiveReviewCommand(['--period', '2026-06', '--json', '--as-of', '2026-06-30'], root);
     assert.equal(r.as_of, '2026-06-30', 'as_of must be recorded in output for reproducibility');
+  });
+});
+
+describe('second PR review regressions', () => {
+  test('executive router forwards downstream report flags', async () => {
+    const root = tmpProject();
+    const r = await executiveCommand(['board report', '--quarter', '2025-Q1', '--as-of', '2025-03-31', '--json'], root);
+    assert.equal(r.result.quarter, '2025-Q1');
+    assert.equal(r.result.as_of, '2025-03-31');
+  });
+
+  test('variance list honors --period', async () => {
+    const root = tmpProject();
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [
+      { variance_id: 'V1', metric_id: 'K1', period: '2026-01' },
+      { variance_id: 'V2', metric_id: 'K1', period: '2026-02' },
+    ]});
+    const r = await varianceCommand(['list', '--period', '2026-02'], root);
+    assert.deepEqual(r.variances.map(v => v.variance_id), ['V2']);
+  });
+
+  test('shared registry loader reports malformed YAML without throwing', async () => {
+    const root = tmpProject();
+    fs.writeFileSync(path.join(root, '.citable', 'variances.yaml'), 'entries: [unterminated', 'utf8');
+    const r = await varianceCommand(['validate'], root);
+    assert.equal(r.valid, false);
+    assert.ok(r.problems.some(problem => /YAML parse failure/.test(problem)));
+  });
+
+  test('critical strategic differentiation outranks high', async () => {
+    const root = tmpProject();
+    const base = { customer_demand: 'medium', revenue_potential: 'medium', evidence_strength: 'verified', engineering_cost: 'low', reversibility: 'reversible', status: 'proposed', owner: 'CEO' };
+    write(root, 'initiatives.yaml', { version: 1, kind: 'initiatives', entries: [
+      { ...base, initiative_id: 'HIGH', title: 'High', strategic_differentiation: 'high' },
+      { ...base, initiative_id: 'CRITICAL', title: 'Critical', strategic_differentiation: 'critical' },
+    ]});
+    const r = await prioritizeCommand(['rank'], root);
+    assert.equal(r.ranked[0].initiative_id, 'CRITICAL');
+    assert.ok(r.ranked[0].benefit > r.ranked[1].benefit);
+  });
+
+  test('kpi add message does not advertise unimplemented input paths', async () => {
+    const r = await kpiCommand(['add'], tmpProject());
+    assert.match(r.error, /not yet implemented/);
+    assert.doesNotMatch(r.error, /--from-json|interactively/);
+  });
+
+  test('decision new --write awaits persistence failure', async () => {
+    const root = tmpProject();
+    write(root, 'decisions.yaml', { version: 1, kind: 'decisions', entries: [{ decision_id: 'DEC-001', title: 'invalid' }] });
+    await assert.rejects(
+      () => decisionMemoCommand(['new', '--title', 'Must fail', '--write'], root),
+      /refusing to save invalid decisions registry/,
+    );
+  });
+
+  test('decision IDs use max sequence and guidance matches schema', async () => {
+    const root = tmpProject();
+    write(root, 'decisions.yaml', { version: 1, kind: 'decisions', entries: [{ decision_id: 'DEC-009', title: 'existing' }] });
+    const r = await decisionMemoCommand(['new', '--title', 'next'], root);
+    assert.equal(r.id, 'DEC-010');
+    assert.deepEqual(r.reversibility_options, ['reversible', 'costly_to_reverse', 'effectively_one_way']);
+  });
+
+  test('out-of-period valid variances are not counted invalid', async () => {
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [{ metric_id: 'KPI-ARR', name: 'ARR', owner: 'CEO', reporting_cadence: 'monthly', target: 100, restatement_policy: 'restate', known_limitations: [], comparison_required: false, executive_definition: 'ARR', calculation: 'sum', numerator: 'arr', denominator: '1', unit: 'USD', source_system: 'ledger', source_query: 'ledger:arr', warning_threshold: 80, critical_threshold: 60 }] });
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-001', metric_id: 'KPI-ARR', period: '2026-01', target: 100, actual: 90, variance_amount: -10, variance_pct: -10, materiality: 'immaterial', primary_driver: 'timing', controllable: false, evidence: ['ledger.csv'], owner: 'CFO', management_response: 'monitor' }] });
+    const board = await boardReportCommand(['--quarter', '2026-Q3', '--json', '--as-of', '2026-09-30'], root);
+    const review = await executiveReviewCommand(['--period', '2026-07', '--json', '--as-of', '2026-07-31'], root);
+    assert.equal(board.invalid_entries_excluded?.variances ?? 0, 0);
+    assert.equal(review.invalid_entries_excluded ?? 0, 0);
+  });
+
+  test('reports exclude schema-valid records with dangling references', async () => {
+    const root = tmpProject();
+    write(root, 'variances.yaml', { version: 1, kind: 'variances', entries: [{ variance_id: 'VAR-DANGLING', metric_id: 'KPI-MISSING', period: '2026-07', target: 100, actual: 90, variance_amount: -10, variance_pct: -10, materiality: 'material', primary_driver: 'timing', controllable: false, evidence: ['ledger.csv'], owner: 'CFO', management_response: 'monitor' }] });
+    const report = await executiveReviewCommand(['--period', '2026-07', '--json', '--as-of', '2026-07-31'], root);
+    assert.equal(report.ledger.variances_this_period, 0);
+    assert.equal(report.invalid_entries_excluded, 1);
+    assert.ok(report.registry_problems.some(problem => problem.includes('KPI-MISSING')));
+  });
+
+  test('board statement IDs are stable and text output contains values', async () => {
+    const root = tmpProject();
+    write(root, 'kpis.yaml', { version: 1, kind: 'kpis', entries: [{ metric_id: 'MRR', name: 'Monthly Recurring Revenue', owner: 'CEO', reporting_cadence: 'monthly', target: 10000, restatement_policy: 'restate', known_limitations: [], comparison_required: false, executive_definition: 'MRR', calculation: 'sum', numerator: 'mrr', denominator: '1', unit: 'USD', source_system: 'stripe', source_query: 'stripe:mrr', warning_threshold: 8000, critical_threshold: 6000 }] });
+    const a = await boardReportCommand(['--quarter', '2026-Q3', '--json', '--as-of', '2026-09-30'], root);
+    const b = await boardReportCommand(['--quarter', '2026-Q3', '--json', '--as-of', '2026-09-30'], root);
+    assert.equal(a.sections.commercial_position.metrics[0].statement_id, b.sections.commercial_position.metrics[0].statement_id);
+    const text = await boardReportCommand(['--quarter', '2026-Q3', '--as-of', '2026-09-30'], root);
+    assert.match(text, /Monthly Recurring Revenue/);
+    assert.match(text, /10000/);
+  });
+
+  test('initiative links and scenario variable_id are schema-reachable', () => {
+    const initiative = { version: 1, kind: 'initiatives', entries: [{ initiative_id: 'INIT-1', title: 'T', customer_demand: 'high', revenue_potential: 'high', strategic_differentiation: 'high', evidence_strength: 'validated', engineering_cost: 'low', reversibility: 'reversible', owner: 'CEO', linked_kpis: ['KPI-ARR'], linked_outcomes: ['OUT-1'], linked_risks: ['RISK-1'], linked_decisions: ['DEC-1'] }] };
+    const scenario = { version: 1, kind: 'scenarios', entries: [{ scenario_id: 'SCN-1', title: 'T', variables: [{ variable: 'ARR', driver: 'd', variable_id: 'KPI-ARR' }], domain_impact: {}, cascade_analysis: [], states: { base: 'b', stress: 's', severe: 'v' }, early_warning_triggers: [], hedges: [], owner: 'CEO' }] };
+    assert.equal(validateAgainst('initiative.schema.json', initiative).valid, true);
+    assert.equal(validateAgainst('scenario.schema.json', scenario).valid, true);
+  });
+
+  test('strict --as-of rejects impossible dates and board records it', async () => {
+    const root = tmpProject();
+    await assert.rejects(() => boardReportCommand(['--as-of', '2026-02-31', '--json'], root), /YYYY-MM-DD/);
+    const r = await boardReportCommand(['--as-of', '2026-09-30', '--json'], root);
+    assert.equal(r.as_of, '2026-09-30');
+  });
+
+  test('risk, assumption, and competitor staleness honor --as-of', async () => {
+    const root = tmpProject();
+    write(root, 'risks.yaml', { version: 1, kind: 'risks', entries: [{ risk_id: 'R1', title: 'R', category: 'commercial', cause: 'c', event: 'e', consequence: 'q', likelihood: 'unlikely', impact: 'minor', gross_exposure: 'low', controls: [], control_owner: 'CEO', control_effectiveness: 'none', residual_exposure: 'low', key_risk_indicators: [], trigger_threshold: '', response: 'monitor', response_owner: 'CEO', review_date: '2026-02-01', trend: 'stable', board_visibility: false }] });
+    write(root, 'assumptions.yaml', { version: 1, kind: 'assumptions', entries: [{ assumption_id: 'ASMP-1', statement: 'S', category: 'commercial', importance: 'low', current_status: 'untested', confidence: 'low', evidence_for: [], evidence_against: [], owner: 'CEO', expiry: '2026-02-01' }] });
+    write(root, 'competitors.yaml', { version: 1, kind: 'competitors', entries: [{ competitor_id: 'C1', name: 'C', updated: '2026-01-01' }] });
+    assert.equal((await riskCommand(['validate', '--as-of', '2026-01-15'], root)).problems.some(p => /review overdue/.test(p)), false);
+    assert.equal((await riskCommand(['validate', '--as-of', '2026-03-01'], root)).problems.some(p => /review overdue/.test(p)), true);
+    assert.equal((await assumptionAuditCommand(['expired', '--as-of', '2026-01-15'], root)).total, 0);
+    assert.equal((await assumptionAuditCommand(['expired', '--as-of', '2026-03-01'], root)).total, 1);
+    assert.equal((await competitiveIntelCommand(['stale', '--days', '30', '--as-of', '2026-01-15'], root)).total, 0);
+    assert.equal((await competitiveIntelCommand(['stale', '--days', '30', '--as-of', '2026-03-01'], root)).total, 1);
   });
 });

@@ -7,11 +7,11 @@
  *   citable risk validate
  *   citable risk top                   Top risks by residual_exposure
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
 const EXPOSURE_ORDER = ['low','medium','high','critical'];
 
@@ -21,7 +21,7 @@ export async function riskCommand(args, root = process.cwd()) {
 
   switch (subcommand) {
     case 'show':     return riskShow(file, rest[0]);
-    case 'validate': return riskValidate(file);
+    case 'validate': return riskValidate(file, parseAsOf(args));
     case 'top':      return riskTop(file);
     case 'list':
     default:
@@ -30,8 +30,7 @@ export async function riskCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'risks', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'risks', entries: [] };
+  return loadRegistryFile(file, 'risks');
 }
 
 function riskList(file, { boardOnly = false } = {}) {
@@ -79,9 +78,9 @@ function riskTop(file) {
   };
 }
 
-function riskValidate(file) {
+function riskValidate(file, asOf) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('risk.schema.json', data);
   if (!valid) problems.push(...errors);
 
@@ -94,12 +93,12 @@ function riskValidate(file) {
       problems.push(`${r.risk_id}: board_visibility=true requires trigger_threshold`);
     // Stale review dates
     const reviewDate = r.review_date ? new Date(r.review_date) : null;
-    if (reviewDate && reviewDate < new Date())
+    if (reviewDate && reviewDate < asOf)
       problems.push(`${r.risk_id}: review_date ${r.review_date} is in the past — risk review overdue`);
     // Controls effectiveness vs gross/residual mismatch
     if (r.gross_exposure === 'critical' && r.control_effectiveness === 'none' && r.residual_exposure !== 'critical')
       problems.push(`${r.risk_id}: control_effectiveness=none but residual_exposure < gross_exposure — inconsistent`);
   }
 
-  return { valid: problems.length === 0, problems, checked: data.entries.length };
+  return { valid: problems.length === 0, problems, checked: data.entries.length, as_of: dateOnly(asOf) };
 }

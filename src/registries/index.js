@@ -43,6 +43,27 @@ export function emptyRegistry(kind) {
   return { version: 1, kind, updated: nowIso(), entries: [] };
 }
 
+const LOAD_PROBLEMS = Symbol('registryLoadProblems');
+
+/** Read one registry without allowing malformed YAML to crash a command. */
+export function loadRegistryFile(file, kind) {
+  let data = emptyRegistry(kind);
+  const problems = [];
+  if (fs.existsSync(file)) {
+    try {
+      data = readYaml(file) ?? emptyRegistry(kind);
+    } catch (error) {
+      problems.push(`${path.basename(file)}: YAML parse failure: ${error.message}`);
+    }
+  }
+  Object.defineProperty(data, LOAD_PROBLEMS, { value: problems, enumerable: false });
+  return data;
+}
+
+export function registryLoadProblems(data) {
+  return data?.[LOAD_PROBLEMS] ?? [];
+}
+
 /** Load all registries under <root>/.citable. Missing files load as empty. */
 export function loadRegistries(root) {
   const dir = contextDir(root);

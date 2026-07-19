@@ -86,7 +86,8 @@ export async function executiveCommand(args, root = process.cwd()) {
     if (!fn) {
       return { error: `No handler for command: ${route.command}` };
     }
-    const result = await fn([], root);
+    const downstreamArgs = args.filter((arg, index) => arg !== '--route' && args[index - 1] !== '--route');
+    const result = await fn(downstreamArgs, root);
     return {
       routed_to: route.command,
       reason: route.reason,

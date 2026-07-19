@@ -14,11 +14,11 @@
  * Usage:
  *   citable executive-review [--period <YYYY-MM>] [--json]
  */
-import { loadRegistries } from '../registries/index.js';
+import { checkReferentialIntegrity, loadRegistries } from '../registries/index.js';
 import { nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
-const SECTIONS = ['commercial','customer','product','quality','operations','management'];
 
 /** Filter registry entries to only those that pass schema validation. */
 function validEntries(entries, schemaName) {
@@ -29,36 +29,41 @@ function validEntries(entries, schemaName) {
   });
 }
 
+function validReferences(entries, kind, idField, problems) {
+  return entries.filter(entry => !problems.some(problem => problem.startsWith(`${kind}/${entry[idField]}:`)));
+}
+
 export async function executiveReviewCommand(args, root = process.cwd()) {
   const asOf  = parseAsOf(args);
   const period = argVal(args, '--period') ?? currentPeriod(asOf);
   const asJson = args.includes('--json');
 
   const { registries, problems: regProblems } = loadRegistries(root);
+  const refProblems = checkReferentialIntegrity(registries);
 
-  const report = buildReview(registries, period, regProblems, asOf);
+  const report = buildReview(registries, period, [...regProblems, ...refProblems], refProblems, asOf);
   report.generated_at = nowIso();
-  report.as_of = asOf.toISOString().slice(0, 10);
+  report.as_of = dateOnly(asOf);
 
   return asJson ? report : formatReview(report);
 }
 
-function buildReview(registries, period, regProblems, asOf) {
-  // Filter to schema-valid entries only — invalid entries cannot serve as governed evidence
+function buildReview(registries, period, regProblems, refProblems, asOf) {
+  // Filter to schema-valid and referentially valid governed evidence.
   const kpis = validEntries(registries.kpis?.entries, 'kpi.schema.json');
-  const variances = validEntries(registries.variances?.entries, 'variance.schema.json')
-    .filter(v => v.period === period);
+  const validVariances = validReferences(validEntries(registries.variances?.entries, 'variance.schema.json'), 'variances', 'variance_id', refProblems);
+  const variances = validVariances.filter(v => v.period === period);
   const outcomes = validEntries(registries['customer-outcomes']?.entries, 'customer-outcome.schema.json');
   const risks = validEntries(registries.risks?.entries, 'risk.schema.json');
+  const decisions = validReferences(validEntries(registries.decisions?.entries, 'decision.schema.json'), 'decisions', 'decision_id', refProblems);
 
   const invalidTotal =
     ((registries.kpis?.entries?.length ?? 0) - kpis.length) +
-    ((registries.variances?.entries?.length ?? 0) - variances.length) +
+    ((registries.variances?.entries?.length ?? 0) - validVariances.length) +
     ((registries['customer-outcomes']?.entries?.length ?? 0) - outcomes.length) +
-    ((registries.risks?.entries?.length ?? 0) - risks.length);
+    ((registries.risks?.entries?.length ?? 0) - risks.length) +
+    ((registries.decisions?.entries?.length ?? 0) - decisions.length);
 
-  // Deadline staleness evaluated against asOf, not wall clock
-  const refDate = asOf ?? new Date();
 
   // Evidence ledger — raw facts before narrative
   const ledger = {
@@ -100,7 +105,7 @@ function buildReview(registries, period, regProblems, asOf) {
   ]);
 
   // Management section
-  const openDecisions = (registries.decisions?.entries ?? []).filter(d => d.status === 'open');
+  const openDecisions = decisions.filter(d => d.status === 'open');
   const management = {
     open_decisions: openDecisions.length,
     decisions_requiring_action: openDecisions.map(d => ({
@@ -192,19 +197,10 @@ function formatReview(report) {
 
 function currentPeriod(asOf) {
   const d = asOf ?? new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function argVal(args, flag) {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : null;
-}
-
-/** Parse --as-of YYYY-MM-DD to a Date for deterministic temporal evaluation. */
-function parseAsOf(args) {
-  const v = argVal(args, '--as-of');
-  if (!v) return new Date();
-  const d = new Date(v);
-  if (isNaN(d.getTime())) throw new Error(`--as-of must be YYYY-MM-DD, got: ${v}`);
-  return d;
 }

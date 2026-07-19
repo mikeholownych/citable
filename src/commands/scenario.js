@@ -11,11 +11,10 @@
  *   citable scenario validate
  *   citable scenario triggers   — early-warning trigger summary
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
 
 export async function scenarioCommand(args, root = process.cwd()) {
   const [subcommand, ...rest] = args;
@@ -30,8 +29,7 @@ export async function scenarioCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'scenarios', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'scenarios', entries: [] };
+  return loadRegistryFile(file, 'scenarios');
 }
 
 function scenarioList(file) {
@@ -72,7 +70,7 @@ function scenarioTriggers(file) {
 
 function scenarioValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('scenario.schema.json', data);
   if (!valid) problems.push(...errors);
 

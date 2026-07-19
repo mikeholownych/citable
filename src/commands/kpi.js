@@ -2,7 +2,6 @@
  * kpi command — KPI Architecture registry management
  *
  * Usage:
- *   citable kpi add      Add or update a KPI definition
  *   citable kpi list     List all governed metrics
  *   citable kpi show <id> Show a single KPI
  *   citable kpi validate  Validate all KPI records
@@ -24,7 +23,7 @@ export async function kpiCommand(args, root = process.cwd()) {
     case 'list': return kpiList(file);
     case 'show': return kpiShow(file, rest[0]);
     case 'validate': return kpiValidate(file);
-    case 'add': return { error: 'Use `citable kpi add` interactively or pass --from-json <file>' };
+    case 'add': return { error: '`citable kpi add` is not yet implemented; edit kpis.yaml directly and run `citable kpi validate`' };
     default:
       return kpiList(file);
   }
@@ -37,7 +36,7 @@ function loadKpis(file) {
 
 function kpiList(file) {
   const data = loadKpis(file);
-  if (!data.entries.length) return { kpis: [], message: 'No KPIs registered. Use `citable kpi add`.' };
+  if (!data.entries.length) return { kpis: [], message: 'No KPIs registered. Edit .citable/kpis.yaml, then run `citable kpi validate`.' };
   return {
     kpis: data.entries.map(k => ({
       metric_id: k.metric_id,

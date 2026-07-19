@@ -152,6 +152,26 @@
           "owner": {
             "type": "string"
           },
+          "linked_kpis": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "linked_outcomes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "linked_risks": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "linked_decisions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
           "scoring_weights": {
             "type": "object",
             "description": "Explicit weights if weighted scoring is used — weights must be visible"

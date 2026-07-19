@@ -11,11 +11,11 @@
  *   citable assumption-audit expired   — assumptions past expiry date
  *   citable assumption-audit critical  — critical importance assumptions
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
 export async function assumptionAuditCommand(args, root = process.cwd()) {
   const [subcommand, ...rest] = args;
@@ -24,7 +24,7 @@ export async function assumptionAuditCommand(args, root = process.cwd()) {
   switch (subcommand) {
     case 'show':     return assumptionShow(file, rest[0]);
     case 'validate': return assumptionValidate(file);
-    case 'expired':  return assumptionExpired(file);
+    case 'expired':  return assumptionExpired(file, parseAsOf(args));
     case 'critical': return assumptionList(file, { importance: 'critical' });
     case 'list':
     default: {
@@ -35,8 +35,7 @@ export async function assumptionAuditCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'assumptions', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'assumptions', entries: [] };
+  return loadRegistryFile(file, 'assumptions');
 }
 
 function assumptionList(file, { statusFilter = null, importance = null } = {}) {
@@ -68,22 +67,22 @@ function assumptionShow(file, id) {
   return { assumption: a };
 }
 
-function assumptionExpired(file) {
+function assumptionExpired(file, asOf) {
   const data = load(file);
-  const now = new Date();
-  const expired = data.entries.filter(a => a.expiry && new Date(a.expiry) < now);
+  const expired = data.entries.filter(a => a.expiry && new Date(a.expiry) < asOf);
   return {
     expired: expired.map(a => ({
       assumption_id: a.assumption_id, statement: a.statement,
       expiry: a.expiry, current_status: a.current_status, owner: a.owner,
     })),
     total: expired.length,
+    as_of: dateOnly(asOf),
   };
 }
 
 function assumptionValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('assumption.schema.json', data);
   if (!valid) problems.push(...errors);
 

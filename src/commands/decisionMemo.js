@@ -17,24 +17,11 @@
  *   citable decision-memo validate
  *   citable decision-memo new --title "..." [--from-json <file>]
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml, writeYaml, nowIso } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems, saveRegistry } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
 import fs from 'node:fs';
-
-function argVal(args, flag) {
-  const i = args.indexOf(flag);
-  return i >= 0 ? args[i + 1] : null;
-}
-
-function parseAsOf(args) {
-  const v = argVal(args, '--as-of');
-  if (!v) return new Date();
-  const d = new Date(v);
-  if (isNaN(d.getTime())) throw new Error(`--as-of must be YYYY-MM-DD, got: ${v}`);
-  return d;
-}
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
 export async function decisionMemoCommand(args, root = process.cwd()) {
   const [subcommand, ...rest] = args;
@@ -53,8 +40,7 @@ export async function decisionMemoCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'decisions', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'decisions', entries: [] };
+  return loadRegistryFile(file, 'decisions');
 }
 
 function decisionList(file, statusFilter) {
@@ -107,7 +93,7 @@ function decisionShow(file, id) {
 
 function decisionValidate(file, args = []) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('decision.schema.json', data);
   if (!valid) problems.push(...errors);
 
@@ -142,16 +128,20 @@ function decisionValidate(file, args = []) {
       problems.push(`${d.decision_id}: effectively_one_way decision requires reopen_conditions`);
   }
 
-  return { valid: problems.length === 0, problems, checked: data.entries.length };
+  return { valid: problems.length === 0, problems, checked: data.entries.length, as_of: dateOnly(refDate) };
 }
 
-function decisionNew(file, args, root) {
+async function decisionNew(file, args, root) {
   const title = args[args.indexOf('--title') + 1];
   if (!title) return { error: '--title required' };
   const write = args.includes('--write');
 
   const data = load(file);
-  const id = `DEC-${String(data.entries.length + 1).padStart(3, '0')}`;
+  const maxSequence = data.entries.reduce((max, entry) => {
+    const match = /^DEC-(\d+)$/.exec(entry.decision_id ?? '');
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  const id = `DEC-${String(maxSequence + 1).padStart(3, '0')}`;
 
   // Use schema-valid placeholder values only — never persist enum-violating strings.
   // reversibility enum: reversible | effectively_one_way | one_way
@@ -189,7 +179,7 @@ function decisionNew(file, args, root) {
       message: 'Dry-run — pass --write to persist. Complete all empty fields before use.',
       required_fields: ['owner','consulted','deadline','recommendation',
         'supporting_evidence','what_would_change_recommendation','cost_of_delay'],
-      reversibility_options: ['reversible','effectively_one_way','one_way'],
+      reversibility_options: ['reversible','costly_to_reverse','effectively_one_way'],
     };
   }
 
@@ -197,8 +187,8 @@ function decisionNew(file, args, root) {
   data.entries.push(stub);
   const dir = contextDir(root);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  // Route through saveRegistry so version history is preserved
-  import('../registries/index.js').then(({ saveRegistry }) => saveRegistry(root, 'decisions', data));
+  // Await persistence so success is reported only after a confirmed write.
+  saveRegistry(root, 'decisions', data);
 
   return {
     created: id,
@@ -206,6 +196,6 @@ function decisionNew(file, args, root) {
     message: 'Decision stub written. Complete all empty fields before use.',
     required_fields: ['owner','consulted','deadline','recommendation',
       'supporting_evidence','what_would_change_recommendation','cost_of_delay'],
-    reversibility_options: ['reversible','effectively_one_way','one_way'],
+    reversibility_options: ['reversible','costly_to_reverse','effectively_one_way'],
   };
 }

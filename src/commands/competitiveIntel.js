@@ -14,11 +14,11 @@
  *   citable competitive-intel validate
  *   citable competitive-intel stale [--days <N>]  — claims older than N days
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
 // Claim sources that cannot stand alone as primary evidence
 const UNRELIABLE_SOURCES = [
@@ -39,15 +39,14 @@ export async function competitiveIntelCommand(args, root = process.cwd()) {
     case 'validate': return competitorValidate(file);
     case 'stale': {
       const days = parseInt(rest[rest.indexOf('--days') + 1]) || STALE_DAYS_DEFAULT;
-      return competitorStale(file, days);
+      return competitorStale(file, days, parseAsOf(args));
     }
     default: return competitorList(file);
   }
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'competitors', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'competitors', entries: [] };
+  return loadRegistryFile(file, 'competitors');
 }
 
 function competitorList(file) {
@@ -73,9 +72,9 @@ function competitorShow(file, id) {
   return { competitor: c };
 }
 
-function competitorStale(file, days) {
+function competitorStale(file, days, asOf) {
   const data = load(file);
-  const cutoff = new Date(Date.now() - days * 86400000);
+  const cutoff = new Date(asOf.getTime() - days * 86400000);
   const stale = data.entries.filter(c => {
     const updated = c.last_updated ?? c.updated;
     return !updated || new Date(updated) < cutoff;
@@ -83,13 +82,14 @@ function competitorStale(file, days) {
   return {
     stale_competitors: stale.map(c => ({ competitor_id: c.competitor_id, name: c.name, last_updated: c.last_updated ?? c.updated ?? 'never' })),
     cutoff_days: days,
+    as_of: dateOnly(asOf),
     total: stale.length,
   };
 }
 
 function competitorValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
 
   for (const c of data.entries) {
     // Every claim must have observation_date

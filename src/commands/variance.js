@@ -10,11 +10,10 @@
  *   citable variance validate
  *   citable variance material   — list material/critical variances only
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
 
 // Vague causes that must be decomposed before acceptance
 const REJECTED_CAUSE_PATTERNS = [
@@ -34,13 +33,15 @@ export async function varianceCommand(args, root = process.cwd()) {
     case 'show':     return varianceShow(file, rest[0]);
     case 'validate': return varianceValidate(file);
     case 'material': return varianceList(file, { materialOnly: true });
-    default:         return varianceList(file, {});
+    default: {
+      const i = rest.indexOf('--period');
+      return varianceList(file, { period: i >= 0 ? rest[i + 1] : null });
+    }
   }
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'variances', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'variances', entries: [] };
+  return loadRegistryFile(file, 'variances');
 }
 
 function varianceList(file, { materialOnly = false, period = null } = {}) {
@@ -73,7 +74,7 @@ function varianceShow(file, id) {
 
 function varianceValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('variance.schema.json', data);
   if (!valid) problems.push(...errors);
 

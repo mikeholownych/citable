@@ -59,8 +59,14 @@
                 },
                 "driver": {
                   "type": "string"
+                },
+                "variable_id": {
+                  "type": "string",
+                  "pattern": "^(KPI-|RISK-)",
+                  "description": "Optional KPI- or RISK-prefixed registry reference"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "domain_impact": {

@@ -66,8 +66,8 @@
   `kpi`, `variance`, `customer-outcome`, `risk`, `decision`, `assumption`,
   `scenario`, `initiative` — all with `citable://schemas/` `$id` prefix for AJV
   compatibility.
-- 44 new unit tests (`tests/unit/executive-reporting.test.js`) — all pass.
-  Pre-existing `cli.test.js` failure unrelated to this PR (`csv-parse` missing).
+- Comprehensive unit coverage in `tests/unit/executive-reporting.test.js` for
+  governed inputs, reports, cross-registry integrity, deterministic IDs, and fixed-date evaluation.
 
 ## 1.12.0 — 2026-07-19
 

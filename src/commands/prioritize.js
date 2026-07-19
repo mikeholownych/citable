@@ -10,13 +10,12 @@
  *   citable prioritize validate
  *   citable prioritize rank   — ranked list with explicit criteria
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
 
-const SCALE = { none: 0, low: 1, medium: 2, high: 3, critical: 3, validated: 4, transformative: 4, trivial: 0, very_high: 4, negligible: 0, 'n/a': 0 };
+
+const SCALE = { none: 0, low: 1, medium: 2, high: 3, critical: 4, validated: 4, transformative: 4, trivial: 0, very_high: 4, negligible: 0, 'n/a': 0 };
 
 export async function prioritizeCommand(args, root = process.cwd()) {
   const [subcommand, ...rest] = args;
@@ -35,8 +34,7 @@ export async function prioritizeCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'initiatives', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'initiatives', entries: [] };
+  return loadRegistryFile(file, 'initiatives');
 }
 
 function initiativeList(file, statusFilter) {
@@ -90,7 +88,7 @@ function initiativeRank(file) {
 
 function initiativeValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('initiative.schema.json', data);
   if (!valid) problems.push(...errors);
 

@@ -10,11 +10,10 @@
  *   citable outcomes validate
  *   citable outcomes summary   — stage distribution summary
  */
-import { contextDir } from '../registries/index.js';
-import { readYaml } from '../shared/io.js';
+import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import path from 'node:path';
-import fs from 'node:fs';
+
 
 export const OUTCOME_STAGES = [
   'finding_produced',
@@ -40,8 +39,7 @@ export async function outcomesCommand(args, root = process.cwd()) {
 }
 
 function load(file) {
-  if (!fs.existsSync(file)) return { version: 1, kind: 'customer-outcomes', entries: [] };
-  return readYaml(file) ?? { version: 1, kind: 'customer-outcomes', entries: [] };
+  return loadRegistryFile(file, 'customer-outcomes');
 }
 
 function outcomeList(file, args) {
@@ -92,7 +90,7 @@ function outcomeSummary(file) {
 
 function outcomeValidate(file) {
   const data = load(file);
-  const problems = [];
+  const problems = [...registryLoadProblems(data)];
   const { valid, errors } = validateAgainst('customer-outcome.schema.json', data);
   if (!valid) problems.push(...errors);
 

@@ -23,10 +23,11 @@
  * Usage:
  *   citable board-report [--quarter <YYYY-QN>] [--json]
  */
-import { loadRegistries } from '../registries/index.js';
+import { checkReferentialIntegrity, loadRegistries } from '../registries/index.js';
 import { nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import crypto from 'node:crypto';
+import { dateOnly, parseAsOf } from '../shared/asOf.js';
 
 /** Filter registry entries to only those that pass schema validation. */
 function validEntries(entries, schemaName) {
@@ -37,33 +38,42 @@ function validEntries(entries, schemaName) {
   });
 }
 
+function validReferences(entries, kind, idField, problems) {
+  return entries.filter(entry => !problems.some(problem => problem.startsWith(`${kind}/${entry[idField]}:`)));
+}
+
 export async function boardReportCommand(args, root = process.cwd()) {
-  const quarter = argVal(args, '--quarter') ?? currentQuarter(args);
+  const asOf = parseAsOf(args);
+  const quarter = argVal(args, '--quarter') ?? currentQuarter(asOf);
   const asJson = args.includes('--json');
 
   const { registries, problems: regProblems } = loadRegistries(root);
+  const refProblems = checkReferentialIntegrity(registries);
 
-  const report = buildBoardReport(registries, quarter, regProblems);
+  const report = buildBoardReport(registries, quarter, [...regProblems, ...refProblems], refProblems);
   report.generated_at = nowIso();
+  report.as_of = dateOnly(asOf);
 
   return asJson ? report : formatBoardReport(report);
 }
 
-function buildBoardReport(registries, quarter, regProblems) {
-  // Filter to schema-valid entries only — invalid entries cannot serve as governed evidence
+function buildBoardReport(registries, quarter, regProblems, refProblems) {
+  // Filter to schema-valid and referentially valid governed evidence.
   const kpis      = validEntries(registries.kpis?.entries, 'kpi.schema.json');
-  const variances = validEntries(registries.variances?.entries, 'variance.schema.json')
-    .filter(v => inQuarter(v.period, quarter));
+  const validVariances = validReferences(validEntries(registries.variances?.entries, 'variance.schema.json'), 'variances', 'variance_id', refProblems);
+  const variances = validVariances.filter(v => inQuarter(v.period, quarter));
   const outcomes  = validEntries(registries['customer-outcomes']?.entries, 'customer-outcome.schema.json');
   const risks     = validEntries(registries.risks?.entries, 'risk.schema.json');
-  const decisions = validEntries(registries.decisions?.entries, 'decision.schema.json');
-  const initiatives = validEntries(registries.initiatives?.entries, 'initiative.schema.json');
+  const decisions = validReferences(validEntries(registries.decisions?.entries, 'decision.schema.json'), 'decisions', 'decision_id', refProblems);
+  const initiatives = validReferences(validEntries(registries.initiatives?.entries, 'initiative.schema.json'), 'initiatives', 'initiative_id', refProblems);
 
   const invalidCounts = {
     kpis:      (registries.kpis?.entries?.length ?? 0) - kpis.length,
-    variances: (registries.variances?.entries?.length ?? 0) - variances.length,
+    variances: (registries.variances?.entries?.length ?? 0) - validVariances.length,
     outcomes:  (registries['customer-outcomes']?.entries?.length ?? 0) - outcomes.length,
     risks:     (registries.risks?.entries?.length ?? 0) - risks.length,
+    decisions: (registries.decisions?.entries?.length ?? 0) - decisions.length,
+    initiatives: (registries.initiatives?.entries?.length ?? 0) - initiatives.length,
   };
   const invalidTotal = Object.values(invalidCounts).reduce((a, b) => a + b, 0);
 
@@ -72,10 +82,12 @@ function buildBoardReport(registries, quarter, regProblems) {
   if (outcomes.length === 0) missingData.push('customer-outcomes');
   if (risks.length === 0) missingData.push('risks');
 
-  // Statement envelope with full provenance contract
-  let statementSeq = 0;
-  const mkStatement = (type, value, owner, sourceRecords, confidence, limitations = []) => ({
-    statement_id: `STMT-${quarter}-${String(++statementSeq).padStart(3,'0')}-${crypto.randomBytes(3).toString('hex')}`,
+  // Deterministic statement envelope: identical governed inputs produce identical IDs.
+  const mkStatement = (path, type, value, owner, sourceRecords, confidence, limitations = []) => ({
+    statement_id: `STMT-${crypto.createHash('sha256').update(JSON.stringify({
+      report_type: 'board-report', period: quarter, path,
+      source_records: [...sourceRecords].sort(), value,
+    })).digest('hex').slice(0, 16)}`,
     statement_type: type,
     owner,
     value,
@@ -102,9 +114,9 @@ function buildBoardReport(registries, quarter, regProblems) {
       management_assessment: {
         description: 'CEO/management assessment of quarter against stated commitments',
         data_required: ['kpis','variances'],
-        governed_metrics: mkStatement('fact', kpis.length, 'ceo', ['kpis.yaml'], 'exact'),
-        variances_this_quarter: mkStatement('fact', variances.length, 'cfo', ['variances.yaml'], 'exact'),
-        material_variances: mkStatement('fact',
+        governed_metrics: mkStatement('management_assessment.governed_metrics', 'fact', kpis.length, 'ceo', ['kpis.yaml'], 'exact'),
+        variances_this_quarter: mkStatement('management_assessment.variances_this_quarter', 'fact', variances.length, 'cfo', ['variances.yaml'], 'exact'),
+        material_variances: mkStatement('management_assessment.material_variances', 'fact',
           variances.filter(v => ['material','critical'].includes(v.materiality)).length,
           'cfo', ['variances.yaml'], 'exact'),
         four_act_required: variances.some(v => ['material','critical'].includes(v.materiality)),
@@ -112,7 +124,7 @@ function buildBoardReport(registries, quarter, regProblems) {
       commercial_position: {
         description: 'ARR, MRR, bookings, pipeline, win/loss, concentration',
         metrics: kpis.filter(k => /arr|mrr|booking|pipeline|revenue/i.test(k.metric_id + k.name)).map(k =>
-          mkStatement('fact', { metric_id: k.metric_id, name: k.name, target: k.target ?? 'NOT_SET' },
+          mkStatement(`commercial_position.metrics.${k.metric_id}`, 'fact', { metric_id: k.metric_id, name: k.name, target: k.target ?? 'NOT_SET' },
             k.owner ?? 'unset', k.source_query ? [k.source_query] : [], k.confidence ?? 'unset',
             k.known_limitations ?? [])),
         ungoverned: kpis.filter(k => /arr|mrr|booking|pipeline|revenue/i.test(k.metric_id + k.name)).length === 0
@@ -120,48 +132,48 @@ function buildBoardReport(registries, quarter, regProblems) {
       },
       customer_outcomes: {
         description: 'Validated customer outcomes separated from product activity',
-        total:                  mkStatement('fact', outcomes.length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
-        customer_confirmed:     mkStatement('fact', outcomes.filter(o => o.customer_confirmed).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
-        independently_verified: mkStatement('fact', outcomes.filter(o => o.independently_verified).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
-        causal_established:     mkStatement('fact', outcomes.filter(o => o.outcome_stage === 'causal_relationship_established').length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
-        publishable:            mkStatement('fact', outcomes.filter(o => o.publication_permission && o.customer_confirmed).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
+        total:                  mkStatement('customer_outcomes.total', 'fact', outcomes.length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
+        customer_confirmed:     mkStatement('customer_outcomes.customer_confirmed', 'fact', outcomes.filter(o => o.customer_confirmed).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
+        independently_verified: mkStatement('customer_outcomes.independently_verified', 'fact', outcomes.filter(o => o.independently_verified).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
+        causal_established:     mkStatement('customer_outcomes.causal_established', 'fact', outcomes.filter(o => o.outcome_stage === 'causal_relationship_established').length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
+        publishable:            mkStatement('customer_outcomes.publishable', 'fact', outcomes.filter(o => o.publication_permission && o.customer_confirmed).length, 'cpo', ['customer-outcomes.yaml'], 'exact'),
         warning: outcomes.length > 0 && outcomes.every(o => o.outcome_stage === 'finding_produced')
           ? 'All outcomes at finding_produced — no validated customer impact to report' : null,
       },
       product_adoption: {
         description: 'Active properties, audit runs, installation success, feature adoption',
         metrics: kpis.filter(k => /install|audit|active_prop|feature|adoption/i.test(k.metric_id + k.name)).map(k =>
-          mkStatement('fact', { metric_id: k.metric_id, name: k.name },
+          mkStatement(`product_adoption.metrics.${k.metric_id}`, 'fact', { metric_id: k.metric_id, name: k.name },
             k.owner ?? 'unset', k.source_query ? [k.source_query] : [], k.confidence ?? 'unset')),
       },
       detector_evidence_quality: {
         description: 'Detector precision, false positives, false negatives, evidence staleness',
         metrics: kpis.filter(k => /precision|false_pos|false_neg|stale|evidence/i.test(k.metric_id + k.name)).map(k =>
-          mkStatement('fact', { metric_id: k.metric_id, name: k.name },
+          mkStatement(`detector_evidence_quality.metrics.${k.metric_id}`, 'fact', { metric_id: k.metric_id, name: k.name },
             k.owner ?? 'unset', k.source_query ? [k.source_query] : [], k.confidence ?? 'unset')),
       },
       operational_reliability: {
         description: 'Failed runs, crawler failures, regressions, support burden',
         metrics: kpis.filter(k => /failed_run|crawler|regression|support/i.test(k.metric_id + k.name)).map(k =>
-          mkStatement('fact', { metric_id: k.metric_id, name: k.name },
+          mkStatement(`operational_reliability.metrics.${k.metric_id}`, 'fact', { metric_id: k.metric_id, name: k.name },
             k.owner ?? 'unset', k.source_query ? [k.source_query] : [], k.confidence ?? 'unset')),
       },
       material_risks: {
         description: 'Top risks by residual exposure, trend, controls, triggers',
-        board_visible: mkStatement('fact', boardRisks.length, 'cro', ['risks.yaml'], 'exact'),
-        critical:      mkStatement('fact', boardRisks.filter(r => r.residual_exposure === 'critical').length, 'cro', ['risks.yaml'], 'exact'),
-        deteriorating: mkStatement('fact', boardRisks.filter(r => r.trend === 'deteriorating').length, 'cro', ['risks.yaml'], 'exact'),
+        board_visible: mkStatement('material_risks.board_visible', 'fact', boardRisks.length, 'cro', ['risks.yaml'], 'exact'),
+        critical:      mkStatement('material_risks.critical', 'fact', boardRisks.filter(r => r.residual_exposure === 'critical').length, 'cro', ['risks.yaml'], 'exact'),
+        deteriorating: mkStatement('material_risks.deteriorating', 'fact', boardRisks.filter(r => r.trend === 'deteriorating').length, 'cro', ['risks.yaml'], 'exact'),
         top_risks: boardRisks
           .sort((a, b) => ['low','medium','high','critical'].indexOf(b.residual_exposure) - ['low','medium','high','critical'].indexOf(a.residual_exposure))
           .slice(0, 5)
-          .map(r => mkStatement('fact',
+          .map(r => mkStatement(`material_risks.top_risks.${r.risk_id}`, 'fact',
             { risk_id: r.risk_id, title: r.title, residual_exposure: r.residual_exposure, trend: r.trend, trigger_threshold: r.trigger_threshold },
             r.owner ?? 'unset', ['risks.yaml'], 'exact')),
       },
       board_decisions_and_asks: {
         description: 'Decisions requiring board input, asks, and approvals',
-        open_decisions: mkStatement('fact', openDecisions.length, 'ceo', ['decisions.yaml'], 'exact'),
-        decisions: openDecisions.map(d => mkStatement('fact',
+        open_decisions: mkStatement('board_decisions_and_asks.open_decisions', 'fact', openDecisions.length, 'ceo', ['decisions.yaml'], 'exact'),
+        decisions: openDecisions.map(d => mkStatement(`board_decisions_and_asks.decisions.${d.decision_id}`, 'fact',
           { decision_id: d.decision_id, title: d.title, deadline: d.deadline,
             reversibility: d.reversibility, recommendation: d.recommendation },
           d.owner ?? 'unset', ['decisions.yaml'], 'exact')),
@@ -169,8 +181,8 @@ function buildBoardReport(registries, quarter, regProblems) {
       next_quarter_commitments: {
         description: 'Specific, measurable commitments for next quarter',
         data_required: ['initiatives'],
-        approved_initiatives: mkStatement('fact', initiatives.filter(i => i.status === 'approved').length, 'cpo', ['initiatives.yaml'], 'exact'),
-        in_progress:          mkStatement('fact', initiatives.filter(i => i.status === 'in_progress').length, 'cpo', ['initiatives.yaml'], 'exact'),
+        approved_initiatives: mkStatement('next_quarter_commitments.approved_initiatives', 'fact', initiatives.filter(i => i.status === 'approved').length, 'cpo', ['initiatives.yaml'], 'exact'),
+        in_progress:          mkStatement('next_quarter_commitments.in_progress', 'fact', initiatives.filter(i => i.status === 'in_progress').length, 'cpo', ['initiatives.yaml'], 'exact'),
       },
     },
   };
@@ -195,9 +207,26 @@ function formatBoardReport(report) {
     lines.push(section.description);
     if (section.ungoverned) lines.push(`⛔ ${section.ungoverned}`);
     if (section.warning)    lines.push(`⚠️  ${section.warning}`);
+    for (const [field, value] of Object.entries(section)) {
+      if (['description', 'ungoverned', 'warning', 'data_required'].includes(field)) continue;
+      renderBoardValue(lines, field, value);
+    }
     lines.push('');
   }
   return lines.join('\n');
+}
+
+function renderBoardValue(lines, label, value) {
+  if (Array.isArray(value)) {
+    for (const item of value) renderBoardValue(lines, label, item);
+    return;
+  }
+  if (value?.statement_id) {
+    const rendered = typeof value.value === 'object' ? JSON.stringify(value.value) : String(value.value);
+    lines.push(`- ${label.replace(/_/g, ' ')}: ${rendered} [${value.statement_id}]`);
+    return;
+  }
+  if (typeof value !== 'object') lines.push(`- ${label.replace(/_/g, ' ')}: ${String(value)}`);
 }
 
 function inQuarter(period, quarter) {
@@ -211,22 +240,12 @@ function inQuarter(period, quarter) {
   return py === parseInt(yr) && pm >= qStart && pm <= qEnd;
 }
 
-function currentQuarter(args) {
-  const d = args ? parseAsOf(args) : new Date();
-  const q = Math.ceil((d.getMonth() + 1) / 3);
-  return `${d.getFullYear()}-Q${q}`;
+function currentQuarter(d) {
+  const q = Math.ceil((d.getUTCMonth() + 1) / 3);
+  return `${d.getUTCFullYear()}-Q${q}`;
 }
 
 function argVal(args, flag) {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : null;
-}
-
-/** Parse --as-of YYYY-MM-DD to a Date for deterministic temporal evaluation. Falls back to now. */
-function parseAsOf(args) {
-  const v = argVal(args, '--as-of');
-  if (!v) return new Date();
-  const d = new Date(v);
-  if (isNaN(d.getTime())) throw new Error(`--as-of must be YYYY-MM-DD, got: ${v}`);
-  return d;
 }
