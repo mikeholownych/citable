@@ -19,9 +19,22 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMMIT = 'a'.repeat(40);
 
+function releaseFixtureRoot() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-release-governance-'));
+  for (const relative of ['package.json', 'package-lock.json', 'skill/SKILL.md', 'README.md', 'CHANGELOG.md', 'docs/ROADMAP.md', 'release/surfaces.json']) {
+    const target = path.join(root, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, relative), target);
+  }
+  fs.mkdirSync(path.join(root, 'dist', 'universal'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'dist', 'universal', 'manifest.json'), JSON.stringify({ providers: { fixture: { files: 79 } } }));
+  return root;
+}
+
 test('canonical release manifest is deterministic for fixed inputs and binds generated projections', () => {
-  const first = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
-  const second = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const root = releaseFixtureRoot();
+  const first = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const second = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
   assert.equal(first.manifest.facts.detectors, 123);
@@ -31,8 +44,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
 });
 
 test('release validation fails closed on projection tampering and documentation fact drift', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-release-governance-'));
-  fs.cpSync(ROOT, root, { recursive: true, filter: (source) => !source.includes(`${path.sep}node_modules`) && !source.includes(`${path.sep}.git`) && !source.includes(`${path.sep}graphify-out`) });
+  const root = releaseFixtureRoot();
   fs.writeFileSync(path.join(root, 'docs', 'ROADMAP.md'), fs.readFileSync(path.join(root, 'docs', 'ROADMAP.md'), 'utf8').replace('| Registries | 27 schema-validated |', '| Registries | 19 schema-validated |'));
   const generated = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.equal(validateReleaseManifest(root, generated.manifest).ok, false, 'roadmap registry count drift must be exposed');
@@ -60,7 +72,7 @@ function validReceipt(manifest, surface, at = '2026-07-19T10:00:00Z') {
 }
 
 test('finalization requires one valid unexpired owner-controlled receipt per required surface', () => {
-  const { manifest } = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const { manifest } = generateReleaseManifest(releaseFixtureRoot(), { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   let state = initializeReleaseState(manifest, { actor: 'maintainer', at: '2026-07-19T09:00:00Z' });
   assert.throws(() => transitionRelease(state, 'published_unfinalized', { actor: 'maintainer', reason: 'publish' }), /phase-one/);
   state = transitionRelease(state, 'published_unfinalized', { actor: 'maintainer', reason: 'artifacts published', phaseOne: { ok: true, manifest_hash: manifest.manifest_hash }, at: '2026-07-19T09:30:00Z' });
@@ -73,7 +85,7 @@ test('finalization requires one valid unexpired owner-controlled receipt per req
 });
 
 test('contradictory, tampered, and expired receipts fail closed', () => {
-  const { manifest } = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const { manifest } = generateReleaseManifest(releaseFixtureRoot(), { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   const receipt = validReceipt(manifest, manifest.controlled_surfaces[0]);
   assert.equal(verifyDeploymentReceipt(manifest, receipt, { at: new Date('2026-07-19T11:00:00Z') }).ok, true);
   assert.equal(verifyDeploymentReceipt(manifest, receipt, { at: new Date('2026-07-21T00:00:00Z') }).ok, false);
@@ -88,7 +100,7 @@ test('contradictory, tampered, and expired receipts fail closed', () => {
 });
 
 test('published_unfinalized has bounded dwell and explicit terminal resolution', () => {
-  const { manifest } = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const { manifest } = generateReleaseManifest(releaseFixtureRoot(), { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   let state = initializeReleaseState(manifest, { actor: 'maintainer', at: '2026-07-19T09:00:00Z', maxDwellHours: 2 });
   state = transitionRelease(state, 'published_unfinalized', { actor: 'maintainer', reason: 'artifacts published', phaseOne: { ok: true, manifest_hash: manifest.manifest_hash }, at: '2026-07-19T10:00:00Z' });
   assert.equal(releaseDwellStatus(state, new Date('2026-07-19T11:59:59Z')).expired, false);
@@ -99,7 +111,7 @@ test('published_unfinalized has bounded dwell and explicit terminal resolution',
 });
 
 test('release state is hash-bound and cannot finalize after dwell expiry', () => {
-  const { manifest } = generateReleaseManifest(ROOT, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
+  const { manifest } = generateReleaseManifest(releaseFixtureRoot(), { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   let state = initializeReleaseState(manifest, { actor: 'maintainer', at: '2026-07-19T09:00:00Z', maxDwellHours: 1 });
   const tampered = { ...state, max_dwell_hours: 48 };
   assert.throws(() => transitionRelease(tampered, 'published_unfinalized', { actor: 'maintainer', reason: 'publish', phaseOne: { ok: true, manifest_hash: manifest.manifest_hash } }), /state hash/);
