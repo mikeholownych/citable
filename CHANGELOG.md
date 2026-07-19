@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.10.0 — 2026-07-19
+
 ### Added
 
 - Version-pinned audit schedules that invoke the canonical audit path and keep
