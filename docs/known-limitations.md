@@ -108,6 +108,15 @@ or evidence that sampled results generalize beyond recorded extrapolation limits
 Mixed detector versions are reported separately and do not establish property
 change or detector causation.
 
+## Portable artifact interchange
+
+Portable artifact interchange verifies the exported run manifest, checksum
+map, exact file inventory, byte sizes, and interchange package hash. This
+establishes byte preservation and compatibility with the open contract, not
+source authenticity, independent attestation, observation completeness,
+representativeness, or causal validity. It provides no hosted tenant, storage,
+authentication, retention, billing, or dashboard capability.
+
 ## Probabilistic checks (by design)
 
 Heuristic detectors (deterministic: false) — TECH-011/014/015, PAGE-008/009,

@@ -36,6 +36,7 @@ import { executiveCommand } from '../commands/executive.js';
 import { evaluateCorpus, publishCorpus } from '../commands/corpus.js';
 import { createAcceptanceReceipt, readAndCompareAcceptanceReceipts } from '../acceptance/reproducibility.js';
 import { readJson } from '../shared/io.js';
+import { exportArtifactPackage, importArtifactPackage, verifyArtifactPackage } from '../artifacts/interchange.js';
 
 const HELP = `citable — SEO / AEO / GEO audit, remediation, validation, and governance
 
@@ -85,6 +86,9 @@ Commands
   corpus publish            Validate and project an owner-authorized public corpus
   corpus receipt            Create a reproducibility receipt for a sealed run
   corpus compare-receipts   Compare two acceptance-run receipt envelopes
+  artifacts export         Export one sealed run as a portable verified directory
+  artifacts verify         Verify an exported artifact interchange directory
+  artifacts import         Import a verified run without changing its canonical bytes
   self-upgrade              Check for a newer version and upgrade the npx cache
   kpi [list|show|validate]  KPI architecture — govern metric definitions, sources, targets
   variance [list|validate|material]  Variance analysis — explain target-vs-actual without narrative smoothing
@@ -104,7 +108,7 @@ Options
   --base-url <url>          Base URL for path resolution of a built output dir
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
   --input <file>            Import evidence, remediation, or browser plan
-  --output <file>           Explicit output path for a public corpus projection
+  --output <path>           Explicit output path for a corpus or artifact export
   --run <run-id>            Sealed run used to create an acceptance receipt
   --provider <name>         Provider label for imported observations
   --dataset <name>          Provider export dataset (for example ai_performance)
@@ -353,6 +357,20 @@ export async function main(argv = process.argv.slice(2), options = {}) {
           const r = readAndCompareAcceptanceReceipts(args._[1], args._[2]);
           out(args, `corpus compare-receipts ${r.receipt_a} → ${r.receipt_b}\nComparable envelope: ${r.comparable}\nFingerprint equal: ${r.fingerprint_equal}\nPartial runs: ${r.partial_runs.length}`, r);
         } else throw new Error('usage: citable corpus <evaluate|publish|receipt|compare-receipts> [options]');
+        break;
+      }
+      case 'artifacts': {
+        const mode = args._[0];
+        if (mode === 'export') {
+          const r = exportArtifactPackage(root, { runId: args._[1], output: args.output });
+          out(args, `artifacts export ${r.envelope.run.run_id}: ${r.artifacts} sealed file(s)\nPackage: ${r.output}\nPackage hash: ${r.envelope.package_hash}`, r);
+        } else if (mode === 'verify') {
+          const r = verifyArtifactPackage(args.input);
+          out(args, `artifacts verify ${r.manifest.run_id}: valid\nArtifacts: ${r.artifacts.length}\nPackage hash: ${r.envelope.package_hash}`, { valid: r.valid, run_id: r.manifest.run_id, artifacts: r.artifacts.length, package_hash: r.envelope.package_hash });
+        } else if (mode === 'import') {
+          const r = importArtifactPackage(root, { input: args.input });
+          out(args, `artifacts import ${r.run_id}: ${r.status}\nRun package: ${r.destination}`, r);
+        } else throw new Error('usage: citable artifacts <export <run-id> --output <directory>|verify --input <directory>|import --input <directory>>');
         break;
       }
       case 'self-upgrade': {

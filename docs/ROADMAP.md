@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 224 pass in v1.12.0; 251 pass on the current development branch |
+| Tests | 224 pass in v1.12.0; 255 pass on the current development branch |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 85 packaged files per provider |
@@ -19,6 +19,9 @@ The current release separates retrieval eligibility, source extraction and
 support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
+
+The current development branch builds 87 packaged files per provider after the
+artifact-interchange contract is generated from canonical `skill/` sources.
 
 ## Delivered
 
@@ -72,6 +75,10 @@ audited property or claiming that a recommendation was implemented.
   profiles with bounded interaction journeys. Browser/device/runtime state and
   raw, DOM, text, accessibility, screenshot, interaction, and failure artifacts
   remain separate; profile differences carry no semantic-impact claim.
+- A versioned artifact interchange exports, independently verifies, and imports
+  complete sealed runs without changing canonical bytes. It rejects tampering,
+  unsealed files, unsafe paths, symbolic links, incompatible envelopes, and run
+  collisions; hosted workspace implementation remains outside this repository.
 
 These capabilities are unreleased until the v1.13 release gates pass. Their
 presence on `main` is not evidence that hosted collectors, independent

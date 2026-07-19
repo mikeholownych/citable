@@ -16,6 +16,7 @@ Changes to any of the following require a **MAJOR** version bump:
 | CLI flags | `--scope`, `--target`, `--output-dir`, `--providers`, `--yes`, `--dry-run`, `--force` |
 | Exit codes | `0` = success, `1` = findings at or above threshold, `2` = tool error |
 | Registry schemas | JSON-Schema files in `schemas/` — changes to required fields |
+| Artifact interchange v1 | `citable-artifact.json` fields, canonical package hashing, completeness and collision semantics |
 
 ## Backwards-Compatible Changes (MINOR version)
 
@@ -24,6 +25,7 @@ Changes to any of the following require a **MAJOR** version bump:
 - New CLI commands
 - New optional CLI flags
 - New optional registry fields
+- New artifact interchange contract versions that preserve support for existing versions
 - New agent host providers in `dist/universal/`
 
 ## Bug Fixes (PATCH version)

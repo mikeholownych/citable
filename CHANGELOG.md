@@ -32,6 +32,10 @@
 - Schema-validated cross-browser and interaction-journey evidence plans with
   explicit engine/version, device, JavaScript, locale, consent,
   authentication, step, artifact, and partial-failure records.
+- Versioned, independently verifiable artifact interchange with fail-closed
+  `artifacts export`, `artifacts verify`, and `artifacts import` commands. The
+  contract preserves canonical run bytes and explicitly excludes hosted
+  tenancy, authentication, storage, billing, and dashboard authority.
 
 ### Migration — Acceptance Corpus Schema v2
 
