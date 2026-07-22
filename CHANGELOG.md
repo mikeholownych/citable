@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed — Controlled Surface Correctness
+
+- The `nebula-llms-txt` controlled surface now targets
+  `https://nebulacomponents.shop/resources/citable/llms.txt` instead of the
+  site root `/llms.txt`. The root file is the publisher's own site-wide LLM
+  discovery document and can never byte-match the Citable `llms-txt`
+  projection, so the v1.13.0 surface declaration was unsatisfiable as written
+  and no valid deployment receipt could ever have been collected for it.
+  v1.13.0 therefore exceeded its finalization dwell window and is resolved as
+  superseded under the two-phase release governance introduced in 1.13.0.
+
 ## 1.13.0 — 2026-07-19
 
 ### Added — Release Evidence Governance
