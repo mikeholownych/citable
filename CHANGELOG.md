@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed — Release Operations
+
+- `finalize-release.yml` never ran `npm run build:dist` before calling
+  `release-governance.js validate`, so `dist/universal/manifest.json` did not
+  exist and phase-two validation failed closed with `required release
+  projection is missing` on every attempt. `ship-release.yml` already built
+  dist before validating; `finalize-release.yml` now does the same. This
+  workflow had never executed end-to-end before v1.13.1 (v1.13.0 never
+  reached finalization), so the gap was latent until now.
+
 ## 1.13.1 — 2026-07-22
 
 ### Added — Release Operations
