@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added — Release Operations
+
+- `scripts/collect-deployment-receipts.js` probes every controlled surface in
+  a release manifest, writes one schema-valid `deployment-receipt-*.json` per
+  surface (including failed probes — a failed observation is evidence), and
+  exits non-zero unless every finalization-required surface verifies. This is
+  the missing operational step between `ship-release` and `finalize-release`;
+  v1.13.0 had no tool that could produce the receipts its finalize workflow
+  downloads.
+
 ### Fixed — Controlled Surface Correctness
 
 - The `nebula-llms-txt` controlled surface now targets
