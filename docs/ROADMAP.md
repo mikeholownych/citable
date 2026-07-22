@@ -4,7 +4,7 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.13.0)
+## Current State (v1.13.1)
 
 | Metric | Value |
 |--------|-------|
