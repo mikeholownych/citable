@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.13.0
+version: 1.13.1
 ---
 
 # Citable — evidence and change control for search and AI citation readiness

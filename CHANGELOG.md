@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.13.1 — 2026-07-22
+
 ### Added — Release Operations
 
 - `scripts/collect-deployment-receipts.js` probes every controlled surface in
