@@ -222,6 +222,9 @@ citable validate              # registry schema + referential integrity
 ## Community And Governance
 
 - [Contributing](CONTRIBUTING.md) - engineering and pull-request contracts
+- [Fail-Closed Bounty](BOUNTY.md) - prove a claim reached `verified` without
+  evidence and earn a permanent [Hall of Fame](CHANGELOG.md#fail-closed-hall-of-fame)
+  entry
 - [Support](SUPPORT.md) - Issues, Discussions, hosted-service, and security routing
 - [Governance](GOVERNANCE.md) - authority, decisions, roles, and continuity
 - [Maintainers](MAINTAINERS.md) - current responsibilities and succession
