@@ -3,6 +3,7 @@ import path from 'node:path';
 import { writeYaml, readJson, nowIso, listFiles } from '../shared/io.js';
 import { REGISTRY_SPECS, emptyRegistry, contextDir } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { applySeed } from '../registries/seed.js';
 
 const DEFAULT_CRAWLERS = [
   ['CRAWLER-GOOGLEBOT', 'Googlebot', 'Google', 'search_indexing'],
@@ -68,7 +69,7 @@ function detectFramework(root) {
 }
 
 /** `citable init` — inspect the repo and create .citable/ without overwriting anything user-maintained. */
-export function init(root, { force = false } = {}) {
+export function init(root, { force = false, seed = null } = {}) {
   const dir = contextDir(root);
   const created = [];
   const skipped = [];
@@ -120,5 +121,7 @@ export function init(root, { force = false } = {}) {
     writeYaml(file, reg);
     created.push(spec.file);
   }
-  return { created, skipped, detected, unresolved };
+
+  const seedResult = seed ? applySeed(root, seed, { force }) : null;
+  return { created, skipped, detected, unresolved, seed: seedResult };
 }

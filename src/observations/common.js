@@ -42,6 +42,8 @@ export function summarizeObservations(items) {
   for (const item of items) { byKind[item.kind] = (byKind[item.kind] || 0) + 1; byState[item.state] = (byState[item.state] || 0) + 1; }
   const citations = items.filter((item) => item.kind === 'citation');
   const reviews = items.filter((item) => item.kind === 'citation_review');
+  const claimDiffCounts = { confirmed: 0, contradicted: 0, stale: 0, unsupported: 0, not_checked: 0 };
+  for (const review of reviews) claimDiffCounts[review.data.claim_diff?.status ?? 'not_checked']++;
   const providers = {};
   for (const item of citations) {
     const provider = item.data.provider || 'unknown';
@@ -56,6 +58,7 @@ export function summarizeObservations(items) {
       citation_presence_rate: citations.filter((x) => x.data.property_cited).length / citations.length,
       supported_citation_rate: reviews.length ? reviews.filter((x) => x.data.support_status === 'supported').length / reviews.length : null,
       review_required: reviews.filter((x) => x.state === 'review_required').length,
+      claim_diff: claimDiffCounts,
       provider_results: providers,
       competitive_domains: [...new Set(reviews.filter((x) => !x.data.first_party).map((x) => { try { return new URL(x.data.canonical_url).hostname; } catch { return null; } }).filter(Boolean))].sort(),
     } : null,

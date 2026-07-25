@@ -1,0 +1,28 @@
+version: 1
+kind: entities
+entries:
+  - entity_id: ENT-ORG
+    canonical_name: Example Governance
+    entity_type: organization
+    canonical_url: https://example.test/
+    aliases: []
+    authoritative_profiles:
+      - https://www.linkedin.com/company/example-governance
+    category: AI execution governance
+    definition: >
+      Example Governance is an AI execution governance platform vendor.
+    status: verified
+    last_verified: "2026-06-01"
+    owner: Entity Owner
+  - entity_id: ENT-GATEKEEPER
+    canonical_name: Gatekeeper
+    entity_type: product
+    owner_entity: ENT-ORG
+    canonical_url: https://example.test/products/gatekeeper/
+    category: AI execution governance
+    definition: >
+      A runtime enforcement component that validates whether an AI-initiated
+      action remains admissible before execution.
+    status: verified
+    last_verified: "2026-06-01"
+    owner: Entity Owner

@@ -1,6 +1,7 @@
 import { buildContext } from './context.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors, sitePageFor } from '../detectors/framework.js';
+import { checklistItem, toStringArray } from '../shared/checklist.js';
 
 /**
  * `citable schema` — derive JSON-LD proposals from registry data and validate deployed schema.
@@ -28,7 +29,10 @@ export async function schemaCommand(root, { target, baseUrl, refDate } = {}) {
     if (!e.canonical_url) missing.push('canonical_url');
     if (!e.definition && ['proprietary_concept', 'category'].includes(e.entity_type)) missing.push('definition');
     if (missing.length) {
-      blocked.push({ entity_id: e.entity_id, status: 'blocked', reason: 'entity record incomplete; schema would require invented facts', required_input: missing });
+      blocked.push({
+        entity_id: e.entity_id, status: 'blocked', reason: 'entity record incomplete; schema would require invented facts',
+        required_input: toStringArray(missing.map((field) => checklistItem(field, field))),
+      });
       continue;
     }
     const id = `${e.canonical_url}#${e.entity_type}`;

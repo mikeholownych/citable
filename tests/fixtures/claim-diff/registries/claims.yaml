@@ -1,0 +1,44 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-CONFIRMED
+    claim: >
+      Gatekeeper enforces runtime authorization for every tool invocation
+      before execution proceeds.
+    claim_type: capability
+    scope:
+      - configured enforcement deployments
+    evidence: [EVD-CONFIRMED]
+    status: verified
+    valid_from: "2026-05-01"
+    expires: "2027-05-01"
+    support_assessment:
+      status: directly_supported
+      assessor: SME Reviewer
+      assessment_method: architecture specification review against claim wording
+      assessment_date: "2026-06-01"
+      confidence: high
+  - claim_id: CLAIM-CONTRADICTED
+    claim: >
+      Gatekeeper supports fully autonomous approval without any human review
+      step.
+    claim_type: capability
+    status: unverified
+    contradictory_sources:
+      - https://example.test/legal/disclosure
+  - claim_id: CLAIM-STALE
+    claim: >
+      Gatekeeper maintained a 99.99 percent uptime service level during the
+      covered measurement period.
+    claim_type: performance
+    evidence: [EVD-STALE]
+    status: verified
+    valid_from: "2024-01-01"
+    expires: "2025-01-01"
+  - claim_id: CLAIM-INSUFFICIENT
+    claim: >
+      Gatekeeper reduces incident response time by sixty percent compared to
+      manual review workflows.
+    claim_type: performance
+    evidence: []
+    status: candidate

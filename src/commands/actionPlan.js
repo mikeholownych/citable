@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readJson, writeJson, sha256, nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { checklistItem, toStringArray } from '../shared/checklist.js';
 
 const SEVERITY = { critical: 0, high: 1, medium: 2, low: 3, informational: 3, experimental: 3 };
 const PHASE = { unblock: 0, governance: 1, content: 2, optimization: 3 };
@@ -89,7 +90,7 @@ export function actionPlan(root, { runId } = {}) {
       action: finding.remediation.preferred,
       owner,
       status: blocked ? 'blocked' : 'ready',
-      required_input: blocked ? ['accountable owner'] : [],
+      required_input: blocked ? toStringArray([checklistItem('owner', 'accountable owner')]) : [],
       semantic_gates: semanticGates(finding),
       unsafe_shortcuts: finding.remediation.unsafe_shortcuts || [],
       verification: {

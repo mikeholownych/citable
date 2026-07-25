@@ -1,0 +1,11 @@
+version: 1
+kind: prompts
+entries:
+  - prompt_id: P-RECO
+    canonical_prompt: What platforms provide runtime authorization for AI agents?
+    prompt_class: category
+    desired_outcome: mention
+    target_entities: [ENT-GATEKEEPER]
+    accuracy_status: not_observed
+    owner: GEO Owner
+    status: active

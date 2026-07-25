@@ -1,0 +1,80 @@
+{
+  "target_origin": "https://example.test",
+  "observations": [
+    {
+      "prompt_id": "PROMPT-CONFIRMED",
+      "prompt_text": "What enforces runtime tool authorization?",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Gatekeeper enforces runtime authorization for every tool invocation before execution proceeds.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Gatekeeper enforces runtime authorization for every tool invocation before execution proceeds."
+        }
+      ]
+    },
+    {
+      "prompt_id": "PROMPT-CONTRADICTED",
+      "prompt_text": "Does Gatekeeper require human review?",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Gatekeeper supports fully autonomous approval without any human review step.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Gatekeeper supports fully autonomous approval without any human review step."
+        }
+      ]
+    },
+    {
+      "prompt_id": "PROMPT-STALE",
+      "prompt_text": "What is Gatekeeper's uptime?",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Gatekeeper maintained a 99.99 percent uptime service level during the covered measurement period.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Gatekeeper maintained a 99.99 percent uptime service level during the covered measurement period."
+        }
+      ]
+    },
+    {
+      "prompt_id": "PROMPT-INSUFFICIENT",
+      "prompt_text": "How much faster is incident response with Gatekeeper?",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Gatekeeper reduces incident response time by sixty percent compared to manual review workflows.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Gatekeeper reduces incident response time by sixty percent compared to manual review workflows."
+        }
+      ]
+    },
+    {
+      "prompt_id": "PROMPT-UNMATCHED",
+      "prompt_text": "Tell me something unrelated.",
+      "provider": "controlled-fixture",
+      "product_mode": "search",
+      "locale": "en-US",
+      "answer_text": "Xylophone quokka teleportation zephyr nebula wombat cryptid marmalade.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "canonical_url": "https://example.test/products/gatekeeper/",
+          "answer_claim": "Xylophone quokka teleportation zephyr nebula wombat cryptid marmalade."
+        }
+      ]
+    }
+  ]
+}

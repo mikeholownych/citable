@@ -1,0 +1,6 @@
+{
+  "name": "bad-verified-seed",
+  "version": "0.0.1",
+  "description": "Test fixture: a seed that ships an already-verified claim, which applySeed must force back to unverified.",
+  "registries": ["claims"]
+}

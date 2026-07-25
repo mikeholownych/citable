@@ -7,6 +7,8 @@ coverage/
 .citable/runs/
 .citable/snapshots/
 .citable/
+!src/commands/fixtures/demo/.citable/
+!src/commands/fixtures/demo/.citable/**
 *.tgz
 *.log
 .DS_Store

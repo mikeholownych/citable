@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { init } from '../commands/init.js';
 import { audit } from '../commands/audit.js';
+import { demo } from '../commands/demo.js';
 import { validate } from '../commands/validate.js';
 import { mapClaims } from '../commands/mapClaims.js';
 import { substantiate } from '../commands/substantiate.js';
@@ -49,7 +50,8 @@ Commands
   uninstall                 Remove managed Citable skill files
   list                      List detected providers and installation state
   doctor                    Diagnose installer, provider, and integrity problems
-  init                      Initialize .citable/ context and registries (non-destructive)
+  init [--seed <name>]      Initialize .citable/ context and registries (non-destructive)
+  demo                      Run the detector engine against a bundled offline example (no setup, no network)
   audit [scope]             Run detectors; scopes: technical seo aeo geo architecture entity
                             claims evidence schema lifecycle corroboration
   inspect <page>            Profile one page (URL path or source file)
@@ -129,6 +131,7 @@ Options
   --user-agent <value>      Disclosed request identity for representation evidence
   --lighthouse              Run local, repeated Lighthouse lab observations
   --ocr                     Explicitly request optional OCR for media images
+  --seed <name>             Overlay a bundled starter registry seed (all entries default to unverified)
   --write                   Persist registry changes (map-claims, substantiate)
   --json                    Machine-readable output only
 
@@ -168,6 +171,7 @@ function parseArgs(argv) {
     else if (a === '--user-agent') args.userAgent = argv[++i];
     else if (a === '--timeout') args.timeout = Number(argv[++i]);
     else if (a === '--force') args.force = true;
+    else if (a === '--seed') args.seed = argv[++i];
     else args._.push(a);
   }
   return args;
@@ -191,8 +195,25 @@ export async function main(argv = process.argv.slice(2), options = {}) {
   try {
     switch (cmd) {
       case 'init': {
-        const r = init(root, { force: args.force });
-        out(args, `Initialized .citable/\n  created: ${r.created.join(', ') || 'nothing'}\n  skipped: ${r.skipped.join(', ') || 'nothing'}\n  detected framework: ${r.detected.framework ?? 'unknown'}\n  unresolved assumptions:\n${r.unresolved.map((u) => `    - ${u}`).join('\n') || '    none'}`, r);
+        const r = init(root, { force: args.force, seed: args.seed });
+        const seedLines = r.seed
+          ? `\n  seed "${r.seed.seedName}@${r.seed.seedVersion}": ` +
+            Object.entries(r.seed.registriesTouched).map(([k, v]) => `${k}(+${v.added}/skip ${v.skipped})`).join(', ') +
+            (r.seed.warnings.length ? `\n  seed warnings:\n${r.seed.warnings.map((w) => `    - ${w}`).join('\n')}` : '')
+          : '';
+        out(args, `Initialized .citable/\n  created: ${r.created.join(', ') || 'nothing'}\n  skipped: ${r.skipped.join(', ') || 'nothing'}\n  detected framework: ${r.detected.framework ?? 'unknown'}\n  unresolved assumptions:\n${r.unresolved.map((u) => `    - ${u}`).join('\n') || '    none'}${seedLines}`, r);
+        break;
+      }
+      case 'demo': {
+        const r = await demo();
+        const nsLines = Object.entries(r.summary.by_namespace)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([ns, n]) => `  ${ns}: ${n} finding(s)`).join('\n') || '  no findings';
+        out(args,
+          `citable demo — offline audit of a bundled synthetic example site (not live, not a real company)\n${nsLines}\n\n` +
+          `This is a fixed demonstration fixture, not your site. Run "citable init" to set up your own governed context, ` +
+          `then "citable audit --target <dir|url>" against your real site.`,
+          r);
         break;
       }
       case 'audit': {
@@ -243,7 +264,9 @@ export async function main(argv = process.argv.slice(2), options = {}) {
       case 'observe': {
         const mode = args._[0];
         const r = await observe(root, mode, args);
-        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
+        const claimDiffLine = r.summary.citation_metrics?.claim_diff
+          ? `\nClaim diff: ${Object.entries(r.summary.citation_metrics.claim_diff).map(([k, v]) => `${k}:${v}`).join(' ')}` : '';
+        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]${claimDiffLine}\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
         break;
       }
       case 'apply': {

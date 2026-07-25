@@ -1,5 +1,6 @@
 import { buildContext } from './context.js';
 import { envelope, observationRun, readInput } from '../observations/common.js';
+import { buildClaimDiffContext, diffAssertion } from '../observations/claimDiff.js';
 import { sha256 } from '../shared/io.js';
 import { fetchUrl } from '../crawler/fetch.js';
 import fs from 'node:fs';
@@ -143,14 +144,23 @@ async function observeCitations(root, options) {
     method = 'live_api';
   }
   const targetOrigin = options.target ? originOf(options.target) : input.value.target_origin || null;
+  // Registries-only context (no `target` passed — this never fetches or crawls); degrades
+  // gracefully to empty registries (and therefore all-`unsupported` diffs) when no
+  // `.citable/` exists yet, per loadRegistries()'s missing-file-loads-as-empty contract.
+  const diffCtx = buildClaimDiffContext(root, options.refDate);
   const observations = [];
   for (const row of rows) {
-    const reviews = canonicalReview(row, targetOrigin);
+    const reviews = canonicalReview(row, targetOrigin).map((review) => ({
+      ...review,
+      claim_diff: diffAssertion(review.answer_claim, review.canonical_url, diffCtx),
+    }));
+    const diffCounts = { confirmed: 0, contradicted: 0, stale: 0, unsupported: 0, not_checked: 0 };
+    for (const review of reviews) diffCounts[review.claim_diff?.status ?? 'not_checked']++;
     observations.push(envelope('citation', {
       prompt_id: row.prompt_id, prompt_text: row.prompt_text, provider: row.provider || row.engine,
       product_mode: row.product_mode || row.interface || 'unknown', locale: row.locale || 'unknown',
       answer_text: row.answer_text || '', citations: reviews, run_index: row.run_index || 1,
-      property_cited: reviews.some((r) => r.first_party),
+      property_cited: reviews.some((r) => r.first_party), claim_diff_summary: diffCounts,
     }, { method, source: options.endpoint || input.file, raw: JSON.stringify(row) }));
     for (const review of reviews) observations.push(envelope('citation_review', review, {
       method: review.reviewer ? 'human_review' : 'static_analysis', source: options.endpoint || input.file,
@@ -159,7 +169,8 @@ async function observeCitations(root, options) {
       limitations: review.reviewer ? [] : ['Material support requires a named human reviewer.'],
     }));
   }
-  return observationRun(root, 'observe citations', input.file, observations, { rawInputs: { citation_results: input.raw } });
+  const claimDiffWarnings = diffCtx.problems.map((p) => `claim-diff registry problem (diff degraded to unsupported where affected): ${p}`);
+  return observationRun(root, 'observe citations', input.file, observations, { rawInputs: { citation_results: input.raw }, warnings: claimDiffWarnings });
 }
 
 function observeLogs(root, options) {

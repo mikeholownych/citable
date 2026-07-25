@@ -1,0 +1,54 @@
+version: 1
+kind: pages
+entries:
+  - page_id: PAGE-HOME
+    url: /
+    page_type: home
+    primary_intent: brand navigation
+    primary_entities: [ENT-ORG]
+    content_owner: Content Owner
+    lifecycle_class: evergreen
+    review_cadence: quarterly
+    next_review_date: "2026-10-01"
+    indexing_intent: index
+    conversion_action: request demo
+    status: active
+  - page_id: PAGE-GATEKEEPER
+    url: /products/gatekeeper/
+    page_type: product
+    primary_intent: vendor evaluation of runtime authorization
+    primary_entities: [ENT-GATEKEEPER]
+    published_claims: [CLAIM-ENFORCE]
+    content_owner: Content Owner
+    factual_reviewer: SME Reviewer
+    lifecycle_class: product_capability
+    review_cadence: release-driven
+    next_review_date: "2026-12-01"
+    indexing_intent: index
+    conversion_action: request demo
+    status: active
+  - page_id: PAGE-DEFN
+    url: /learn/execution-governance/
+    page_type: definition
+    primary_intent: define AI execution governance
+    primary_entities: [ENT-ORG]
+    content_owner: Content Owner
+    factual_reviewer: SME Reviewer
+    lifecycle_class: foundational
+    review_cadence: semiannual
+    next_review_date: "2026-12-15"
+    indexing_intent: index
+    conversion_action: read product page
+    status: active
+  - page_id: PAGE-PRICING
+    url: /pricing/
+    page_type: pricing
+    primary_intent: pricing evaluation
+    primary_entities: [ENT-GATEKEEPER]
+    content_owner: Content Owner
+    lifecycle_class: pricing
+    review_cadence: on-change
+    next_review_date: "2026-08-01"
+    indexing_intent: index
+    conversion_action: contact sales
+    status: active
