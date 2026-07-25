@@ -14,6 +14,9 @@ repository's Apache-2.0 license. Participation is governed by
   credentials, customer data, or private evidence in public channels.
 - Hosted dashboard, account, billing, and service work is outside this
   repository. See [`SUPPORT.md`](SUPPORT.md).
+- Proving a breach of the fail-closed guarantee — see `BOUNTY.md`'s "What
+  Qualifies" section for the authoritative scope — follows
+  [`BOUNTY.md`](BOUNTY.md), not the general Issue or pull-request path below.
 
 ## Pull Requests
 
