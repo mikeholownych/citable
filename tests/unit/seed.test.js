@@ -48,6 +48,32 @@ test('re-applying the same seed does not duplicate or clobber a user-edited entr
   assert.ok(r2.registriesTouched.claims.skipped >= 1);
 });
 
+test('re-applying with force refreshes an entry that is genuinely unedited since seeding', () => {
+  const root = tmpRoot();
+  init(root, { seed: 'saas-pricing' });
+  const r2 = applySeed(root, 'saas-pricing', { force: true });
+  const { registries } = loadRegistries(root);
+  assert.equal(registries.claims.entries.length, 2); // still no duplicates
+  assert.ok(r2.registriesTouched.claims.added >= 1); // genuinely unedited entries do get refreshed
+});
+
+test('editing a field while KEEPING seededFrom still blocks a force re-seed (fingerprint, not provenance presence, gates it)', () => {
+  const root = tmpRoot();
+  init(root, { seed: 'saas-pricing' });
+  const { registries } = loadRegistries(root);
+  const before = registries.claims.entries.length;
+  registries.claims.entries[0].claim = 'The owner rewrote this claim by hand.';
+  // provenance.seededFrom is deliberately left in place — the fingerprint must
+  // still detect the edit and refuse to overwrite it.
+  saveRegistry(root, 'claims', registries.claims);
+
+  const r2 = applySeed(root, 'saas-pricing', { force: true });
+  const { registries: after } = loadRegistries(root);
+  assert.equal(after.claims.entries.length, before);
+  assert.equal(after.claims.entries[0].claim, 'The owner rewrote this claim by hand.');
+  assert.ok(r2.registriesTouched.claims.skipped >= 1);
+});
+
 test('unknown seed name fails closed without touching any registry file', () => {
   const root = tmpRoot();
   init(root);

@@ -1,0 +1,3 @@
+version: 1
+kind: claims
+entries: not-an-array

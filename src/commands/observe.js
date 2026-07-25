@@ -169,7 +169,8 @@ async function observeCitations(root, options) {
       limitations: review.reviewer ? [] : ['Material support requires a named human reviewer.'],
     }));
   }
-  return observationRun(root, 'observe citations', input.file, observations, { rawInputs: { citation_results: input.raw } });
+  const claimDiffWarnings = diffCtx.problems.map((p) => `claim-diff registry problem (diff degraded to unsupported where affected): ${p}`);
+  return observationRun(root, 'observe citations', input.file, observations, { rawInputs: { citation_results: input.raw }, warnings: claimDiffWarnings });
 }
 
 function observeLogs(root, options) {

@@ -40,3 +40,17 @@ test('gracefully degrades to unsupported with no registry at all, no crash, no l
   assert.doesNotMatch(serialized, /the AI is wrong|incorrect|false/i);
   assert.match(serialized, /your registry|not.*checked/i);
 });
+
+test('a malformed but parseable claims.yaml degrades to unsupported and a warning instead of throwing', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-claim-diff-malformed-'));
+  fs.mkdirSync(path.join(root, '.citable'), { recursive: true });
+  fs.copyFileSync(path.join(FIX, 'registries-malformed/claims.yaml'), path.join(root, '.citable', 'claims.yaml'));
+
+  const r = await observe(root, 'citations', {
+    input: path.join(FIX, 'observations/citations-claim-diff.json'),
+    target: 'https://example.test', refDate: '2026-07-18',
+  });
+  const reviews = r.observations.filter((o) => o.kind === 'citation_review');
+  assert.ok(reviews.every((o) => o.data.claim_diff.status === 'unsupported'));
+  assert.ok(r.manifest.warnings.some((w) => /claim-diff registry problem/.test(w)));
+});

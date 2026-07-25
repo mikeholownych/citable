@@ -5,12 +5,29 @@ function keyTerms(text) {
   return (String(text || '').toLowerCase().match(/[a-z][a-z-]{4,}/g) || []).slice(0, 8);
 }
 
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function overlapScore(assertionText, claimText) {
   const terms = keyTerms(assertionText);
   if (terms.length < 3) return 0;
   const target = String(claimText || '').toLowerCase();
-  const present = terms.filter((t) => target.includes(t)).length;
+  // Whole-word boundaries only — a raw substring test would match "test" inside
+  // "greatest" and misassign a substantiation status to the wrong claim.
+  const present = terms.filter((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(target)).length;
   return present / terms.length;
+}
+
+function surfaceMatches(citationUrl, surface) {
+  try {
+    const url = new URL(citationUrl);
+    // Path-boundary comparison, not raw substring — a query string or fragment
+    // containing the surface text must not count as a match.
+    return url.pathname === surface || url.pathname.startsWith(surface.endsWith('/') ? surface : `${surface}/`);
+  } catch {
+    return false;
+  }
 }
 
 /** Find the best-matching registry claim for one AI answer assertion (token-overlap heuristic, adapted from CLAIM-008). */
@@ -19,7 +36,7 @@ export function matchClaim(assertionText, claims, citationUrl) {
   let bestScore = 0;
   for (const c of claims.filter((c) => c.status !== 'retired')) {
     let score = overlapScore(assertionText, c.claim);
-    if (citationUrl && (c.publication_surfaces || []).some((s) => citationUrl.includes(s))) score += 0.1;
+    if (citationUrl && (c.publication_surfaces || []).some((s) => surfaceMatches(citationUrl, s))) score += 0.1;
     if (score > bestScore) {
       bestScore = score;
       best = c;
@@ -51,11 +68,16 @@ export function diffAssertion(assertionText, citationUrl, { claims, assessmentBy
   return { status, matched_claim_id: matched.claim_id, reasons: assessment?.reasons ?? [] };
 }
 
-/** Precompute the shared claim/evidence lookups once per `observe citations` run. */
+/**
+ * Precompute the shared claim/evidence lookups once per `observe citations` run.
+ * `problems` surfaces registry schema-validation issues (malformed but parseable
+ * YAML) so the caller can report them as warnings rather than silently diffing
+ * against data that failed its own contract.
+ */
 export function buildClaimDiffContext(root, refDate) {
-  const { registries } = loadRegistries(root);
-  const claims = registries.claims.entries;
+  const { registries, problems } = loadRegistries(root);
+  const claims = Array.isArray(registries.claims?.entries) ? registries.claims.entries : [];
   const { assessments } = substantiate(root, { write: false, refDate });
   const assessmentByClaimId = new Map(assessments.map((a) => [a.claim_id, a]));
-  return { claims, assessmentByClaimId };
+  return { claims, assessmentByClaimId, problems };
 }

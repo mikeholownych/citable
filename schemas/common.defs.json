@@ -25,7 +25,8 @@
           "properties": {
             "seedName": { "type": "string", "minLength": 1 },
             "seedVersion": { "type": "string", "minLength": 1 },
-            "importedAt": { "$ref": "#/definitions/isoDate" }
+            "importedAt": { "$ref": "#/definitions/isoDate" },
+            "contentFingerprint": { "type": "string", "minLength": 1 }
           }
         }
       }

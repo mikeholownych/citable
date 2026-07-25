@@ -19,9 +19,9 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 - `common.defs.json`'s shared `provenance` definition (used by claim, entity,
   evidence, page, prompt, query, crawler, competitor, and experiment records)
-  gains an optional `seededFrom { seedName, seedVersion, importedAt }`
-  sub-object. Existing provenance records without it remain valid; no
-  existing data needs to change.
+  gains an optional `seededFrom { seedName, seedVersion, importedAt,
+  contentFingerprint? }` sub-object. Existing provenance records without it
+  remain valid; no existing data needs to change.
 
 ### Added — CLI
 
@@ -43,7 +43,7 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
   claims to have live-queried an answer engine. Degrades gracefully to
   `unsupported` when no `.citable/` registry exists yet.
 
-### Added — CLI
+### Added — Demo
 
 - `citable demo` runs the full detector engine against a bundled, frozen,
   offline example site and prints a namespace-by-namespace finding count in
