@@ -1,0 +1,33 @@
+version: 1
+kind: evidence
+entries:
+  - evidence_id: EVD-CONFIRMED
+    title: Gatekeeper architecture specification v2
+    evidence_type: architecture_specification
+    source: internal://specs/gatekeeper-v2.md
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-CONFIRMED]
+    methodology: design review
+    publication_date: "2026-05-01"
+    retrieved_date: "2026-06-01"
+    valid_until: "2027-05-01"
+    integrity_hash: sha256:e3b0c44298fc1c149afbf4c8996fb924
+    access_status: internal
+    reuse_status: licensed
+    reviewer: SME Reviewer
+    verification_status: verified
+  - evidence_id: EVD-STALE
+    title: 2024 uptime measurement report
+    evidence_type: test_report
+    source: internal://reports/uptime-2024.md
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-STALE]
+    methodology: monitoring log aggregation
+    publication_date: "2024-01-01"
+    retrieved_date: "2024-02-01"
+    valid_until: "2025-01-01"
+    integrity_hash: sha256:e3b0c44298fc1c149afbf4c8996fb924
+    access_status: internal
+    reuse_status: licensed
+    reviewer: SME Reviewer
+    verification_status: verified

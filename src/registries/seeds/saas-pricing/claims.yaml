@@ -1,0 +1,18 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-SEED-PRICING-TRANSPARENCY
+    claim: >
+      Placeholder: replace with a specific, evidenced pricing claim for your
+      product (e.g. published starting price, billing unit, plan boundaries).
+    claim_type: commercial
+    entity: ENT-SEED-PRODUCT
+    publication_surfaces: ["/pricing/"]
+    status: unverified
+  - claim_id: CLAIM-SEED-FEATURE-SCOPE
+    claim: >
+      Placeholder: replace with a specific, evidenced capability claim and its
+      scope/exclusions (what the product does and explicitly does not do).
+    claim_type: capability
+    entity: ENT-SEED-PRODUCT
+    status: unverified

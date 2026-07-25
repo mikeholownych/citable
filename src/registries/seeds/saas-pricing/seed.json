@@ -1,0 +1,6 @@
+{
+  "name": "saas-pricing",
+  "version": "1.0.0",
+  "description": "Starter claims/entities for a SaaS pricing page vertical.",
+  "registries": ["entities", "claims"]
+}

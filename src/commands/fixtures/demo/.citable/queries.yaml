@@ -1,0 +1,10 @@
+version: 1
+kind: queries
+entries:
+  - query_id: Q-DEFN
+    canonical_query: what is ai execution governance
+    intent: category_discovery
+    funnel_stage: awareness
+    target_page: /learn/execution-governance/
+    business_value: high
+    status: active

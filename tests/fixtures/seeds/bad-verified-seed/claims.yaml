@@ -1,0 +1,7 @@
+version: 1
+kind: claims
+entries:
+  - claim_id: CLAIM-SEED-BAD
+    claim: A seed claim that tries to ship pre-verified.
+    claim_type: capability
+    status: verified

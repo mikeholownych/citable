@@ -1,5 +1,6 @@
 import { loadRegistries, saveRegistry, diffRegistries } from '../registries/index.js';
 import { isPastDate, nowIso, parseRefDate } from '../shared/io.js';
+import { checklistItem, toStringArray } from '../shared/checklist.js';
 
 const REGULATED = new Set(['legal_regulatory', 'security', 'commercial']);
 
@@ -37,7 +38,7 @@ export function substantiate(root, { write = false, refDate } = {}) {
     } else if (REGULATED.has(c.claim_type) && (!c.legal_status || c.legal_status === 'not_assessed')) {
       a.outcome = 'review_required';
       a.reasons.push(`${c.claim_type} claim requires legal/SME review before any verified status`);
-      a.required_input.push('legal or subject-matter review decision');
+      a.required_input.push(checklistItem('legal-review', 'legal or subject-matter review decision'));
     } else if (['opinion', 'position', 'aspirational'].includes(c.claim_type)) {
       // Opinions and aspirations are positions, not verifiable facts; they never enter the verified track.
       a.outcome = c.status === 'candidate' ? 'candidate' : 'unverified';
@@ -54,19 +55,23 @@ export function substantiate(root, { write = false, refDate } = {}) {
       } else if (live.length === 0) {
         a.outcome = 'insufficient_evidence';
         a.reasons.push('all attached evidence is expired, unverified, revoked, or inaccessible');
-        a.required_input.push('current, verified evidence');
+        a.required_input.push(checklistItem('current-verified-evidence', 'current, verified evidence'));
       } else if (['performance', 'comparative', 'security'].includes(c.claim_type) && live.every((e) => e.primary_or_secondary === 'secondary')) {
         a.outcome = 'insufficient_evidence';
         a.reasons.push(`${c.claim_type} claims require primary evidence; only secondary evidence attached`);
-        a.required_input.push('primary evidence (test result, benchmark, specification, certification)');
+        a.required_input.push(checklistItem('primary-evidence', 'primary evidence (test result, benchmark, specification, certification)'));
       } else if (['performance'].includes(c.claim_type) && live.every((e) => !e.methodology)) {
         a.outcome = 'insufficient_evidence';
         a.reasons.push('performance evidence lacks methodology');
-        a.required_input.push('methodology', 'test conditions', 'measurement period');
+        a.required_input.push(
+          checklistItem('methodology', 'methodology'),
+          checklistItem('test-conditions', 'test conditions'),
+          checklistItem('measurement-period', 'measurement period'),
+        );
       } else if ((c.scope || []).length === 0 && ['capability', 'performance', 'comparative'].includes(c.claim_type)) {
         a.outcome = 'verified_narrowed';
         a.reasons.push('evidence exists but claim declares no scope; treat as verified only with narrowed scope pending scope definition');
-        a.required_input.push('explicit scope and exclusions');
+        a.required_input.push(checklistItem('scope-exclusions', 'explicit scope and exclusions'));
       } else {
         // Deterministic conditions passed. Verified status additionally requires a recorded
         // semantic support assessment (entailment) by a named assessor — evidence linkage
@@ -82,7 +87,7 @@ export function substantiate(root, { write = false, refDate } = {}) {
           } else {
             a.outcome = 'review_required';
             a.reasons.push('verified status held without an adequate semantic support assessment; entailment review required (evidence-strength rubric)');
-            a.required_input.push('support_assessment with named assessor');
+            a.required_input.push(checklistItem('support-assessment', 'support_assessment with named assessor'));
           }
         } else {
           a.outcome = 'review_required';
@@ -90,6 +95,7 @@ export function substantiate(root, { write = false, refDate } = {}) {
         }
       }
     }
+    a.required_input = toStringArray(a.required_input);
     assessments.push(a);
   }
 
@@ -114,8 +120,14 @@ export function substantiate(root, { write = false, refDate } = {}) {
 }
 
 function requiredInputFor(c) {
-  if (c.claim_type === 'performance') return ['baseline', 'measurement period', 'test population/conditions', 'methodology', 'result source'];
-  if (c.claim_type === 'comparative') return ['comparison set', 'comparison criteria', 'evidence for each compared dimension'];
-  if (c.claim_type === 'security') return ['test report, certification, or architecture evidence'];
-  return ['supporting evidence with an accountable owner'];
+  if (c.claim_type === 'performance') {
+    return ['baseline', 'measurement period', 'test population/conditions', 'methodology', 'result source']
+      .map((label) => checklistItem(label.replace(/[^a-z0-9]+/gi, '-').toLowerCase(), label));
+  }
+  if (c.claim_type === 'comparative') {
+    return ['comparison set', 'comparison criteria', 'evidence for each compared dimension']
+      .map((label) => checklistItem(label.replace(/[^a-z0-9]+/gi, '-').toLowerCase(), label));
+  }
+  if (c.claim_type === 'security') return [checklistItem('security-evidence', 'test report, certification, or architecture evidence')];
+  return [checklistItem('owned-evidence', 'supporting evidence with an accountable owner')];
 }

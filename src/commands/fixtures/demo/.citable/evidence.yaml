@@ -1,0 +1,19 @@
+version: 1
+kind: evidence
+entries:
+  - evidence_id: EVD-ARCH-SPEC
+    title: Gatekeeper architecture specification v2
+    evidence_type: architecture_specification
+    source: internal://specs/gatekeeper-v2.md
+    primary_or_secondary: primary
+    supports_claims: [CLAIM-ENFORCE]
+    methodology: design review
+    measurement_period: "2026-05"
+    publication_date: "2026-05-10"
+    retrieved_date: "2026-06-01"
+    valid_until: "2027-05-10"
+    integrity_hash: sha256:e3b0c44298fc1c149afbf4c8996fb924
+    access_status: internal
+    reuse_status: licensed
+    reviewer: SME Reviewer
+    verification_status: verified

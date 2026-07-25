@@ -15,6 +15,49 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Migration — Provenance seededFrom
+
+- `common.defs.json`'s shared `provenance` definition (used by claim, entity,
+  evidence, page, prompt, query, crawler, competitor, and experiment records)
+  gains an optional `seededFrom { seedName, seedVersion, importedAt }`
+  sub-object. Existing provenance records without it remain valid; no
+  existing data needs to change.
+
+### Added — CLI
+
+- `citable init --seed <name>` overlays a bundled starter registry bundle
+  (v1 ships `saas-pricing`) onto `.citable/`. Every seeded record is stamped
+  `status: unverified` and `provenance.seededFrom`, regardless of what the
+  seed bundle itself declares — seeded (someone else's-guess) data can never
+  be indistinguishable from data the owner's own evidence pipeline has
+  verified. Re-running a seed never overwrites the owner's own edits, even
+  with `--force`.
+
+### Added — Observation
+
+- `citable observe citations` now diffs each AI answer's assertions against
+  the caller's own claim/evidence registry (reusing `substantiate`'s
+  deterministic outcome machine), classifying each as confirmed / contradicted
+  / stale / unsupported. It never asserts the AI is wrong — only that an
+  assertion is or isn't supported by the caller's own evidence — and never
+  claims to have live-queried an answer engine. Degrades gracefully to
+  `unsupported` when no `.citable/` registry exists yet.
+
+### Added — CLI
+
+- `citable demo` runs the full detector engine against a bundled, frozen,
+  offline example site and prints a namespace-by-namespace finding count in
+  seconds. It never fetches the network and never scores a real company —
+  the fixture is synthetic (`https://example.test`, RFC 2606 reserved). Ends
+  with a nudge toward `citable init` for a real, governed audit.
+
+### Changed — Consistency
+
+- `schemaCmd`, `substantiate`, and `actionPlan` now build their
+  `required_input` guidance through a single shared helper
+  (`src/shared/checklist.js`) instead of three independently duplicated
+  literal-string lists. Output strings are unchanged.
+
 ### Fixed — Release Operations
 
 - `finalize-release.yml` never ran `npm run build:dist` before calling

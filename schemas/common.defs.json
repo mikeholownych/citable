@@ -17,7 +17,17 @@
         "created": { "$ref": "#/definitions/isoDate" },
         "updated": { "$ref": "#/definitions/isoDate" },
         "created_by": { "type": "string" },
-        "source": { "type": "string" }
+        "source": { "type": "string" },
+        "seededFrom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seedName", "seedVersion", "importedAt"],
+          "properties": {
+            "seedName": { "type": "string", "minLength": 1 },
+            "seedVersion": { "type": "string", "minLength": 1 },
+            "importedAt": { "$ref": "#/definitions/isoDate" }
+          }
+        }
       }
     },
     "registryFile": {

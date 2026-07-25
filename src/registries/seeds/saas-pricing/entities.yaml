@@ -1,0 +1,20 @@
+version: 1
+kind: entities
+entries:
+  - entity_id: ENT-SEED-VENDOR
+    canonical_name: (your company name)
+    entity_type: organization
+    category: SaaS vendor
+    definition: >
+      Replace with your organization's own definition. Seeded as a starting
+      shape only — not a fact about your company.
+    status: unverified
+  - entity_id: ENT-SEED-PRODUCT
+    canonical_name: (your product name)
+    entity_type: product
+    owner_entity: ENT-SEED-VENDOR
+    category: SaaS product
+    definition: >
+      Replace with your product's own definition. Seeded as a starting shape
+      only — not a fact about your product.
+    status: unverified
