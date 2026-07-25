@@ -1,5 +1,18 @@
 # Changelog
 
+## Fail-Closed Hall of Fame
+
+Permanent, append-only record of confirmed breaches of Citable's fail-closed
+guarantee, found and fixed under [`BOUNTY.md`](BOUNTY.md), whose "What
+Qualifies" section is the authoritative scope (e.g. a claim reaching
+`verified` without sufficient or unexpired evidence or required human
+semantic review, or a detector/rubric silently passing a case that should
+have been `blocked` or `unverified`). A reproducing fixture now guards
+against each entry's regression. Entries are never edited or removed once
+merged.
+
+_No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
+
 ## Unreleased
 
 ### Fixed — Release Operations
