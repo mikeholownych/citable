@@ -60,6 +60,8 @@ test('audit on clean fixture produces evidence package with manifest, findings, 
   assert.ok(fs.existsSync(path.join(r.dir, 'report.md')));
   assert.ok(fs.existsSync(path.join(r.dir, 'checksums.json')));
   assert.ok(fs.existsSync(path.join(r.dir, 'robots', 'robots.txt')));
+  assert.ok(fs.existsSync(path.join(r.dir, 'schema', 'entity-graph.json')));
+  assert.ok(fs.existsSync(path.join(r.dir, 'identity', 'source-chain.json')));
   const manifest = readJson(path.join(r.dir, 'manifest.json'));
   assert.ok(manifest.detectors_run.length > 30);
   assert.ok(['completed', 'completed_with_warnings', 'incomplete'].includes(manifest.status));
@@ -67,6 +69,38 @@ test('audit on clean fixture produces evidence package with manifest, findings, 
   assert.ok(report.includes('Nothing in this report guarantees'), 'no-guarantee language present');
   // no critical findings on clean fixture
   assert.ok(!r.findings.some((f) => f.classification.severity === 'critical'));
+  const sourceChain = readJson(path.join(r.dir, 'identity', 'source-chain.json'));
+  const productChain = sourceChain.pages.find((page) => page.page_id === 'PAGE-GATEKEEPER');
+  assert.equal(productChain.status, 'complete');
+  assert.equal(productChain.publisher.entity_id, 'ENT-ORG');
+  assert.equal(productChain.authors[0].affiliations[0].entity_id, 'ENT-ORG');
+  assert.equal(productChain.evidence_owners[0].owner, 'Example Evidence Team');
+  assert.equal(productChain.correction_path, '/corrections/');
+});
+
+test('audit normalizes JSON-LD nodes, edges, visible support, and unresolved references', async () => {
+  const dir = project(null);
+  const site = path.join(dir, 'graph-site');
+  fs.mkdirSync(site);
+  fs.writeFileSync(path.join(site, 'index.html'), `<!doctype html><html><head>
+    <title>Gatekeeper by Example Governance</title>
+    <link rel="canonical" href="https://example.test/">
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+      {"@id":"https://example.test/#org","@type":"Organization","name":"Example Governance"},
+      {"@id":"https://example.test/#product","@type":"Product","name":"Gatekeeper",
+       "brand":{"@id":"https://example.test/#org"},
+       "isRelatedTo":{"@id":"https://example.test/#missing"}}
+    ]}</script>
+  </head><body><h1>Gatekeeper</h1><p>Gatekeeper is provided by Example Governance.</p></body></html>`);
+
+  const result = await audit(dir, { target: site, baseUrl: 'https://example.test', refDate: '2026-07-18' });
+  const graph = readJson(path.join(result.dir, 'schema', 'entity-graph.json'));
+  assert.equal(graph.nodes.length, 2);
+  assert.ok(graph.nodes.every((node) => node.visible_support.status === 'supported'));
+  assert.ok(graph.edges.some((edge) => edge.relation === 'brand' && edge.target_declared === true));
+  assert.ok(graph.unresolved_references.some((edge) => edge.relation === 'isRelatedTo'));
+  assert.equal(graph.parse_failures.length, 0);
+  assert.match(graph.limitations.join(' '), /does not establish.*correct|recognition/i);
 });
 
 test('audit on broken fixture surfaces criticals and separates deterministic from heuristic', async () => {
@@ -80,6 +114,8 @@ test('audit on broken fixture surfaces criticals and separates deterministic fro
     assert.ok(f.remediation.preferred, 'remediation present');
     assert.ok(f.verification.method, 'verification present');
   }
+  const graph = readJson(path.join(r.dir, 'schema', 'entity-graph.json'));
+  assert.ok(graph.parse_failures.length >= 1, 'malformed JSON-LD remains visible in the graph artifact');
 });
 
 test('registry-only audit reports incomplete site coverage instead of claiming success', async () => {

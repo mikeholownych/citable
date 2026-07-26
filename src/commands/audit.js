@@ -8,6 +8,8 @@ import { summarize, renderMarkdownReport } from '../reporting/report.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import { writeJson, sha256 } from '../shared/io.js';
 import { extractModified } from '../detectors/lifeMeas.js';
+import { buildEntityGraph } from '../observations/entityGraph.js';
+import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
 export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
@@ -93,6 +95,8 @@ export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
     const schemaBlocks = [];
     for (const p of ctx.site.pages) for (const j of p.jsonLd) schemaBlocks.push({ url: p.url, parseError: j.parseError, blocks: j.blocks });
     run.writeArtifact('schema/jsonld.json', schemaBlocks);
+    run.writeArtifact('schema/entity-graph.json', buildEntityGraph(ctx.site.pages));
+    run.writeArtifact('identity/source-chain.json', buildSourceIdentityChain(ctx.registries));
     for (const p of ctx.site.pages) {
       run.writeArtifact(`headers/${encodeURIComponent(p.url)}.json`, { status: p.status, headers: p.headers });
     }

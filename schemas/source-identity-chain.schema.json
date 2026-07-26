@@ -1,0 +1,83 @@
+{
+  "$id": "citable://schemas/source-identity-chain.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page source identity chain",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "pages", "limitations"],
+  "properties": {
+    "version": { "const": 1 },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["page_id", "url", "publisher", "authors", "content_owner", "factual_reviewer", "evidence_owners", "correction_path", "status", "missing_fields"],
+        "properties": {
+          "page_id": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "minLength": 1 },
+          "publisher": {
+            "oneOf": [
+              { "type": "null" },
+              { "$ref": "#/definitions/publisher" }
+            ]
+          },
+          "authors": { "type": "array", "items": { "$ref": "#/definitions/author" } },
+          "content_owner": { "type": ["string", "null"] },
+          "factual_reviewer": { "type": ["string", "null"] },
+          "evidence_owners": { "type": "array", "items": { "$ref": "#/definitions/evidenceOwner" } },
+          "correction_path": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["complete", "incomplete"] },
+          "missing_fields": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  },
+  "definitions": {
+    "publisher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "name", "canonical_url", "status"],
+      "properties": {
+        "entity_id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "canonical_url": { "type": ["string", "null"] },
+        "status": { "type": "string", "minLength": 1 }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "name", "canonical_url", "affiliations", "status"],
+      "properties": {
+        "entity_id": { "type": "string", "minLength": 1 },
+        "name": { "type": ["string", "null"] },
+        "canonical_url": { "type": ["string", "null"] },
+        "affiliations": { "type": "array", "items": { "$ref": "#/definitions/affiliation" } },
+        "status": { "type": "string", "minLength": 1 }
+      }
+    },
+    "affiliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "relationship", "disclosure_status", "entity_name"],
+      "properties": {
+        "entity_id": { "type": "string", "minLength": 1 },
+        "relationship": { "type": "string", "minLength": 1 },
+        "disclosure_status": { "type": "string", "minLength": 1 },
+        "entity_name": { "type": ["string", "null"] }
+      }
+    },
+    "evidenceOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "owner", "verification_status"],
+      "properties": {
+        "evidence_id": { "type": "string", "minLength": 1 },
+        "owner": { "type": ["string", "null"] },
+        "verification_status": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

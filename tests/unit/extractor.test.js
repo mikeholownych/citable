@@ -10,7 +10,8 @@ test('extractPage captures title, canonical, robots, headings, links, jsonld', (
     <meta name="description" content="D"><meta name="robots" content="noindex, nosnippet">
     <link rel="canonical" href="https://x.test/a/">
     <script type="application/ld+json">{"@type":"Organization","name":"X"}</script>
-    </head><body><h1>H</h1><h2>Sub</h2><p>Hello world text.</p><a href="/b/">to b</a>
+    </head><body><header>Shared masthead words</header><nav>Shared navigation words</nav>
+    <h1>H</h1><h2>Sub</h2><p>Hello world text.</p><a href="/b/">to b</a>
     <div style="display:none">hidden secret</div></body></html>`;
   const p = extractPage({ url: 'https://x.test/a/', html });
   assert.equal(p.title, 'T');
@@ -24,6 +25,8 @@ test('extractPage captures title, canonical, robots, headings, links, jsonld', (
   assert.equal(p.jsonLd[0].blocks[0].name, 'X');
   assert.ok(p.hiddenTexts.includes('hidden secret'));
   assert.ok(p.wordCount > 0);
+  assert.equal(p.structuralRegions.length, 2);
+  assert.ok(p.rawVisibleWordCount > p.wordCount);
 });
 
 test('extractPage reports JSON-LD parse errors without throwing', () => {

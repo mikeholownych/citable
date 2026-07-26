@@ -2,6 +2,7 @@ import { envelope, observationRun, readInput } from './common.js';
 import { fetchUrl, handlePublicBrowserRoute, validatePublicUrl } from '../crawler/fetch.js';
 import { sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { analyzeRenderParity } from './renderParity.js';
 
 async function executeStep(page, step, lookup) {
   const locator = step.locator ? page.locator(step.locator).first() : null;
@@ -142,6 +143,7 @@ export async function observeBrowserPlan(root, options) {
         artifacts[name] = value;
       }
       const versionMatches = profile.browser.expected_version == null || profile.browser.expected_version === capture.browser_version;
+      const renderParity = analyzeRenderParity(initial.body, capture.dom, plan.semantic_impact_policy || null);
       const data = {
         plan_id: plan.plan_id, target: plan.target, profile_id: profile.profile_id,
         browser: { ...profile.browser, observed_version: capture.browser_version, version_matches_expectation: versionMatches },
@@ -149,9 +151,10 @@ export async function observeBrowserPlan(root, options) {
         consent_state: profile.consent_state, authentication_state: profile.authentication_state,
         final_url: capture.final_url, status: capture.status, dom_hash: sha256(capture.dom), text_hash: sha256(capture.text),
         steps: capture.steps || [], artifact_refs: refs,
+        render_parity: renderParity,
         interpretation_boundary: 'Observed differences do not establish semantic, retrieval, citation, ranking, or business impact.',
       };
-      const limitations = [...plan.limitations, ...profile.limitations];
+      const limitations = [...plan.limitations, ...profile.limitations, ...(plan.semantic_impact_policy?.limitations || [])];
       if (!versionMatches) limitations.push('Observed browser version differs from the planned version.');
       observations.push(envelope('browser_journey', data, { method: 'browser', source: `playwright/${profile.browser.engine}`, raw: capture.dom, limitations }));
     } catch (error) {

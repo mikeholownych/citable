@@ -64,7 +64,7 @@ Commands
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
   observe <mode>            Collect render, index, citation, log, Bing, passage,
-                            consensus, performance, corroboration, crawler probes,
+                            consensus, performance, corroboration, crawler or regional probes,
                             media evidence, or representation evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts

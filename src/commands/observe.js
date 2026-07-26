@@ -29,6 +29,20 @@ function canonicalReview(raw, targetOrigin) {
     const url = typeof citation === 'string' ? citation : citation.url;
     const canonical = typeof citation === 'object' ? citation.canonical_url || url : url;
     const supports = typeof citation === 'object' ? citation.support_status || 'review_required' : 'review_required';
+    const sourceProfile = typeof citation === 'object' ? citation.source_profile || null : null;
+    if (sourceProfile) {
+      const formats = new Set(['article', 'documentation', 'product', 'landing_page', 'comparison', 'forum', 'video', 'pdf', 'other']);
+      const allowedKeys = new Set(['content_format', 'word_count', 'heading_count', 'freshness_date', 'evidence_features']);
+      if (Object.keys(sourceProfile).some((key) => !allowedKeys.has(key))
+        || !formats.has(sourceProfile.content_format)
+        || !Number.isInteger(sourceProfile.word_count) || sourceProfile.word_count < 0
+        || !Number.isInteger(sourceProfile.heading_count) || sourceProfile.heading_count < 0
+        || !strictDate(sourceProfile.freshness_date)
+        || !Array.isArray(sourceProfile.evidence_features)
+        || sourceProfile.evidence_features.some((item) => typeof item !== 'string' || !item.trim())) {
+        throw new Error(`citation ${index + 1} source_profile violates the declared competitive profile contract`);
+      }
+    }
     return {
       citation_url: url, canonical_url: canonical, citation_order: index + 1,
       first_party: Boolean(targetOrigin && originOf(canonical) === targetOrigin),
@@ -36,6 +50,7 @@ function canonicalReview(raw, targetOrigin) {
       answer_claim: typeof citation === 'object' ? citation.answer_claim || null : null,
       source_passage: typeof citation === 'object' ? citation.source_passage || null : null,
       reviewer: typeof citation === 'object' ? citation.reviewer || null : null,
+      source_profile: sourceProfile,
     };
   });
 }
@@ -262,17 +277,55 @@ async function observePassages(root, options) {
   const ctx = await buildContext(root, options);
   if (!ctx.site) throw new Error('passages requires --target <dir|url>');
   const observations = [];
+  const regionPages = new Map();
+  for (const page of ctx.site.pages) {
+    for (const region of page.structuralRegions || []) {
+      const key = sha256(`${region.region_type}\0${region.text}`);
+      if (!regionPages.has(key)) regionPages.set(key, new Set());
+      regionPages.get(key).add(page.url);
+    }
+  }
   for (const page of ctx.site.pages) {
     const rawWords = words(page.text).length;
+    const pageRecord = ctx.registries.pages?.entries?.find((item) => {
+      try { return new URL(item.url, page.url).href === page.url; } catch { return item.url === page.url; }
+    });
+    const promptMap = new Map((ctx.registries.prompts?.entries || []).map((item) => [item.prompt_id, item]));
+    const questionContexts = (pageRecord?.target_prompts || []).map((id) => promptMap.get(id)).filter(Boolean).map((prompt) => ({
+      prompt_id: prompt.prompt_id,
+      question: prompt.canonical_prompt,
+      expected_answer_components: prompt.expected_answer_components || [],
+    }));
+    const extractionMetrics = {
+      raw_bytes: Buffer.byteLength(page.rawHtml),
+      extracted_bytes: Buffer.byteLength(page.text),
+      raw_visible_tokens: page.rawVisibleWordCount,
+      extracted_tokens: rawWords,
+      extracted_to_raw_byte_ratio: page.rawHtml.length ? Number((Buffer.byteLength(page.text) / Buffer.byteLength(page.rawHtml)).toFixed(3)) : null,
+      extracted_to_raw_visible_token_ratio: page.rawVisibleWordCount ? Number((rawWords / page.rawVisibleWordCount).toFixed(3)) : null,
+    };
+    const repeatedRegions = (page.structuralRegions || []).map((region) => {
+      const regionHash = sha256(`${region.region_type}\0${region.text}`);
+      const pageOccurrences = regionPages.get(regionHash)?.size || 1;
+      return {
+        region_type: region.region_type,
+        region_hash: regionHash,
+        html_bytes: region.html_bytes,
+        token_count: region.token_count,
+        page_occurrences: pageOccurrences,
+        classification: pageOccurrences >= 2 ? 'repeated_site_region' : 'page_local_region',
+      };
+    });
+    const limitations = ['Repeated structural regions and extraction ratios are descriptive cohort evidence; they do not establish content harm, retrieval impact, or ranking effect.'];
     for (let i = 0; i < page.paragraphs.length; i++) {
       const passage = page.paragraphs.slice(i, i + 3).join(' ');
       const count = words(passage).length;
       if (count < 30) continue;
       const dependencies = [];
       if (/\b(this|that|these|those|it|they|above|below|here)\b/i.test(passage.slice(0, 100))) dependencies.push('possible external referent');
-      observations.push(envelope('passage', { url: page.url, passage_index: i, text: passage, word_count: count, independently_extractable: count >= 100 && count <= 300 && dependencies.length === 0, dependencies, content_to_noise_ratio: page.rawHtml.length ? Number((page.text.length / page.rawHtml.length).toFixed(3)) : null }, { method: 'static_analysis', source: page.sourceFile || page.url, raw: passage, confidence: 'medium' }));
+      observations.push(envelope('passage', { url: page.url, passage_contract_version: 1, passage_index: i, text: passage, word_count: count, independently_extractable: count >= 100 && count <= 300 && dependencies.length === 0, dependencies, question_contexts: questionContexts, semantic_review_status: 'review_required', content_to_noise_ratio: extractionMetrics.extracted_to_raw_byte_ratio, extraction_metrics: extractionMetrics, repeated_regions: repeatedRegions }, { method: 'static_analysis', source: page.sourceFile || page.url, raw: passage, confidence: 'medium', limitations: [...limitations, 'Question-to-passage suitability remains review_required and is not inferred from registry linkage.'] }));
     }
-    if (!page.paragraphs.length) observations.push(envelope('passage', { url: page.url, word_count: rawWords, independently_extractable: false, dependencies: ['no paragraph passages extracted'] }, { method: 'static_analysis', source: page.sourceFile || page.url, state: 'not_observed', confidence: 'confirmed' }));
+    if (!page.paragraphs.length) observations.push(envelope('passage', { url: page.url, passage_contract_version: 1, word_count: rawWords, independently_extractable: false, dependencies: ['no paragraph passages extracted'], question_contexts: questionContexts, semantic_review_status: 'review_required', extraction_metrics: extractionMetrics, repeated_regions: repeatedRegions }, { method: 'static_analysis', source: page.sourceFile || page.url, state: 'not_observed', confidence: 'confirmed', limitations: [...limitations, 'Question-to-passage suitability remains review_required and is not inferred from registry linkage.'] }));
   }
   return observationRun(root, 'observe passages', options.target, observations);
 }
@@ -294,6 +347,12 @@ function normalizeDateSignal(source, raw) {
 async function observeConsensus(root, options) {
   const ctx = await buildContext(root, options);
   if (!ctx.site) throw new Error('consensus requires --target <dir|url>');
+  let canonicalInput = null;
+  if (options.input) {
+    canonicalInput = readInput(options.input);
+    const check = validateAgainst('canonical-index-import.schema.json', canonicalInput.value);
+    if (!check.valid) throw new Error(`canonical index import violates contract: ${check.errors.join('; ')}`);
+  }
   const sitemapRows = ctx.site.sitemaps.flatMap((s) => s.parsed?.urls || []);
   const sitemapUrls = new Set(sitemapRows.map((u) => u.loc));
   const observations = ctx.site.pages.map((page) => {
@@ -302,6 +361,14 @@ async function observeConsensus(root, options) {
     const visibleDate = page.metas['article:modified_time']?.[0] || page.metas['date.modified']?.[0] || page.metas['last-modified']?.[0] || null;
     const signals = { final_url: page.url, html_canonical: declared, open_graph_url: page.ogUrl, sitemap_present: sitemapUrls.has(page.url), last_modified_header: page.headers['last-modified'] || null, sitemap_lastmod: sitemapDate, visible_or_meta_modified: visibleDate };
     const urls = [page.url, declared, page.ogUrl].filter(Boolean);
+    const engineCanonicals = canonicalInput?.value.observations.filter((item) => item.url === page.url).map((item) => ({
+      engine: item.engine,
+      selected_canonical: item.selected_canonical,
+      indexed: item.indexed,
+      observed_at: item.observed_at,
+      collection_authority: canonicalInput.value.collection_authority,
+      authenticity_status: canonicalInput.value.authenticity_status,
+    })) || [];
     const dateSignals = [
       normalizeDateSignal('http_last_modified', signals.last_modified_header),
       normalizeDateSignal('sitemap_lastmod', sitemapDate),
@@ -337,11 +404,16 @@ async function observeConsensus(root, options) {
         lifecycle_class: pageRegistry.lifecycle_class || 'unclassified',
         next_review_date: pageRegistry.next_review_date || null,
       } : null,
-      engine_selected_canonical: null,
+      engine_selected_canonical: engineCanonicals.length ? engineCanonicals : null,
+      canonical_consensus_with_engines: engineCanonicals.length
+        ? new Set([...urls, ...engineCanonicals.map((item) => item.selected_canonical).filter(Boolean)]).size <= 1
+        : null,
     };
     return envelope('canonical_freshness', data, { method: 'static_analysis', source: page.sourceFile || page.url, raw: JSON.stringify({ signals, dateSignals, contentSnapshot }), confidence: 'high', limitations });
   });
-  return observationRun(root, 'observe consensus', options.target, observations);
+  return observationRun(root, 'observe consensus', options.target, observations, {
+    rawInputs: canonicalInput ? { canonical_index_export: canonicalInput.raw } : {},
+  });
 }
 
 const median = (values) => {
@@ -574,6 +646,35 @@ async function observeCrawlerProbes(root, options) {
   });
 }
 
+function observeRegionalNetwork(root, options) {
+  const input = readInput(options.input);
+  const document = input.value;
+  const check = validateAgainst('regional-network-import.schema.json', document);
+  if (!check.valid) throw new Error(`regional network import violates contract: ${check.errors.join('; ')}`);
+  const limitations = ['Imported regional observations do not establish managed runner coverage, global representativeness, crawler identity, or future availability.'];
+  const observations = document.probes.map((probe) => envelope('regional_network', {
+    ...probe,
+    provider: document.provider,
+    dataset_collected_at: document.collected_at,
+  }, {
+    method: 'owner_import',
+    source: input.file,
+    raw: JSON.stringify(probe),
+    confidence: 'confirmed',
+    limitations,
+    authority: {
+      source_authority: 'unknown',
+      collection_authority: document.collection_authority,
+      authenticity_status: document.authenticity_status,
+      representativeness: document.representativeness,
+    },
+  }));
+  return observationRun(root, 'observe network', input.file, observations, {
+    rawInputs: { regional_network_export: input.raw },
+    warnings: ['This release validates regional probe exports but does not operate a managed multi-region runner.'],
+  });
+}
+
 async function observeRepresentation(root, options) {
   const input = readInput(options.input);
   const manifest = input.value;
@@ -657,8 +758,9 @@ export async function observe(root, mode, options = {}) {
     case 'performance': return observePerformance(root, options);
     case 'corroboration': return observeCorroboration(root, options);
     case 'probes': return observeCrawlerProbes(root, options);
+    case 'network': return observeRegionalNetwork(root, options);
     case 'media': return observeMedia(root, options);
     case 'representation': return observeRepresentation(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, media, or representation');
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, or representation');
   }
 }

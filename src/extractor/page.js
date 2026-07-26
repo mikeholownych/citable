@@ -57,6 +57,21 @@ export function extractPage({ url, html, status = 200, headers = {}, sourceFile 
   }
 
   const body = root.querySelector('body');
+  const rawVisibleText = body ? body.text.replace(/\s+/g, ' ').trim() : '';
+  const structuralRegions = [];
+  const seenRegions = new Set();
+  for (const region of root.querySelectorAll('header,nav,aside,footer,[role=banner],[role=navigation],[role=complementary],[role=contentinfo]')) {
+    if (seenRegions.has(region)) continue;
+    seenRegions.add(region);
+    const text = region.text.replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    structuralRegions.push({
+      region_type: (region.getAttribute('role') || region.tagName || 'unknown').toLowerCase(),
+      text,
+      html_bytes: Buffer.byteLength(region.outerHTML),
+      token_count: text.split(/\s+/).filter(Boolean).length,
+    });
+  }
   // Strip script/style/nav/footer noise for main-text estimation
   const bodyClone = body ? parse(body.outerHTML) : null;
   if (bodyClone) for (const s of bodyClone.querySelectorAll('script,style,noscript,nav,footer,header[role=banner]')) s.remove();
@@ -115,6 +130,8 @@ export function extractPage({ url, html, status = 200, headers = {}, sourceFile 
     images,
     jsonLd,
     text,
+    rawVisibleWordCount: rawVisibleText ? rawVisibleText.split(/\s+/).length : 0,
+    structuralRegions,
     paragraphs,
     wordCount: text ? text.split(/\s+/).length : 0,
     scriptBytes,

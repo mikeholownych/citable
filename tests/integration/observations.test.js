@@ -26,6 +26,17 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
   assert.equal(citations.summary.citation_metrics.citation_presence_rate, 1);
   assert.equal(citations.summary.citation_metrics.supported_citation_rate, 0.5);
   assert.deepEqual(citations.summary.citation_metrics.competitive_domains, ['competitor.test']);
+  assert.deepEqual(citations.summary.citation_metrics.competitive_sources[0], {
+    domain: 'competitor.test',
+    citation_count: 1,
+    declared_profiles: [{
+      content_format: 'article',
+      word_count: 1800,
+      heading_count: 9,
+      freshness_date: '2026-06-15',
+      evidence_features: ['named author', 'primary source links'],
+    }],
+  });
 
   const logs = await observe(root, 'logs', { input: path.join(OBS, 'logs.json') });
   assert.equal(logs.manifest.status, 'incomplete');
@@ -139,6 +150,58 @@ test('crawler probes preserve partial failures and reject missing registry or un
   assert.equal(unsafeCalls, 0);
 });
 
+test('regional network imports preserve DNS TLS latency and cache evidence by region', async () => {
+  const root = fresh();
+  const input = path.join(root, 'regional-network.json');
+  fs.writeFileSync(input, JSON.stringify({
+    schema_version: 1,
+    provider: 'fixture-runner',
+    collected_at: '2026-07-20T00:00:00Z',
+    collection_authority: 'third_party_export',
+    authenticity_status: 'checksum_protected_only',
+    representativeness: 'controlled_experiment',
+    probes: [
+      {
+        probe_id: 'PROBE-US-1',
+        target: 'https://example.test/',
+        region: 'us-east',
+        network: 'fixture-asn-1',
+        user_agent: 'CitableRegionalProbe/1.0',
+        observed_at: '2026-07-20T00:00:00Z',
+        dns_addresses: ['93.184.216.34'],
+        tls: { protocol: 'TLSv1.3', authorized: true, certificate_fingerprint: 'sha256:fixture' },
+        status: 200,
+        latency_ms: 85,
+        cache: { status: 'HIT', age_seconds: 120 },
+      },
+      {
+        probe_id: 'PROBE-EU-1',
+        target: 'https://example.test/',
+        region: 'eu-west',
+        network: 'fixture-asn-2',
+        user_agent: 'CitableRegionalProbe/1.0',
+        observed_at: '2026-07-20T00:01:00Z',
+        dns_addresses: ['93.184.216.34'],
+        tls: { protocol: 'TLSv1.3', authorized: true, certificate_fingerprint: 'sha256:fixture' },
+        status: 200,
+        latency_ms: 110,
+        cache: { status: 'MISS', age_seconds: null },
+      },
+    ],
+  }));
+  const result = await observe(root, 'network', { input });
+  assert.equal(result.observations.length, 2);
+  assert.deepEqual(result.observations.map((item) => item.data.region), ['us-east', 'eu-west']);
+  assert.ok(result.observations.every((item) => item.kind === 'regional_network'));
+  assert.ok(result.observations.every((item) => item.authority.collection_authority === 'third_party_export'));
+  assert.match(result.observations[0].limitations.join(' '), /imported.*not.*managed|coverage/i);
+
+  const malformed = readJson(input);
+  delete malformed.probes[0].region;
+  fs.writeFileSync(input, JSON.stringify(malformed));
+  await assert.rejects(observe(root, 'network', { input }), /regional network import.*contract|region/i);
+});
+
 test('Bing owner exports preserve dataset boundaries and never imply ranking or causation', async () => {
   const root = fresh();
   const ai = await observe(root, 'bing', { input: path.join(OBS, 'bing-ai-performance.csv'), dataset: 'ai_performance' });
@@ -158,13 +221,46 @@ test('Bing owner exports preserve dataset boundaries and never imply ranking or 
 
 test('passage and consensus collectors analyze site artifacts without external claims', async () => {
   const root = fresh();
+  for (const name of ['pages.yaml', 'prompts.yaml']) {
+    fs.copyFileSync(path.join(FIX, 'registries-good', name), path.join(root, '.citable', name));
+  }
   const options = { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test' };
   const passages = await observe(root, 'passages', options);
   assert.ok(passages.observations.length > 0);
   assert.ok(passages.observations.every((o) => o.collection_method === 'static_analysis'));
+  const productPassage = passages.observations.find((item) => item.data.url === 'https://example.test/products/gatekeeper/');
+  assert.equal(productPassage.data.passage_contract_version, 1);
+  assert.deepEqual(productPassage.data.question_contexts, [{
+    prompt_id: 'P-RECO',
+    question: 'What platforms provide runtime authorization for AI agents?',
+    expected_answer_components: ['category definition', 'target user', 'limitations', 'evidence'],
+  }]);
+  assert.equal(productPassage.data.semantic_review_status, 'review_required');
   const consensus = await observe(root, 'consensus', options);
   assert.ok(consensus.observations.some((o) => o.data.canonical_consensus === true));
   assert.ok(consensus.observations.every((o) => o.data.engine_selected_canonical === null));
+});
+
+test('passage observations classify repeated structural regions across the audited cohort', async () => {
+  const root = fresh();
+  const site = path.join(root, 'repeated-regions');
+  for (const slug of ['one', 'two']) {
+    const dir = path.join(site, slug);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.html'), `<!doctype html><html><head>
+      <title>${slug}</title><link rel="canonical" href="https://example.test/${slug}/">
+      </head><body><header>Example documentation</header>
+      <nav><a href="/one/">One</a> <a href="/two/">Two</a></nav>
+      <main><h1>${slug}</h1><p>${'Distinct explanatory page content with observable evidence and bounded interpretation. '.repeat(8)}</p></main>
+      <footer>Copyright Example</footer></body></html>`);
+  }
+
+  const result = await observe(root, 'passages', { target: site, baseUrl: 'https://example.test' });
+  const page = result.observations.find((item) => item.data.url === 'https://example.test/one/');
+  assert.ok(page.data.extraction_metrics.raw_bytes > page.data.extraction_metrics.extracted_bytes);
+  assert.ok(page.data.extraction_metrics.raw_visible_tokens > page.data.extraction_metrics.extracted_tokens);
+  assert.ok(page.data.repeated_regions.some((region) => region.classification === 'repeated_site_region' && region.page_occurrences === 2));
+  assert.match(page.limitations.join(' '), /does not establish.*harm|ranking/i);
 });
 
 test('freshness consensus normalizes dated signals and preserves content-change intervals', async () => {
@@ -207,6 +303,46 @@ test('freshness consensus normalizes dated signals and preserves content-change 
   assert.match(pricing.limitations.join(' '), /could not be parsed|excluded/i);
 });
 
+test('canonical consensus joins schema-validated engine-selected canonical observations', async () => {
+  const root = fresh();
+  const input = path.join(root, 'canonical-index.json');
+  fs.writeFileSync(input, JSON.stringify({
+    schema_version: 1,
+    collected_at: '2026-07-20T00:00:00Z',
+    collection_authority: 'owner_export',
+    authenticity_status: 'owner_attested',
+    observations: [{
+      url: 'https://example.test/',
+      engine: 'google',
+      selected_canonical: 'https://example.test/',
+      indexed: true,
+      observed_at: '2026-07-19T12:00:00Z',
+    }],
+  }));
+  const result = await observe(root, 'consensus', {
+    target: path.join(FIX, 'site-clean'),
+    baseUrl: 'https://example.test',
+    input,
+  });
+  const home = result.observations.find((item) => item.data.url === 'https://example.test/');
+  assert.deepEqual(home.data.engine_selected_canonical, [{
+    engine: 'google',
+    selected_canonical: 'https://example.test/',
+    indexed: true,
+    observed_at: '2026-07-19T12:00:00Z',
+    collection_authority: 'owner_export',
+    authenticity_status: 'owner_attested',
+  }]);
+  assert.equal(home.data.canonical_consensus_with_engines, true);
+
+  const malformed = JSON.parse(fs.readFileSync(input));
+  delete malformed.observations[0].observed_at;
+  fs.writeFileSync(input, JSON.stringify(malformed));
+  await assert.rejects(observe(root, 'consensus', {
+    target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', input,
+  }), /canonical index import.*contract|observed_at/i);
+});
+
 test('controlled citation runner repeats a disclosed prompt corpus through an adapter', async () => {
   const root = fresh();
   let calls = 0;
@@ -231,6 +367,15 @@ test('controlled citation runner repeats a disclosed prompt corpus through an ad
   assert.equal(result.summary.citation_metrics.runs, 3);
   assert.equal(result.summary.citation_metrics.citation_presence_rate, 1);
   assert.ok(result.observations.filter((o) => o.kind === 'citation').every((o) => o.collection_method === 'live_api'));
+});
+
+test('competitive citation profiles fail closed on malformed declared comparisons', async () => {
+  const root = fresh();
+  const document = readJson(path.join(OBS, 'citations.json'));
+  document.observations[0].citations[1].source_profile.word_count = 'deep';
+  const input = path.join(root, 'invalid-competitive-profile.json');
+  fs.writeFileSync(input, JSON.stringify(document));
+  await assert.rejects(observe(root, 'citations', { input, target: 'https://example.test/' }), /source_profile.*contract/i);
 });
 
 test('browser and citation collectors refuse private network targets before adapters execute', async () => {
@@ -343,6 +488,9 @@ test('browser evidence plans preserve cross-browser artifacts and partial journe
   assert.equal(observed.data.browser.engine, 'chromium');
   assert.equal(observed.data.consent_state, 'not_present');
   assert.equal(observed.data.authentication_state, 'anonymous');
+  assert.equal(observed.data.render_parity.policy_id, 'RENDER-POLICY-FIXTURE');
+  assert.equal(observed.data.render_parity.semantic_review_status, 'review_required');
+  assert.ok(observed.data.render_parity.policy_violations.some((item) => item.check === 'text_retention'));
   assert.match(observed.data.interpretation_boundary, /do not establish semantic/);
   for (const relative of ['initial/response.html', 'journeys/chromium-desktop/dom.html', 'journeys/chromium-desktop/accessibility-tree.txt', 'journeys/chromium-desktop/final.png', 'journeys/chromium-desktop/failures.json', 'journeys/chromium-desktop/steps.json', 'journeys/firefox-mobile/failure.json']) {
     assert.ok(fs.existsSync(path.join(result.dir, relative)), relative);

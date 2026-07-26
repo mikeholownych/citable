@@ -17,7 +17,16 @@
           "support_status": "supported",
           "reviewer": "Fixture Reviewer"
         },
-        "https://competitor.test/overview"
+        {
+          "url": "https://competitor.test/overview",
+          "source_profile": {
+            "content_format": "article",
+            "word_count": 1800,
+            "heading_count": 9,
+            "freshness_date": "2026-06-15",
+            "evidence_features": ["named author", "primary source links"]
+          }
+        }
       ]
     }
   ]

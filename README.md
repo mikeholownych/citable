@@ -25,7 +25,12 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
   remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
-  robots/sitemaps/headers/schema/link graph, checksums.
+  robots/sitemaps/headers/raw JSON-LD, a schema-validated normalized entity
+  graph with unresolved references and parse failures, link graph, and
+  checksums. A source identity-chain artifact joins declared publisher, author
+  affiliation, reviewer, evidence-owner, and correction-path records. Literal
+  or registry linkage does not assert semantic correctness, visible disclosure,
+  independence, or search-engine recognition.
 - **Separate state reporting** for retrieval eligibility, source extraction and
   support suitability, and observed citation behavior. These are never merged
   into an "AI visibility score."
