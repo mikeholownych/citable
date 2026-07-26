@@ -98,9 +98,11 @@ manifested two-profile discovery payload.
   unsealed files, unsafe paths, symbolic links, incompatible envelopes, and run
   collisions; hosted workspace implementation remains outside this repository.
 
-These capabilities are unreleased until the v1.13 release gates pass. Their
-presence on `main` is not evidence that hosted collectors, independent
-attestation, or the four-property field corpus have been completed.
+These capabilities shipped through the governed v1.13 release track. The
+owner-authorized four-property field corpus and paired post-remediation corpus
+are published under [`docs/field-validation/v1.13/`](field-validation/v1.13/).
+They remain bounded publisher-controlled evidence, not independent attestation
+or evidence that hosted collectors exist.
 
 ## Next Priorities
 
