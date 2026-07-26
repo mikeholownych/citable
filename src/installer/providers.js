@@ -7,8 +7,10 @@ export const PROVIDERS = Object.freeze({
     aliases: ['claude-code', 'claudecode'],
     projectDir: '.claude',
     projectSkillsDir: '.claude/skills',
+    projectAgentProfilesDir: '.claude/agents',
     globalHints: ['.claude'],
     globalSkillsDir: '.claude/skills',
+    globalAgentProfilesDir: '.claude/agents',
   },
   codex: {
     id: 'codex',
@@ -161,4 +163,13 @@ export function providerBundleSkillPath(providerId) {
   const provider = PROVIDERS[providerId];
   if (!provider) throw new Error(`unknown provider: ${providerId}`);
   return path.join('dist', 'universal', provider.projectSkillsDir, 'citable');
+}
+
+export function providerAgentProfilesDestination(providerId, scope, roots) {
+  const provider = PROVIDERS[providerId];
+  if (!provider) throw new Error(`unknown provider: ${providerId}`);
+  const dir = scope === 'project' ? provider.projectAgentProfilesDir : provider.globalAgentProfilesDir;
+  if (!dir) return null;
+  const root = scope === 'project' ? roots.projectRoot : roots.home;
+  return path.join(root, dir, 'citable');
 }

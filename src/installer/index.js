@@ -8,6 +8,7 @@ import {
   PROVIDERS,
   PROVIDER_IDS,
   parseProviderList,
+  providerAgentProfilesDestination,
   providerBundleSkillPath,
   providerDestination,
   providerSkillsDir,
@@ -421,7 +422,7 @@ function toPosix(value) {
 
 function makeInstalledManifest(target, packageInfo, tree) {
   return {
-    name: 'citable',
+    name: target.manifestName || 'citable',
     version: packageInfo.version,
     managedBy: 'citable-cli',
     provider: target.providerId,
@@ -471,7 +472,7 @@ export function inspectInstallation(target, options = {}) {
   } catch (err) {
     return { state: 'corrupt', installed: null, path: destination, problems: [`manifest parse failed: ${err.message}`], symlink, localModifications: 'unknown' };
   }
-  if (manifest.managedBy !== 'citable-cli' || manifest.name !== 'citable') {
+  if (manifest.managedBy !== 'citable-cli' || manifest.name !== (target.manifestName || 'citable')) {
     return { state: 'unmanaged', installed: manifest.version ?? null, path: destination, problems: ['manifest is not managed by citable-cli'], manifest, symlink, localModifications: 'unknown' };
   }
 
@@ -543,6 +544,13 @@ export function createInstallPlan(command, args, options = {}) {
     }
     const status = inspectInstallation(target, { availableTree: bundle.tree, availableVersion: packageInfo.version });
     const action = plannedAction(command, status, args);
+    let profiles = null;
+    try {
+      profiles = prepareAgentProfiles(target, bundle, packageInfo, args, command, options);
+    } catch (err) {
+      results.push(targetResult(target, 'failed', err.message, { exitCode: err.exitCode ?? EXIT_CODES.integrityFailure }));
+      continue;
+    }
     results.push({
       provider: target.providerId,
       providerName: target.provider.displayName,
@@ -558,6 +566,16 @@ export function createInstallPlan(command, args, options = {}) {
       filesToRemove: [],
       collisions: collisionProblems(status, args),
       localModifications: status.localModifications,
+      agentProfiles: profiles ? {
+        path: profiles.target.destination,
+        state: profiles.before.state,
+        action: profiles.action,
+        filesToCreate: ['install', 'replace', 'update', 'repair'].includes(profiles.action)
+          ? Object.keys(profiles.tree.files)
+          : [],
+        collisions: collisionProblems(profiles.before, args),
+        localModifications: profiles.before.localModifications,
+      } : null,
       validation: ['validate package bundle', 'validate provider target', 'validate staged skill', 'validate final installation'],
     });
   }
@@ -674,41 +692,65 @@ function inspectInstallationWithBundle(target, options = {}) {
 function installOrUpdateTarget(target, args, options = {}, command = 'install') {
   let stage = null;
   let backup = null;
+  let installedSkill = false;
   try {
     const packageInfo = loadPackageInfo(options.packageRoot || packageRoot());
     const bundle = validateProviderBundle(target.providerId, options);
     const before = inspectInstallation(target, { availableTree: bundle.tree, availableVersion: packageInfo.version });
     const action = plannedAction(command, before, args);
-    if (action === 'already current') return targetResult(target, 'already current', 'already current', { before });
+    const profiles = prepareAgentProfiles(target, bundle, packageInfo, args, command, options);
+    if (action === 'already current' && (!profiles || profiles.action === 'already current')) {
+      return targetResult(target, 'already current', 'already current', { before, agentProfiles: profiles?.before ?? null });
+    }
     if (action === 'not installed') return targetResult(target, 'skipped', 'not installed', { before });
     if (action === 'refuse') {
       const code = before.state === 'unmanaged' ? EXIT_CODES.installationCollision : EXIT_CODES.integrityFailure;
       return targetResult(target, 'failed', `${before.state}: ${before.problems.join('; ') || 'refusing to overwrite without --force'}`, { before, exitCode: code });
     }
+    if (profiles?.action === 'refuse') {
+      const code = profiles.before.state === 'unmanaged' ? EXIT_CODES.installationCollision : EXIT_CODES.integrityFailure;
+      return targetResult(target, 'failed', `agent profile ${profiles.before.state}: ${profiles.before.problems.join('; ') || 'refusing to overwrite without --force'}`, {
+        before,
+        agentProfiles: profiles.before,
+        exitCode: code,
+      });
+    }
 
     const installPath = target.realDestination || target.destination;
-    const parent = path.dirname(installPath);
-    fs.mkdirSync(parent, { recursive: true });
-    ensureTargetInsideScope(parent, target.scopeRoot);
-    stage = path.join(parent, `.citable-install-${process.pid}-${Date.now()}-${target.providerId}`);
-    backup = path.join(parent, `.citable-backup-${Date.now()}-${target.providerId}`);
-    copyDirSafe(bundle.source, stage);
-    const stagedTree = hashTree(stage, { exclude: ['manifest.json'] });
-    writeJsonFile(path.join(stage, 'manifest.json'), makeInstalledManifest(target, packageInfo, stagedTree));
-    validateStagedSkill(stage, target.providerId);
+    let after = before;
+    if (action !== 'already current') {
+      const parent = path.dirname(installPath);
+      fs.mkdirSync(parent, { recursive: true });
+      ensureTargetInsideScope(parent, target.scopeRoot);
+      stage = path.join(parent, `.citable-install-${process.pid}-${Date.now()}-${target.providerId}`);
+      backup = path.join(parent, `.citable-backup-${Date.now()}-${target.providerId}`);
+      copyDirSafe(bundle.source, stage);
+      const stagedTree = hashTree(stage, { exclude: ['manifest.json'] });
+      writeJsonFile(path.join(stage, 'manifest.json'), makeInstalledManifest(target, packageInfo, stagedTree));
+      validateStagedSkill(stage, target.providerId);
 
-    if (exists(installPath)) fs.renameSync(installPath, backup);
-    fs.renameSync(stage, installPath);
-    stage = null;
+      if (exists(installPath)) fs.renameSync(installPath, backup);
+      fs.renameSync(stage, installPath);
+      stage = null;
+      installedSkill = true;
 
-    const after = inspectInstallation(target, { availableTree: stagedTree, availableVersion: packageInfo.version });
-    if (after.state !== 'current') {
-      throw new CitableInstallerError(`final validation failed: ${after.state}`, EXIT_CODES.integrityFailure, { after });
+      after = inspectInstallation(target, { availableTree: stagedTree, availableVersion: packageInfo.version });
+      if (after.state !== 'current') {
+        throw new CitableInstallerError(`final validation failed: ${after.state}`, EXIT_CODES.integrityFailure, { after });
+      }
     }
-    return targetResult(target, action === 'update' ? 'updated' : 'installed', `${action} complete`, { before, after, backup: exists(backup) ? backup : null });
+    const profileResult = profiles ? installAgentProfiles(profiles, packageInfo) : null;
+    const resultStatus = action === 'update' || (action === 'already current' && profileResult?.changed) ? 'updated' : 'installed';
+    return targetResult(target, resultStatus, `${action === 'already current' ? 'agent profile install' : action} complete`, {
+      before,
+      after,
+      agentProfiles: profileResult,
+      backup: exists(backup) ? backup : null,
+    });
   } catch (err) {
     if (stage) safeRm(stage);
     const installPath = target.realDestination || target.destination;
+    if (installedSkill && exists(installPath)) safeRm(installPath);
     if (backup && exists(backup) && !exists(installPath)) {
       try {
         fs.renameSync(backup, installPath);
@@ -717,6 +759,80 @@ function installOrUpdateTarget(target, args, options = {}, command = 'install') 
       }
     }
     return targetResult(target, 'failed', err.message, { exitCode: err.exitCode ?? EXIT_CODES.generalFailure, backup: backup && exists(backup) ? backup : null });
+  }
+}
+
+function prepareAgentProfiles(target, bundle, packageInfo, args, command, options) {
+  const metadata = bundle.manifest.agentProfiles;
+  if (!metadata || metadata.status !== 'available') return null;
+  const destination = providerAgentProfilesDestination(target.providerId, target.scope, rootsFor(options));
+  if (!destination) throw new CitableInstallerError(`agent profiles are not supported for ${target.provider.displayName}`, EXIT_CODES.unsupportedEnvironment);
+  const source = path.resolve(bundleRoot(options.packageRoot || packageRoot()), metadata.path);
+  const sourceManifest = readJson(path.join(source, 'manifest.json'), `${target.providerId} agent profile manifest`);
+  if (
+    sourceManifest.name !== 'citable-agent-profiles'
+    || sourceManifest.provider !== target.providerId
+    || sourceManifest.managedBy !== 'citable-cli'
+  ) {
+    throw new CitableInstallerError(`agent profile manifest for ${target.provider.displayName} is invalid`, EXIT_CODES.integrityFailure);
+  }
+  const tree = hashTree(source, { exclude: ['manifest.json'] });
+  if (tree.treeHash !== metadata.treeHash || tree.treeHash !== sourceManifest.treeHash) {
+    throw new CitableInstallerError(`agent profile bundle hash mismatch for ${target.provider.displayName}`, EXIT_CODES.integrityFailure);
+  }
+  const profileTarget = {
+    ...target,
+    destination,
+    realDestination: null,
+    manifestName: 'citable-agent-profiles',
+  };
+  const before = inspectInstallation(profileTarget, { availableTree: tree, availableVersion: packageInfo.version });
+  return {
+    target: profileTarget,
+    source,
+    tree,
+    before,
+    action: plannedAction(command, before, args),
+  };
+}
+
+function installAgentProfiles(profiles, packageInfo) {
+  if (profiles.action === 'already current') return { changed: false, before: profiles.before, after: profiles.before };
+  const destination = profiles.target.destination;
+  const parent = path.dirname(destination);
+  let stage = null;
+  let backup = null;
+  try {
+    fs.mkdirSync(parent, { recursive: true });
+    ensureTargetInsideScope(parent, profiles.target.scopeRoot);
+    stage = path.join(parent, `.citable-agent-install-${process.pid}-${Date.now()}`);
+    backup = path.join(parent, `.citable-agent-backup-${Date.now()}`);
+    copyDirSafe(profiles.source, stage);
+    writeJsonFile(path.join(stage, 'manifest.json'), makeInstalledManifest(profiles.target, packageInfo, profiles.tree));
+    validateStagedProfiles(stage, profiles.target.providerId, profiles.tree);
+    if (exists(destination)) fs.renameSync(destination, backup);
+    fs.renameSync(stage, destination);
+    stage = null;
+    const after = inspectInstallation(profiles.target, { availableTree: profiles.tree, availableVersion: packageInfo.version });
+    if (after.state !== 'current') throw new CitableInstallerError(`final agent profile validation failed: ${after.state}`, EXIT_CODES.integrityFailure);
+    return { changed: true, before: profiles.before, after, backup: exists(backup) ? backup : null };
+  } catch (err) {
+    if (stage) safeRm(stage);
+    if (exists(destination)) safeRm(destination);
+    if (backup && exists(backup)) fs.renameSync(backup, destination);
+    throw err;
+  }
+}
+
+function validateStagedProfiles(dir, providerId, tree) {
+  for (const rel of Object.keys(tree.files)) {
+    if (!exists(path.join(dir, rel))) {
+      throw new CitableInstallerError(`staged ${providerId} agent profiles are missing ${rel}`, EXIT_CODES.integrityFailure);
+    }
+  }
+  const manifest = readJson(path.join(dir, 'manifest.json'), 'staged agent profile manifest');
+  if (manifest.managedBy !== 'citable-cli' || manifest.provider !== providerId || manifest.name !== 'citable-agent-profiles') {
+    throw new CitableInstallerError(`staged ${providerId} agent profile manifest is invalid`, EXIT_CODES.integrityFailure);
   }
 }
 
@@ -777,6 +893,7 @@ function uninstallTarget(target, args) {
     if (status.manifest?.managedBy !== 'citable-cli') {
       return targetResult(target, 'failed', `${status.state}: refusing to remove unmanaged content`, { before: status, exitCode: EXIT_CODES.installationCollision });
     }
+    const profileResult = uninstallAgentProfiles(target);
     const destination = target.realDestination || target.destination;
     const relFiles = Object.keys(status.manifest.files || {}).sort((a, b) => b.localeCompare(a));
     for (const rel of relFiles) {
@@ -790,10 +907,37 @@ function uninstallTarget(target, args) {
     } catch {
       // Directory contains user files; preserve it.
     }
-    return targetResult(target, 'removed', 'removed managed files', { before: status, removedFiles: [...relFiles, 'manifest.json'] });
+    return targetResult(target, 'removed', 'removed managed files', {
+      before: status,
+      agentProfiles: profileResult,
+      removedFiles: [...relFiles, 'manifest.json'],
+    });
   } catch (err) {
     return targetResult(target, 'failed', err.message, { exitCode: err.exitCode ?? EXIT_CODES.generalFailure });
   }
+}
+
+function uninstallAgentProfiles(target) {
+  const destination = providerAgentProfilesDestination(target.providerId, target.scope, {
+    projectRoot: target.scope === 'project' ? target.scopeRoot : '',
+    home: target.scope === 'global' ? target.scopeRoot : '',
+  });
+  if (!destination) return null;
+  const profileTarget = { ...target, destination, realDestination: null, manifestName: 'citable-agent-profiles' };
+  const status = inspectInstallation(profileTarget);
+  if (status.state === 'not installed') return { status: 'not installed' };
+  if (status.manifest?.managedBy !== 'citable-cli' || status.manifest?.name !== 'citable-agent-profiles') {
+    return { status: 'preserved', state: status.state, problems: status.problems };
+  }
+  const relFiles = Object.keys(status.manifest.files || {}).sort((a, b) => b.localeCompare(a));
+  for (const rel of relFiles) {
+    assertArchiveEntrySafe(rel);
+    safeUnlink(path.join(destination, rel));
+  }
+  safeUnlink(path.join(destination, 'manifest.json'));
+  pruneEmptyDirs(destination, destination);
+  if (exists(destination) && fs.readdirSync(destination).length === 0) fs.rmdirSync(destination);
+  return { status: 'removed', removedFiles: [...relFiles, 'manifest.json'] };
 }
 
 function safeUnlink(filePath) {
@@ -841,13 +985,31 @@ async function inspectCommand(command, args, options = {}) {
   const packageInfo = loadPackageInfo(context.roots.packageRoot);
   const rows = [];
   for (const target of context.targets.filter((target) => !target.duplicateOf)) {
+    let bundle = null;
     let bundleTree = null;
     try {
-      bundleTree = validateProviderBundle(target.providerId, { ...options, packageRoot: context.roots.packageRoot }).tree;
+      bundle = validateProviderBundle(target.providerId, { ...options, packageRoot: context.roots.packageRoot });
+      bundleTree = bundle.tree;
     } catch {
       // Check/list should still report installed state if the package bundle is broken.
     }
     const status = inspectInstallation(target, { availableTree: bundleTree, availableVersion: packageInfo.version });
+    let agentProfiles = null;
+    if (bundle) {
+      try {
+        agentProfiles = prepareAgentProfiles(target, bundle, packageInfo, args, 'install', options)?.before ?? null;
+      } catch (err) {
+        agentProfiles = {
+          state: 'corrupt',
+          installed: null,
+          path: providerAgentProfilesDestination(target.providerId, target.scope, context.roots),
+          localModifications: 'unknown',
+          problems: [err.message],
+        };
+      }
+    }
+    const combinedState = combineInstalledState(status.state, agentProfiles?.state);
+    const profileProblems = (agentProfiles?.problems || []).map((problem) => `agent profiles: ${problem}`);
     rows.push({
       provider: target.providerId,
       providerName: target.provider.displayName,
@@ -855,14 +1017,23 @@ async function inspectCommand(command, args, options = {}) {
       path: target.destination,
       installed: status.installed,
       available: packageInfo.version,
-      state: status.state,
-      localModifications: status.localModifications,
-      problems: status.problems,
+      state: combinedState,
+      localModifications: status.localModifications === 'present' || agentProfiles?.localModifications === 'present' ? 'present' : status.localModifications,
+      problems: [...status.problems, ...profileProblems],
+      agentProfiles,
       symlink: Boolean(status.symlink),
     });
   }
   const hasUpdate = rows.some((row) => row.state === 'update available');
   return { ok: true, command, providers: rows, exitCode: args.failOnUpdate && hasUpdate ? EXIT_CODES.updateAvailable : EXIT_CODES.success };
+}
+
+function combineInstalledState(skillState, profileState) {
+  if (!profileState || profileState === 'current') return skillState;
+  if (skillState !== 'current') return skillState;
+  if (profileState === 'not installed') return 'partial';
+  if (profileState === 'update available') return 'update available';
+  return profileState;
 }
 
 export async function doctorCommand(args, options = {}) {

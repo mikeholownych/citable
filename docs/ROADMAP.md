@@ -9,10 +9,10 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 123 across 18 namespaces |
-| Tests | 259 pass on Node 24 |
+| Tests | 302 pass on Node 24 |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 93 packaged files per provider |
+| Distribution | 95 packaged skill files per provider; 2 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,12 +20,17 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 93 packaged files per provider after the
-artifact-interchange contract is generated from canonical `skill/` sources.
+The current development branch builds 95 packaged skill files per provider
+after the artifact-interchange and agent-profile contracts are generated from
+canonical `skill/` sources. Claude additionally receives a separately
+manifested two-profile discovery payload.
 
 ## Delivered
 
 - Public npm package and provider-specific skill installation.
+- Two evidence-phase Claude Code profiles: a guarded audit/collection role and
+  a read-only semantic-review role, both generated from canonical `skill/`
+  sources. Other hosts fail closed as unsupported for native profiles.
 - Read-only installer and runtime capability diagnosis that keeps optional
   dependency or credential presence separate from successful browser launch,
   API authorization, property access, and collection.
@@ -98,6 +103,38 @@ presence on `main` is not evidence that hosted collectors, independent
 attestation, or the four-property field corpus have been completed.
 
 ## Next Priorities
+
+### MCP Evidence Transport
+
+**Current status:** contract documented; runtime transport not implemented.
+MCP Server Card discovery findings in site audits do not mean Citable can
+connect to or collect evidence from an MCP server.
+
+MCP is planned only as a transport into the existing immutable observation
+model. It will not confer provider authority, authenticity,
+representativeness, completeness, or semantic validity on a tool response.
+
+1. **Transport envelope and threat model:** define server identity, pinned
+   version or verified endpoint, protocol and tool schema, request/response
+   hashes, authorization scopes, raw retention, incomplete states, and
+   normalization provenance.
+2. **Read-only provider pilot:** implement one provider-supported, allowlisted
+   server and tool with least-privilege authorization, bounded pagination,
+   positive/negative fixtures, and explicit unsupported states.
+3. **Runtime diagnosis:** extend capability reporting to distinguish package or
+   endpoint presence, protocol negotiation, authorization, tool availability,
+   property access, collection, and normalization.
+4. **Provider-by-provider expansion:** add transports only where a supported
+   interface and stable evidence contract can be verified. Each provider keeps
+   its own authority and completeness boundaries.
+
+Non-goals are generic arbitrary-server passthrough, state-changing tools,
+automatic installation of undocumented servers, persisted credentials,
+execution of instructions returned by tools, and treating MCP responses as
+authoritative merely because they arrived through MCP.
+
+The proposed provenance fields and security gates are documented in
+[Integrations and evidence transports](INTEGRATIONS.md#mcp-transport-contract).
 
 ### Retrieval Evidence
 

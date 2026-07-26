@@ -215,6 +215,12 @@ DNS-rebinding risk; isolate untrusted collection with network egress controls.
 
 ## Where to go next
 
+- [Documentation index](README.md)
+- [Command guide](COMMANDS.md)
+- [Agent profiles](AGENT_PROFILES.md)
+- [Integrations and MCP transport status](INTEGRATIONS.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
+- [Migrations](MIGRATIONS.md)
 - [Known limitations](known-limitations.md)
 - [Capability gap analysis](capability-gap-analysis.md)
 - [Measurement objectives](measurement-objectives.md)

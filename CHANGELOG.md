@@ -15,6 +15,29 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Evidence-Phase Agent Profiles
+
+- Added canonical `citable-auditor` and `citable-semantic-reviewer` profiles.
+  The auditor may run guarded Citable collection commands but cannot edit the
+  target; the reviewer is read-only and cannot collect evidence, approve
+  publication, or upgrade claims.
+- Claude Code installs generate and manage the profiles under its recursively
+  discovered agent directory with a separate hash manifest. Dry-run, check,
+  collision refusal, idempotent update, and uninstall preserve the profile
+  boundary independently from the skill.
+- Other agent hosts continue to receive the canonical skill but report native
+  profiles as unsupported until their discovery and permission contracts are
+  verified.
+
+### Documentation — Task Guides and MCP Transport Roadmap
+
+- Added task-oriented command, integration, troubleshooting, and migration
+  guides with a documentation index.
+- Documented MCP as a future evidence transport rather than an authority,
+  including staged delivery, provenance requirements, security gates, and
+  explicit non-goals. Citable does not currently implement an MCP client or
+  connector.
+
 ### Added — Question-to-Passage Review Context
 
 - Passage observations now use a versioned record and join each page's declared

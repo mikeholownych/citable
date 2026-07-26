@@ -45,9 +45,49 @@ test('install into Claude, Codex, and Cursor project locations, then rerun idemp
   assert.equal(second.ok, true);
   assert.deepEqual(second.results.map((row) => row.status), ['already current', 'already current', 'already current']);
   assert.equal(fs.statSync(claudeManifest).mtimeMs, before);
+  assert.equal(
+    fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-auditor.md')),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-semantic-reviewer.md')),
+    true,
+  );
+  assert.equal(fs.existsSync(path.join(project, '.agents', 'agents', 'citable')), false);
 
   const check = await checkCommand(parseInstallerArgs(['--providers=claude,codex,cursor', '--project']), options);
   assert.deepEqual(check.providers.map((row) => row.state), ['current', 'current', 'current']);
+});
+
+test('Claude profile sidecars are managed, collision-safe, and removed without touching user agents', async () => {
+  const first = tmpProject('citable-agent-profile-install-');
+  const args = parseInstallerArgs(['--providers=claude', '--project', '--yes']);
+  const installed = await installCommand(args, first.options);
+  assert.equal(installed.ok, true);
+
+  const profileDir = path.join(first.project, '.claude', 'agents', 'citable');
+  const profileManifest = readJson(path.join(profileDir, 'manifest.json'));
+  assert.equal(profileManifest.name, 'citable-agent-profiles');
+  assert.equal(profileManifest.managedBy, 'citable-cli');
+  assert.deepEqual(Object.keys(profileManifest.files).sort(), ['citable-auditor.md', 'citable-semantic-reviewer.md']);
+
+  const userAgent = path.join(first.project, '.claude', 'agents', 'team-reviewer.md');
+  fs.writeFileSync(userAgent, '# user-owned agent\n', 'utf8');
+  const removed = await uninstallCommand(args, first.options);
+  assert.equal(removed.ok, true);
+  assert.equal(fs.existsSync(profileDir), false);
+  assert.equal(fs.readFileSync(userAgent, 'utf8'), '# user-owned agent\n');
+
+  const collision = tmpProject('citable-agent-profile-collision-');
+  const collisionDir = path.join(collision.project, '.claude', 'agents', 'citable');
+  fs.mkdirSync(collisionDir, { recursive: true });
+  const customProfile = path.join(collisionDir, 'citable-auditor.md');
+  fs.writeFileSync(customProfile, '# user-owned profile\n', 'utf8');
+  const refused = await installCommand(args, collision.options);
+  assert.equal(refused.ok, false);
+  assert.match(refused.results[0].message, /agent profile|unmanaged|collision/i);
+  assert.equal(fs.readFileSync(customProfile, 'utf8'), '# user-owned profile\n');
+  assert.equal(fs.existsSync(path.join(collision.project, '.claude', 'skills', 'citable')), false);
 });
 
 test('skills ecosystem flags install each selected managed copy', async () => {
@@ -73,7 +113,29 @@ test('dry-run install makes no filesystem changes', async () => {
   const result = await installCommand(parseInstallerArgs(['--providers=claude', '--project', '--yes', '--dry-run']), options);
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, true);
+  assert.equal(result.plan[0].agentProfiles.action, 'install');
+  assert.equal(result.plan[0].agentProfiles.filesToCreate.length, 2);
+  assert.equal(result.plan[0].agentProfiles.path, path.join(project, '.claude', 'agents', 'citable'));
   assert.equal(fs.existsSync(path.join(project, '.claude', 'skills', 'citable')), false);
+  assert.equal(fs.existsSync(path.join(project, '.claude', 'agents', 'citable')), false);
+});
+
+test('check reports missing or modified Claude agent profiles independently', async () => {
+  const { project, options } = tmpProject('citable-agent-profile-check-');
+  const args = parseInstallerArgs(['--providers=claude', '--project', '--yes']);
+  await installCommand(args, options);
+  const profile = path.join(project, '.claude', 'agents', 'citable', 'citable-auditor.md');
+  fs.appendFileSync(profile, '\nlocal profile change\n', 'utf8');
+
+  const modified = await checkCommand(parseInstallerArgs(['--providers=claude', '--project']), options);
+  assert.equal(modified.providers[0].state, 'locally modified');
+  assert.equal(modified.providers[0].agentProfiles.state, 'locally modified');
+  assert.match(modified.providers[0].agentProfiles.problems.join(' '), /citable-auditor\.md/);
+
+  fs.rmSync(path.join(project, '.claude', 'agents', 'citable'), { recursive: true });
+  const missing = await checkCommand(parseInstallerArgs(['--providers=claude', '--project']), options);
+  assert.equal(missing.providers[0].state, 'partial');
+  assert.equal(missing.providers[0].agentProfiles.state, 'not installed');
 });
 
 test('global install uses provider-specific global destination', async () => {

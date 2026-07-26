@@ -17,6 +17,7 @@ import { PROVIDERS, PROVIDER_IDS } from '../src/installer/providers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'skill');
+const AGENT_PROFILES = path.join(SKILL, 'agents');
 const SCHEMAS = path.join(ROOT, 'schemas');
 const DIST = path.join(ROOT, 'dist');
 const UNIVERSAL = path.join(DIST, 'universal');
@@ -77,7 +78,34 @@ function hashTree(dir, exclude = new Set()) {
   return { files, treeHash };
 }
 
-function buildSkillTree(providerId) {
+function buildAgentProfiles(providerId) {
+  if (providerId !== 'claude') {
+    return {
+      status: 'unsupported',
+      reason: 'native agent profile discovery and permission contract not verified for this host',
+    };
+  }
+  const profileDir = path.join(UNIVERSAL, '.claude', 'agents', 'citable');
+  copyDir(AGENT_PROFILES, profileDir);
+  const tree = hashTree(profileDir);
+  writeFile(path.join(profileDir, 'manifest.json'), `${JSON.stringify({
+    name: 'citable-agent-profiles',
+    version: pkg.version,
+    managedBy: 'citable-cli',
+    provider: providerId,
+    sourcePackage: `${pkg.name}@${pkg.version}`,
+    files: tree.files,
+    treeHash: tree.treeHash,
+  }, null, 2)}\n`);
+  return {
+    status: 'available',
+    path: '.claude/agents/citable',
+    files: tree.files,
+    treeHash: tree.treeHash,
+  };
+}
+
+function buildSkillTree(providerId, agentProfiles) {
   const provider = PROVIDERS[providerId];
   const skillDir = path.join(UNIVERSAL, provider.projectSkillsDir, 'citable');
   copyDir(SKILL, skillDir);
@@ -85,7 +113,9 @@ function buildSkillTree(providerId) {
   writeFile(path.join(skillDir, 'scripts', 'README.md'), `# Citable skill scripts
 
 This directory is part of the installed Citable skill payload. The initial
-installer does not add provider hooks or sidecar configuration.
+installer adds only verified provider agent profiles declared by the bundle
+manifest. It does not add hooks, MCP configuration, telemetry, or unrelated
+agent settings.
 `);
   writeFile(path.join(skillDir, 'VERSION'), `${pkg.version}\n`);
   writeFile(path.join(skillDir, 'manifest.json'), `${JSON.stringify({
@@ -96,6 +126,7 @@ installer does not add provider hooks or sidecar configuration.
     providerName: provider.displayName,
     scope: 'bundle',
     sourcePackage: `${pkg.name}@${pkg.version}`,
+    agentProfiles,
     files: {},
     treeHash: null,
   }, null, 2)}\n`);
@@ -109,6 +140,7 @@ installer does not add provider hooks or sidecar configuration.
     scope: 'bundle',
     sourcePackage: `${pkg.name}@${pkg.version}`,
     variantPath: toPosix(path.relative(UNIVERSAL, skillDir)),
+    agentProfiles,
     files: tree.files,
     treeHash: tree.treeHash,
   }, null, 2)}\n`);
@@ -126,7 +158,8 @@ fs.mkdirSync(UNIVERSAL, { recursive: true });
 
 const providers = {};
 for (const providerId of PROVIDER_IDS) {
-  providers[providerId] = buildSkillTree(providerId);
+  const agentProfiles = buildAgentProfiles(providerId);
+  providers[providerId] = buildSkillTree(providerId, agentProfiles);
   console.error(`built dist/universal/${providers[providerId].path} (${providers[providerId].files} files)`);
 }
 
