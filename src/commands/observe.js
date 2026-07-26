@@ -1,8 +1,8 @@
 import { buildContext } from './context.js';
 import { envelope, observationRun, readInput } from '../observations/common.js';
 import { buildClaimDiffContext, diffAssertion } from '../observations/claimDiff.js';
-import { sha256 } from '../shared/io.js';
-import { fetchUrl } from '../crawler/fetch.js';
+import { readYaml, sha256 } from '../shared/io.js';
+import { fetchUrl, handlePublicBrowserRoute, validatePublicUrl } from '../crawler/fetch.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parse as parseCsv } from 'csv-parse/sync';
@@ -29,6 +29,20 @@ function canonicalReview(raw, targetOrigin) {
     const url = typeof citation === 'string' ? citation : citation.url;
     const canonical = typeof citation === 'object' ? citation.canonical_url || url : url;
     const supports = typeof citation === 'object' ? citation.support_status || 'review_required' : 'review_required';
+    const sourceProfile = typeof citation === 'object' ? citation.source_profile || null : null;
+    if (sourceProfile) {
+      const formats = new Set(['article', 'documentation', 'product', 'landing_page', 'comparison', 'forum', 'video', 'pdf', 'other']);
+      const allowedKeys = new Set(['content_format', 'word_count', 'heading_count', 'freshness_date', 'evidence_features']);
+      if (Object.keys(sourceProfile).some((key) => !allowedKeys.has(key))
+        || !formats.has(sourceProfile.content_format)
+        || !Number.isInteger(sourceProfile.word_count) || sourceProfile.word_count < 0
+        || !Number.isInteger(sourceProfile.heading_count) || sourceProfile.heading_count < 0
+        || !strictDate(sourceProfile.freshness_date)
+        || !Array.isArray(sourceProfile.evidence_features)
+        || sourceProfile.evidence_features.some((item) => typeof item !== 'string' || !item.trim())) {
+        throw new Error(`citation ${index + 1} source_profile violates the declared competitive profile contract`);
+      }
+    }
     return {
       citation_url: url, canonical_url: canonical, citation_order: index + 1,
       first_party: Boolean(targetOrigin && originOf(canonical) === targetOrigin),
@@ -36,6 +50,7 @@ function canonicalReview(raw, targetOrigin) {
       answer_claim: typeof citation === 'object' ? citation.answer_claim || null : null,
       source_passage: typeof citation === 'object' ? citation.source_passage || null : null,
       reviewer: typeof citation === 'object' ? citation.reviewer || null : null,
+      source_profile: sourceProfile,
     };
   });
 }
@@ -43,6 +58,7 @@ function canonicalReview(raw, targetOrigin) {
 async function observeRender(root, options) {
   if (options.input) return observeBrowserPlan(root, options);
   if (!options.target || !/^https?:\/\//.test(options.target)) throw new Error('render requires --target <http(s) URL>');
+  await validatePublicUrl(options.target, options.lookup ? { lookup: options.lookup } : {});
   const profileNames = ['desktop', 'mobile', 'javascript_disabled'];
   let reused = [], previousRaw = null;
   if (options.resumeRun) {
@@ -67,6 +83,7 @@ async function observeRender(root, options) {
       capture = async (name, viewport, { isMobile = false, javaScriptEnabled = true } = {}) => {
       const context = await browser.newContext({ viewport, isMobile, javaScriptEnabled });
       try {
+        await context.route('**/*', (route) => handlePublicBrowserRoute(route, options.lookup ? { lookup: options.lookup } : {}));
         const page = await context.newPage();
         const failures = [];
         page.on('requestfailed', (request) => failures.push({ url: request.url(), error: request.failure()?.errorText || 'unknown' }));
@@ -131,11 +148,12 @@ async function observeCitations(root, options) {
   if (options.endpoint) {
     const prompts = input.value.prompts || (Array.isArray(input.value) ? input.value : []);
     if (!prompts.length) throw new Error('citation runner input must contain a prompts array');
-    if (!/^https:\/\//.test(options.endpoint) && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(options.endpoint)) throw new Error('citation adapter endpoint must use HTTPS (loopback HTTP is allowed for testing)');
+    if (!/^https:\/\//.test(options.endpoint)) throw new Error('citation adapter endpoint must use HTTPS');
+    await validatePublicUrl(options.endpoint, options.lookup ? { lookup: options.lookup } : {});
     const repeat = Number.isInteger(options.repeat) && options.repeat > 0 && options.repeat <= 20 ? options.repeat : 3;
     rows = [];
     for (const prompt of prompts) for (let runIndex = 1; runIndex <= repeat; runIndex++) {
-      const response = await fetch(options.endpoint, { method: 'POST', headers: { 'content-type': 'application/json', ...(options.accessToken ? { authorization: `Bearer ${options.accessToken}` } : {}) }, body: JSON.stringify({ prompt_id: prompt.prompt_id, prompt_text: prompt.prompt_text, locale: prompt.locale || input.value.locale || 'en-US', run_index: runIndex, runs_in_series: repeat }) });
+      const response = await (options.adapterFetch || globalThis.fetch)(options.endpoint, { method: 'POST', redirect: 'error', headers: { 'content-type': 'application/json', ...(options.accessToken ? { authorization: `Bearer ${options.accessToken}` } : {}) }, body: JSON.stringify({ prompt_id: prompt.prompt_id, prompt_text: prompt.prompt_text, locale: prompt.locale || input.value.locale || 'en-US', run_index: runIndex, runs_in_series: repeat }) });
       const rawResponse = await response.text();
       if (!response.ok) throw new Error(`citation adapter returned ${response.status}: ${rawResponse.slice(0, 300)}`);
       const result = JSON.parse(rawResponse);
@@ -259,24 +277,82 @@ async function observePassages(root, options) {
   const ctx = await buildContext(root, options);
   if (!ctx.site) throw new Error('passages requires --target <dir|url>');
   const observations = [];
+  const regionPages = new Map();
+  for (const page of ctx.site.pages) {
+    for (const region of page.structuralRegions || []) {
+      const key = sha256(`${region.region_type}\0${region.text}`);
+      if (!regionPages.has(key)) regionPages.set(key, new Set());
+      regionPages.get(key).add(page.url);
+    }
+  }
   for (const page of ctx.site.pages) {
     const rawWords = words(page.text).length;
+    const pageRecord = ctx.registries.pages?.entries?.find((item) => {
+      try { return new URL(item.url, page.url).href === page.url; } catch { return item.url === page.url; }
+    });
+    const promptMap = new Map((ctx.registries.prompts?.entries || []).map((item) => [item.prompt_id, item]));
+    const questionContexts = (pageRecord?.target_prompts || []).map((id) => promptMap.get(id)).filter(Boolean).map((prompt) => ({
+      prompt_id: prompt.prompt_id,
+      question: prompt.canonical_prompt,
+      expected_answer_components: prompt.expected_answer_components || [],
+    }));
+    const extractionMetrics = {
+      raw_bytes: Buffer.byteLength(page.rawHtml),
+      extracted_bytes: Buffer.byteLength(page.text),
+      raw_visible_tokens: page.rawVisibleWordCount,
+      extracted_tokens: rawWords,
+      extracted_to_raw_byte_ratio: page.rawHtml.length ? Number((Buffer.byteLength(page.text) / Buffer.byteLength(page.rawHtml)).toFixed(3)) : null,
+      extracted_to_raw_visible_token_ratio: page.rawVisibleWordCount ? Number((rawWords / page.rawVisibleWordCount).toFixed(3)) : null,
+    };
+    const repeatedRegions = (page.structuralRegions || []).map((region) => {
+      const regionHash = sha256(`${region.region_type}\0${region.text}`);
+      const pageOccurrences = regionPages.get(regionHash)?.size || 1;
+      return {
+        region_type: region.region_type,
+        region_hash: regionHash,
+        html_bytes: region.html_bytes,
+        token_count: region.token_count,
+        page_occurrences: pageOccurrences,
+        classification: pageOccurrences >= 2 ? 'repeated_site_region' : 'page_local_region',
+      };
+    });
+    const limitations = ['Repeated structural regions and extraction ratios are descriptive cohort evidence; they do not establish content harm, retrieval impact, or ranking effect.'];
     for (let i = 0; i < page.paragraphs.length; i++) {
       const passage = page.paragraphs.slice(i, i + 3).join(' ');
       const count = words(passage).length;
       if (count < 30) continue;
       const dependencies = [];
       if (/\b(this|that|these|those|it|they|above|below|here)\b/i.test(passage.slice(0, 100))) dependencies.push('possible external referent');
-      observations.push(envelope('passage', { url: page.url, passage_index: i, text: passage, word_count: count, independently_extractable: count >= 100 && count <= 300 && dependencies.length === 0, dependencies, content_to_noise_ratio: page.rawHtml.length ? Number((page.text.length / page.rawHtml.length).toFixed(3)) : null }, { method: 'static_analysis', source: page.sourceFile || page.url, raw: passage, confidence: 'medium' }));
+      observations.push(envelope('passage', { url: page.url, passage_contract_version: 1, passage_index: i, text: passage, word_count: count, independently_extractable: count >= 100 && count <= 300 && dependencies.length === 0, dependencies, question_contexts: questionContexts, semantic_review_status: 'review_required', content_to_noise_ratio: extractionMetrics.extracted_to_raw_byte_ratio, extraction_metrics: extractionMetrics, repeated_regions: repeatedRegions }, { method: 'static_analysis', source: page.sourceFile || page.url, raw: passage, confidence: 'medium', limitations: [...limitations, 'Question-to-passage suitability remains review_required and is not inferred from registry linkage.'] }));
     }
-    if (!page.paragraphs.length) observations.push(envelope('passage', { url: page.url, word_count: rawWords, independently_extractable: false, dependencies: ['no paragraph passages extracted'] }, { method: 'static_analysis', source: page.sourceFile || page.url, state: 'not_observed', confidence: 'confirmed' }));
+    if (!page.paragraphs.length) observations.push(envelope('passage', { url: page.url, passage_contract_version: 1, word_count: rawWords, independently_extractable: false, dependencies: ['no paragraph passages extracted'], question_contexts: questionContexts, semantic_review_status: 'review_required', extraction_metrics: extractionMetrics, repeated_regions: repeatedRegions }, { method: 'static_analysis', source: page.sourceFile || page.url, state: 'not_observed', confidence: 'confirmed', limitations: [...limitations, 'Question-to-passage suitability remains review_required and is not inferred from registry linkage.'] }));
   }
   return observationRun(root, 'observe passages', options.target, observations);
+}
+
+function normalizeDateSignal(source, raw) {
+  if (raw == null || raw === '') return null;
+  const text = String(raw).trim();
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(text);
+  const date = new Date(dateOnly ? `${text}T00:00:00Z` : text);
+  const valid = !Number.isNaN(date.getTime()) && (!dateOnly || date.toISOString().slice(0, 10) === text);
+  return {
+    source,
+    raw: text,
+    normalized_date: valid ? date.toISOString().slice(0, 10) : null,
+    valid,
+  };
 }
 
 async function observeConsensus(root, options) {
   const ctx = await buildContext(root, options);
   if (!ctx.site) throw new Error('consensus requires --target <dir|url>');
+  let canonicalInput = null;
+  if (options.input) {
+    canonicalInput = readInput(options.input);
+    const check = validateAgainst('canonical-index-import.schema.json', canonicalInput.value);
+    if (!check.valid) throw new Error(`canonical index import violates contract: ${check.errors.join('; ')}`);
+  }
   const sitemapRows = ctx.site.sitemaps.flatMap((s) => s.parsed?.urls || []);
   const sitemapUrls = new Set(sitemapRows.map((u) => u.loc));
   const observations = ctx.site.pages.map((page) => {
@@ -285,10 +361,59 @@ async function observeConsensus(root, options) {
     const visibleDate = page.metas['article:modified_time']?.[0] || page.metas['date.modified']?.[0] || page.metas['last-modified']?.[0] || null;
     const signals = { final_url: page.url, html_canonical: declared, open_graph_url: page.ogUrl, sitemap_present: sitemapUrls.has(page.url), last_modified_header: page.headers['last-modified'] || null, sitemap_lastmod: sitemapDate, visible_or_meta_modified: visibleDate };
     const urls = [page.url, declared, page.ogUrl].filter(Boolean);
-    const dates = [signals.last_modified_header, sitemapDate, visibleDate].filter(Boolean).map((value) => String(value).slice(0, 10));
-    return envelope('canonical_freshness', { url: page.url, signals, canonical_consensus: new Set(urls).size <= 1, date_consensus: dates.length >= 2 ? new Set(dates).size === 1 : null, engine_selected_canonical: null }, { method: 'static_analysis', source: page.sourceFile || page.url, raw: JSON.stringify(signals), confidence: 'high', limitations: ['Engine-selected canonical and content-difference date require external observations.'] });
+    const engineCanonicals = canonicalInput?.value.observations.filter((item) => item.url === page.url).map((item) => ({
+      engine: item.engine,
+      selected_canonical: item.selected_canonical,
+      indexed: item.indexed,
+      observed_at: item.observed_at,
+      collection_authority: canonicalInput.value.collection_authority,
+      authenticity_status: canonicalInput.value.authenticity_status,
+    })) || [];
+    const dateSignals = [
+      normalizeDateSignal('http_last_modified', signals.last_modified_header),
+      normalizeDateSignal('sitemap_lastmod', sitemapDate),
+      normalizeDateSignal('visible_or_meta_modified', visibleDate),
+    ].filter(Boolean);
+    const validDates = dateSignals.filter((item) => item.valid).map((item) => item.normalized_date);
+    const dateConsensus = validDates.length >= 2 ? new Set(validDates).size === 1 : null;
+    const prior = ctx.snapshots?.pages?.[page.url] || null;
+    const currentHash = ctx.hashPage(page);
+    const changed = prior ? prior.contentHash !== currentHash : null;
+    const pageRegistry = ctx.registries.pages?.entries?.find((item) => item.url === page.url || item.canonical_url === page.url) || null;
+    const contentSnapshot = {
+      current_content_hash: currentHash,
+      prior_run_id: prior ? ctx.snapshots.run_id || null : null,
+      prior_content_hash: prior?.contentHash || null,
+      changed_since_snapshot: changed,
+      change_observed_after: changed ? ctx.snapshots.taken_at || null : null,
+      change_observed_by: changed ? new Date().toISOString() : null,
+      exact_change_time_established: false,
+    };
+    const limitations = ['Engine-selected canonical requires external observations. Snapshot comparison can bound a detected change interval but cannot establish the exact modification time or cause.'];
+    if (dateSignals.some((item) => !item.valid)) limitations.push('One or more declared freshness dates could not be parsed and were excluded from consensus.');
+    const data = {
+      url: page.url,
+      signals,
+      canonical_consensus: new Set(urls).size <= 1,
+      date_signals: dateSignals,
+      date_consensus: dateConsensus,
+      freshness_assessment: validDates.length < 2 ? 'insufficient_signals' : dateConsensus ? 'aligned_signals' : 'conflicting_signals',
+      content_snapshot: contentSnapshot,
+      lifecycle_governance: pageRegistry ? {
+        page_id: pageRegistry.page_id,
+        lifecycle_class: pageRegistry.lifecycle_class || 'unclassified',
+        next_review_date: pageRegistry.next_review_date || null,
+      } : null,
+      engine_selected_canonical: engineCanonicals.length ? engineCanonicals : null,
+      canonical_consensus_with_engines: engineCanonicals.length
+        ? new Set([...urls, ...engineCanonicals.map((item) => item.selected_canonical).filter(Boolean)]).size <= 1
+        : null,
+    };
+    return envelope('canonical_freshness', data, { method: 'static_analysis', source: page.sourceFile || page.url, raw: JSON.stringify({ signals, dateSignals, contentSnapshot }), confidence: 'high', limitations });
   });
-  return observationRun(root, 'observe consensus', options.target, observations);
+  return observationRun(root, 'observe consensus', options.target, observations, {
+    rawInputs: canonicalInput ? { canonical_index_export: canonicalInput.raw } : {},
+  });
 }
 
 const median = (values) => {
@@ -385,9 +510,169 @@ async function observePerformance(root, options) {
 
 function observeCorroboration(root, options) {
   const input = readInput(options.input);
-  const rows = Array.isArray(input.value) ? input.value : input.value.mentions || [];
-  const observations = rows.map((row) => envelope('corroboration', row, { method: 'owner_import', source: input.file, raw: JSON.stringify(row), confidence: row.independent === true ? 'high' : 'low', limitations: row.independent === true ? [] : ['Source independence is not established.'] }));
+  const document = input.value;
+  const check = validateAgainst('corroboration-import.schema.json', document);
+  if (!check.valid) throw new Error(`corroboration import violates contract: ${check.errors.join('; ')}`);
+  const observations = document.mentions.map((row) => {
+    const independent = row.source_control === 'independent' && row.relationship_disclosure === 'none_disclosed';
+    const sourceAuthority = independent
+      ? 'independently_controlled'
+      : row.source_control === 'owner_controlled'
+        ? 'owner_controlled'
+        : row.source_control === 'affiliated'
+          ? 'third_party_commercial'
+          : 'unknown';
+    const limitations = [
+      'An observed external mention does not establish source authority, claim support, ranking impact, citation eligibility, or representative coverage.',
+    ];
+    if (!independent) limitations.push('Source independence is not established from the declared control and relationship.');
+    const data = {
+      ...row,
+      import_provider: document.provider,
+      import_dataset: document.dataset,
+      import_collected_at: document.collected_at,
+      coverage: document.coverage,
+    };
+    return envelope('corroboration', data, {
+      method: 'owner_import',
+      source: row.source_url,
+      raw: JSON.stringify(row),
+      confidence: independent ? 'high' : 'low',
+      limitations,
+      authority: {
+        source_authority: sourceAuthority,
+        collection_authority: document.collection_authority,
+        authenticity_status: document.authenticity_status,
+        representativeness: document.representativeness,
+      },
+    });
+  });
   return observationRun(root, 'observe corroboration', input.file, observations, { rawInputs: { corroboration_export: input.raw } });
+}
+
+const PROBE_HEADER_ALLOWLIST = new Set([
+  'age', 'cache-control', 'cf-cache-status', 'cf-mitigated', 'content-type',
+  'date', 'etag', 'retry-after', 'server', 'via', 'x-cache', 'x-robots-tag',
+]);
+
+function safeProbeHeaders(headers = {}) {
+  return Object.fromEntries(Object.entries(headers)
+    .map(([key, value]) => [key.toLowerCase(), String(value)])
+    .filter(([key]) => PROBE_HEADER_ALLOWLIST.has(key)));
+}
+
+function classifyProbeResponse(response) {
+  const headers = safeProbeHeaders(response.headers);
+  const body = String(response.body || '').slice(0, 10000);
+  const challengeSignal = headers['cf-mitigated'] === 'challenge'
+    || /captcha|verify you are human|attention required|access challenge/i.test(body);
+  if ([401, 403, 429].includes(response.status) || challengeSignal) return 'challenged';
+  if (response.status >= 500) return 'server_error';
+  if (response.status >= 400) return 'blocked';
+  if ((response.redirectChain || []).length) return 'redirected';
+  return response.status >= 200 && response.status < 400 ? 'accessible' : 'unexpected';
+}
+
+async function observeCrawlerProbes(root, options) {
+  if (!options.target) throw new Error('probes requires --target <public URL>');
+  const registryFile = path.join(root, '.citable', 'crawlers.yaml');
+  if (!fs.existsSync(registryFile)) throw new Error('crawlers registry is missing; run citable init first');
+  const rawRegistry = fs.readFileSync(registryFile, 'utf8');
+  const registry = readYaml(registryFile);
+  const check = validateAgainst('crawler.schema.json', registry);
+  if (!check.valid) throw new Error(`crawlers registry violates contract: ${check.errors.join('; ')}`);
+  const crawlers = registry.entries.filter((item) => item.status === 'active');
+  if (!crawlers.length) throw new Error('crawlers registry has no active identities to probe');
+  await validatePublicUrl(options.target, options.lookup ? { lookup: options.lookup } : {});
+
+  const collector = options.fetchUrl || fetchUrl;
+  const region = options.region || 'local_unspecified';
+  const observations = [], incomplete = [], artifacts = {};
+  for (const crawler of crawlers) {
+    const artifactBase = `crawler-probes/${crawler.crawler_id}`;
+    try {
+      const response = await collector(options.target, {
+        userAgent: crawler.user_agent,
+        maxRetries: 1,
+        ...(options.lookup ? { lookup: options.lookup } : {}),
+      });
+      const headers = safeProbeHeaders(response.headers);
+      const edgeClassification = classifyProbeResponse(response);
+      const data = {
+        crawler_id: crawler.crawler_id,
+        vendor: crawler.vendor || null,
+        purpose: crawler.purpose,
+        declared_policy_decision: crawler.decision,
+        user_agent: crawler.user_agent,
+        target: options.target,
+        final_url: response.url || options.target,
+        status: response.status,
+        redirect_chain: response.redirectChain || [],
+        response_headers: headers,
+        response_hash: sha256(response.body || ''),
+        edge_classification: edgeClassification,
+        region,
+        identity_status: 'synthetically_observed',
+        production_access_established: false,
+      };
+      observations.push(envelope('crawler_probe', data, {
+        method: 'synthetic_fetch',
+        source: options.target,
+        raw: response.body || JSON.stringify(data),
+        confidence: 'confirmed',
+        limitations: ['A spoofed user agent in a synthetic request does not establish crawler identity or production crawler access. One local probe does not represent other regions, networks, times, or edge paths.'],
+        authority: { source_authority: 'synthetic', collection_authority: 'synthetic_probe', authenticity_status: 'unverified', representativeness: 'single_observation' },
+      }));
+      artifacts[`${artifactBase}/response.txt`] = response.body || '';
+      artifacts[`${artifactBase}/headers.json`] = headers;
+    } catch (error) {
+      incomplete.push(`${crawler.crawler_id} synthetic probe failed: ${error.message}`);
+      observations.push(envelope('crawler_probe', {
+        crawler_id: crawler.crawler_id, vendor: crawler.vendor || null, purpose: crawler.purpose,
+        declared_policy_decision: crawler.decision, user_agent: crawler.user_agent,
+        target: options.target, region, edge_classification: 'error',
+        identity_status: 'synthetically_observed', production_access_established: false,
+      }, {
+        method: 'synthetic_fetch', source: options.target, state: 'failed',
+        confidence: 'confirmed', raw: `${crawler.crawler_id}:${error.message}`,
+        limitations: [`Synthetic probe failed: ${error.message}`, 'A spoofed user agent does not establish crawler identity or production crawler access.'],
+        authority: { source_authority: 'synthetic', collection_authority: 'synthetic_probe', authenticity_status: 'unverified', representativeness: 'single_observation' },
+      }));
+    }
+  }
+  return observationRun(root, 'observe probes', options.target, observations, {
+    rawInputs: { crawler_registry: rawRegistry }, incomplete, artifacts,
+    warnings: ['Probe outcomes are synthetic retrieval evidence only and must not be interpreted as verified crawler identity or production access.'],
+  });
+}
+
+function observeRegionalNetwork(root, options) {
+  const input = readInput(options.input);
+  const document = input.value;
+  const check = validateAgainst('regional-network-import.schema.json', document);
+  if (!check.valid) throw new Error(`regional network import violates contract: ${check.errors.join('; ')}`);
+  const limitations = ['Imported regional observations do not establish managed runner coverage, global representativeness, crawler identity, or future availability.'];
+  const observations = document.probes.map((probe) => envelope('regional_network', {
+    ...probe,
+    provider: document.provider,
+    dataset_collected_at: document.collected_at,
+  }, {
+    method: 'owner_import',
+    source: input.file,
+    raw: JSON.stringify(probe),
+    confidence: 'confirmed',
+    limitations,
+    authority: {
+      source_authority: 'unknown',
+      collection_authority: document.collection_authority,
+      authenticity_status: document.authenticity_status,
+      representativeness: document.representativeness,
+    },
+  }));
+  return observationRun(root, 'observe network', input.file, observations, {
+    rawInputs: { regional_network_export: input.raw },
+    warnings: ['This release validates regional probe exports but does not operate a managed multi-region runner.'],
+  });
 }
 
 async function observeRepresentation(root, options) {
@@ -472,8 +757,10 @@ export async function observe(root, mode, options = {}) {
     case 'consensus': return observeConsensus(root, options);
     case 'performance': return observePerformance(root, options);
     case 'corroboration': return observeCorroboration(root, options);
+    case 'probes': return observeCrawlerProbes(root, options);
+    case 'network': return observeRegionalNetwork(root, options);
     case 'media': return observeMedia(root, options);
     case 'representation': return observeRepresentation(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, media, or representation');
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, or representation');
   }
 }

@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import http from 'node:http';
 import { init } from '../../src/commands/init.js';
 import { audit } from '../../src/commands/audit.js';
 import { observe } from '../../src/commands/observe.js';
@@ -15,6 +14,7 @@ import { readJson, sha256 } from '../../src/shared/io.js';
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
 const OBS = path.join(FIX, 'observations');
 const fresh = () => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-obs-')); init(root); return root; };
+const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('observation collectors normalize owner evidence and preserve boundaries', async () => {
   const root = fresh();
@@ -26,6 +26,17 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
   assert.equal(citations.summary.citation_metrics.citation_presence_rate, 1);
   assert.equal(citations.summary.citation_metrics.supported_citation_rate, 0.5);
   assert.deepEqual(citations.summary.citation_metrics.competitive_domains, ['competitor.test']);
+  assert.deepEqual(citations.summary.citation_metrics.competitive_sources[0], {
+    domain: 'competitor.test',
+    citation_count: 1,
+    declared_profiles: [{
+      content_format: 'article',
+      word_count: 1800,
+      heading_count: 9,
+      freshness_date: '2026-06-15',
+      evidence_features: ['named author', 'primary source links'],
+    }],
+  });
 
   const logs = await observe(root, 'logs', { input: path.join(OBS, 'logs.json') });
   assert.equal(logs.manifest.status, 'incomplete');
@@ -44,9 +55,151 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
   assert.equal(performance.observations[0].data.evidence_type, 'field');
   const corroboration = await observe(root, 'corroboration', { input: path.join(OBS, 'corroboration.json') });
   assert.equal(corroboration.observations[0].confidence, 'high');
+  assert.deepEqual(corroboration.observations[0].authority, {
+    source_authority: 'independently_controlled',
+    collection_authority: 'third_party_export',
+    authenticity_status: 'checksum_protected_only',
+    representativeness: 'convenience_sample',
+  });
+  assert.match(corroboration.observations[0].limitations.join(' '), /does not establish.*authority|authority.*does not establish/i);
   for (const result of [index, citations, logs, performance, corroboration]) {
     assert.ok(fs.existsSync(path.join(result.dir, 'checksums.json')));
   }
+});
+
+test('corroboration imports reject legacy independence booleans and undisclosed control', async () => {
+  const root = fresh();
+  const legacy = path.join(root, 'legacy-corroboration.json');
+  fs.writeFileSync(legacy, JSON.stringify({
+    mentions: [{
+      url: 'https://publisher.example/report',
+      publisher: 'Publisher',
+      entity: 'Example',
+      independent: true,
+      observed_at: '2026-07-18T12:00:00Z',
+    }],
+  }));
+  await assert.rejects(observe(root, 'corroboration', { input: legacy }), /contract|schema_version|source_control/i);
+
+  const controlled = JSON.parse(fs.readFileSync(path.join(OBS, 'corroboration.json'), 'utf8'));
+  controlled.mentions[0].source_control = 'owner_controlled';
+  controlled.mentions[0].relationship_disclosure = 'unknown';
+  const controlledFile = path.join(root, 'controlled-corroboration.json');
+  fs.writeFileSync(controlledFile, JSON.stringify(controlled));
+  const result = await observe(root, 'corroboration', { input: controlledFile });
+  assert.equal(result.observations[0].confidence, 'low');
+  assert.match(result.observations[0].limitations.join(' '), /independence is not established/i);
+});
+
+test('crawler probes exercise every declared identity without becoming production access evidence', async () => {
+  const root = fresh();
+  const calls = [];
+  const result = await observe(root, 'probes', {
+    target: 'https://example.test/important',
+    region: 'local-fixture',
+    lookup: publicLookup,
+    fetchUrl: async (url, options) => {
+      calls.push({ url, userAgent: options.userAgent });
+      const challenged = options.userAgent === 'GPTBot';
+      return {
+        url,
+        status: challenged ? 403 : 200,
+        headers: challenged ? { 'content-type': 'text/html', 'cf-mitigated': 'challenge', 'set-cookie': 'secret=must-not-persist' } : { 'content-type': 'text/html' },
+        body: challenged ? '<title>Attention required</title>Verify you are human' : '<title>OK</title>Public content',
+        redirectChain: [],
+      };
+    },
+  });
+
+  assert.equal(calls.length, 8);
+  assert.equal(result.observations.length, 8);
+  assert.ok(result.observations.every((item) => item.kind === 'crawler_probe'));
+  assert.ok(result.observations.every((item) => item.collection_method === 'synthetic_fetch'));
+  assert.ok(result.observations.every((item) => item.authority.source_authority === 'synthetic'));
+  assert.ok(result.observations.every((item) => item.data.identity_status === 'synthetically_observed'));
+  assert.ok(result.observations.every((item) => item.data.production_access_established === false));
+  assert.equal(result.observations.find((item) => item.data.user_agent === 'GPTBot').data.edge_classification, 'challenged');
+  assert.ok(!JSON.stringify(result).includes('secret=must-not-persist'));
+  assert.match(result.observations[0].limitations.join(' '), /spoofed|synthetic.*not.*production/i);
+});
+
+test('crawler probes preserve partial failures and reject missing registry or unsafe targets', async () => {
+  const root = fresh();
+  let calls = 0;
+  const partial = await observe(root, 'probes', {
+    target: 'https://example.test/',
+    lookup: publicLookup,
+    fetchUrl: async (url, options) => {
+      calls++;
+      if (options.userAgent === 'ClaudeBot') throw new Error('fixture timeout');
+      return { url, status: 200, headers: {}, body: 'ok', redirectChain: [] };
+    },
+  });
+  assert.equal(calls, 8);
+  assert.equal(partial.manifest.status, 'incomplete');
+  assert.equal(partial.observations.find((item) => item.data.user_agent === 'ClaudeBot').state, 'failed');
+
+  const missing = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-no-registry-'));
+  await assert.rejects(observe(missing, 'probes', { target: 'https://example.test/' }), /crawlers.*registry|init/i);
+
+  let unsafeCalls = 0;
+  await assert.rejects(observe(root, 'probes', {
+    target: 'http://127.0.0.1/',
+    fetchUrl: async () => { unsafeCalls++; return {}; },
+  }), /private|loopback|non-public/i);
+  assert.equal(unsafeCalls, 0);
+});
+
+test('regional network imports preserve DNS TLS latency and cache evidence by region', async () => {
+  const root = fresh();
+  const input = path.join(root, 'regional-network.json');
+  fs.writeFileSync(input, JSON.stringify({
+    schema_version: 1,
+    provider: 'fixture-runner',
+    collected_at: '2026-07-20T00:00:00Z',
+    collection_authority: 'third_party_export',
+    authenticity_status: 'checksum_protected_only',
+    representativeness: 'controlled_experiment',
+    probes: [
+      {
+        probe_id: 'PROBE-US-1',
+        target: 'https://example.test/',
+        region: 'us-east',
+        network: 'fixture-asn-1',
+        user_agent: 'CitableRegionalProbe/1.0',
+        observed_at: '2026-07-20T00:00:00Z',
+        dns_addresses: ['93.184.216.34'],
+        tls: { protocol: 'TLSv1.3', authorized: true, certificate_fingerprint: 'sha256:fixture' },
+        status: 200,
+        latency_ms: 85,
+        cache: { status: 'HIT', age_seconds: 120 },
+      },
+      {
+        probe_id: 'PROBE-EU-1',
+        target: 'https://example.test/',
+        region: 'eu-west',
+        network: 'fixture-asn-2',
+        user_agent: 'CitableRegionalProbe/1.0',
+        observed_at: '2026-07-20T00:01:00Z',
+        dns_addresses: ['93.184.216.34'],
+        tls: { protocol: 'TLSv1.3', authorized: true, certificate_fingerprint: 'sha256:fixture' },
+        status: 200,
+        latency_ms: 110,
+        cache: { status: 'MISS', age_seconds: null },
+      },
+    ],
+  }));
+  const result = await observe(root, 'network', { input });
+  assert.equal(result.observations.length, 2);
+  assert.deepEqual(result.observations.map((item) => item.data.region), ['us-east', 'eu-west']);
+  assert.ok(result.observations.every((item) => item.kind === 'regional_network'));
+  assert.ok(result.observations.every((item) => item.authority.collection_authority === 'third_party_export'));
+  assert.match(result.observations[0].limitations.join(' '), /imported.*not.*managed|coverage/i);
+
+  const malformed = readJson(input);
+  delete malformed.probes[0].region;
+  fs.writeFileSync(input, JSON.stringify(malformed));
+  await assert.rejects(observe(root, 'network', { input }), /regional network import.*contract|region/i);
 });
 
 test('Bing owner exports preserve dataset boundaries and never imply ranking or causation', async () => {
@@ -68,37 +221,192 @@ test('Bing owner exports preserve dataset boundaries and never imply ranking or 
 
 test('passage and consensus collectors analyze site artifacts without external claims', async () => {
   const root = fresh();
+  for (const name of ['pages.yaml', 'prompts.yaml']) {
+    fs.copyFileSync(path.join(FIX, 'registries-good', name), path.join(root, '.citable', name));
+  }
   const options = { target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test' };
   const passages = await observe(root, 'passages', options);
   assert.ok(passages.observations.length > 0);
   assert.ok(passages.observations.every((o) => o.collection_method === 'static_analysis'));
+  const productPassage = passages.observations.find((item) => item.data.url === 'https://example.test/products/gatekeeper/');
+  assert.equal(productPassage.data.passage_contract_version, 1);
+  assert.deepEqual(productPassage.data.question_contexts, [{
+    prompt_id: 'P-RECO',
+    question: 'What platforms provide runtime authorization for AI agents?',
+    expected_answer_components: ['category definition', 'target user', 'limitations', 'evidence'],
+  }]);
+  assert.equal(productPassage.data.semantic_review_status, 'review_required');
   const consensus = await observe(root, 'consensus', options);
   assert.ok(consensus.observations.some((o) => o.data.canonical_consensus === true));
   assert.ok(consensus.observations.every((o) => o.data.engine_selected_canonical === null));
 });
 
+test('passage observations classify repeated structural regions across the audited cohort', async () => {
+  const root = fresh();
+  const site = path.join(root, 'repeated-regions');
+  for (const slug of ['one', 'two']) {
+    const dir = path.join(site, slug);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.html'), `<!doctype html><html><head>
+      <title>${slug}</title><link rel="canonical" href="https://example.test/${slug}/">
+      </head><body><header>Example documentation</header>
+      <nav><a href="/one/">One</a> <a href="/two/">Two</a></nav>
+      <main><h1>${slug}</h1><p>${'Distinct explanatory page content with observable evidence and bounded interpretation. '.repeat(8)}</p></main>
+      <footer>Copyright Example</footer></body></html>`);
+  }
+
+  const result = await observe(root, 'passages', { target: site, baseUrl: 'https://example.test' });
+  const page = result.observations.find((item) => item.data.url === 'https://example.test/one/');
+  assert.ok(page.data.extraction_metrics.raw_bytes > page.data.extraction_metrics.extracted_bytes);
+  assert.ok(page.data.extraction_metrics.raw_visible_tokens > page.data.extraction_metrics.extracted_tokens);
+  assert.ok(page.data.repeated_regions.some((region) => region.classification === 'repeated_site_region' && region.page_occurrences === 2));
+  assert.match(page.limitations.join(' '), /does not establish.*harm|ranking/i);
+});
+
+test('freshness consensus normalizes dated signals and preserves content-change intervals', async () => {
+  const root = fresh();
+  const site = path.join(root, 'freshness-site');
+  fs.cpSync(path.join(FIX, 'site-clean'), site, { recursive: true });
+  const indexFile = path.join(site, 'index.html');
+  fs.writeFileSync(indexFile, fs.readFileSync(indexFile, 'utf8').replace(
+    '</head>',
+    '<meta property="article:modified_time" content="2026-07-02T08:30:00Z"></head>',
+  ));
+  const pricingFile = path.join(site, 'pricing', 'index.html');
+  fs.writeFileSync(pricingFile, fs.readFileSync(pricingFile, 'utf8').replace(
+    '</head>',
+    '<meta property="article:modified_time" content="2026-02-30"></head>',
+  ));
+  const snapshotDir = path.join(root, '.citable', 'snapshots');
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  fs.writeFileSync(path.join(snapshotDir, 'pages-latest.json'), JSON.stringify({
+    taken_at: '2026-07-01T00:00:00Z',
+    run_id: 'RUN-PRIOR',
+    pages: {
+      'https://example.test/': { contentHash: '0'.repeat(64), dateModified: null, status: 200 },
+    },
+  }));
+
+  const result = await observe(root, 'consensus', { target: site, baseUrl: 'https://example.test' });
+  const home = result.observations.find((item) => item.data.url === 'https://example.test/');
+  assert.equal(home.data.date_consensus, false);
+  assert.equal(home.data.freshness_assessment, 'conflicting_signals');
+  assert.deepEqual(home.data.date_signals.map((item) => item.normalized_date), ['2026-07-01', '2026-07-02']);
+  assert.equal(home.data.content_snapshot.changed_since_snapshot, true);
+  assert.equal(home.data.content_snapshot.change_observed_after, '2026-07-01T00:00:00Z');
+  assert.equal(home.data.content_snapshot.exact_change_time_established, false);
+
+  const pricing = result.observations.find((item) => item.data.url === 'https://example.test/pricing/');
+  assert.equal(pricing.data.date_consensus, null);
+  assert.equal(pricing.data.freshness_assessment, 'insufficient_signals');
+  assert.equal(pricing.data.date_signals.find((item) => item.source === 'visible_or_meta_modified').valid, false);
+  assert.match(pricing.limitations.join(' '), /could not be parsed|excluded/i);
+});
+
+test('canonical consensus joins schema-validated engine-selected canonical observations', async () => {
+  const root = fresh();
+  const input = path.join(root, 'canonical-index.json');
+  fs.writeFileSync(input, JSON.stringify({
+    schema_version: 1,
+    collected_at: '2026-07-20T00:00:00Z',
+    collection_authority: 'owner_export',
+    authenticity_status: 'owner_attested',
+    observations: [{
+      url: 'https://example.test/',
+      engine: 'google',
+      selected_canonical: 'https://example.test/',
+      indexed: true,
+      observed_at: '2026-07-19T12:00:00Z',
+    }],
+  }));
+  const result = await observe(root, 'consensus', {
+    target: path.join(FIX, 'site-clean'),
+    baseUrl: 'https://example.test',
+    input,
+  });
+  const home = result.observations.find((item) => item.data.url === 'https://example.test/');
+  assert.deepEqual(home.data.engine_selected_canonical, [{
+    engine: 'google',
+    selected_canonical: 'https://example.test/',
+    indexed: true,
+    observed_at: '2026-07-19T12:00:00Z',
+    collection_authority: 'owner_export',
+    authenticity_status: 'owner_attested',
+  }]);
+  assert.equal(home.data.canonical_consensus_with_engines, true);
+
+  const malformed = JSON.parse(fs.readFileSync(input));
+  delete malformed.observations[0].observed_at;
+  fs.writeFileSync(input, JSON.stringify(malformed));
+  await assert.rejects(observe(root, 'consensus', {
+    target: path.join(FIX, 'site-clean'), baseUrl: 'https://example.test', input,
+  }), /canonical index import.*contract|observed_at/i);
+});
+
 test('controlled citation runner repeats a disclosed prompt corpus through an adapter', async () => {
   const root = fresh();
   let calls = 0;
-  const server = http.createServer((request, response) => {
-    let body = '';
-    request.on('data', (chunk) => { body += chunk; });
-    request.on('end', () => {
-      calls++;
-      const payload = JSON.parse(body);
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ provider: 'fixture-provider', answer_text: `Answer ${payload.run_index}`, citations: ['https://example.test/products/gatekeeper/'] }));
+  const adapterFetch = async (_url, request) => {
+    calls++;
+    assert.equal(request.redirect, 'error');
+    const payload = JSON.parse(request.body);
+    return new Response(JSON.stringify({ provider: 'fixture-provider', answer_text: `Answer ${payload.run_index}`, citations: ['https://example.test/products/gatekeeper/'] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
     });
+  };
+  const result = await observe(root, 'citations', {
+    input: path.join(OBS, 'prompt-corpus.json'),
+    endpoint: 'https://adapter.example/run',
+    repeat: 3,
+    target: 'https://example.test/',
+    adapterFetch,
+    lookup: async () => [{ address: '93.184.216.34', family: 4 }],
   });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  try {
-    const endpoint = `http://127.0.0.1:${server.address().port}/run`;
-    const result = await observe(root, 'citations', { input: path.join(OBS, 'prompt-corpus.json'), endpoint, repeat: 3, target: 'https://example.test/' });
-    assert.equal(calls, 3);
-    assert.equal(result.summary.citation_metrics.runs, 3);
-    assert.equal(result.summary.citation_metrics.citation_presence_rate, 1);
-    assert.ok(result.observations.filter((o) => o.kind === 'citation').every((o) => o.collection_method === 'live_api'));
-  } finally { await new Promise((resolve) => server.close(resolve)); }
+  assert.equal(calls, 3);
+  assert.equal(result.summary.citation_metrics.runs, 3);
+  assert.equal(result.summary.citation_metrics.citation_presence_rate, 1);
+  assert.ok(result.observations.filter((o) => o.kind === 'citation').every((o) => o.collection_method === 'live_api'));
+});
+
+test('competitive citation profiles fail closed on malformed declared comparisons', async () => {
+  const root = fresh();
+  const document = readJson(path.join(OBS, 'citations.json'));
+  document.observations[0].citations[1].source_profile.word_count = 'deep';
+  const input = path.join(root, 'invalid-competitive-profile.json');
+  fs.writeFileSync(input, JSON.stringify(document));
+  await assert.rejects(observe(root, 'citations', { input, target: 'https://example.test/' }), /source_profile.*contract/i);
+});
+
+test('browser and citation collectors refuse private network targets before adapters execute', async () => {
+  const root = fresh();
+  let renderCalls = 0;
+  await assert.rejects(observe(root, 'render', {
+    target: 'http://127.0.0.1/internal',
+    captureProfile: async () => { renderCalls++; return {}; },
+    fetchUrl: async () => ({ body: '' }),
+  }), /private|loopback|non-public/i);
+  assert.equal(renderCalls, 0);
+
+  let adapterCalls = 0;
+  await assert.rejects(observe(root, 'citations', {
+    input: path.join(OBS, 'prompt-corpus.json'),
+    endpoint: 'https://169.254.169.254/latest/meta-data',
+    adapterFetch: async () => { adapterCalls++; return new Response('{}'); },
+  }), /private|loopback|non-public/i);
+  assert.equal(adapterCalls, 0);
+
+  const plan = readJson(path.join(OBS, 'browser-plan.json'));
+  plan.target = 'http://127.0.0.1/internal';
+  const planFile = path.join(root, 'private-browser-plan.json');
+  fs.writeFileSync(planFile, JSON.stringify(plan));
+  let journeyCalls = 0;
+  await assert.rejects(observe(root, 'render', {
+    input: planFile,
+    captureJourney: async () => { journeyCalls++; return {}; },
+    fetchUrl: async () => ({ body: '', headers: {} }),
+  }), /private|loopback|non-public/i);
+  assert.equal(journeyCalls, 0);
 });
 
 test('missing live credentials and browser dependency fail closed as incomplete', async () => {
@@ -111,7 +419,7 @@ test('missing live credentials and browser dependency fail closed as incomplete'
     assert.equal(index.observations[0].state, 'not_evidenced');
     const perf = await observe(root, 'performance', { target: 'https://example.test/' });
     assert.equal(perf.observations[0].state, 'not_evidenced');
-    const rendered = await observe(root, 'render', { target: 'https://example.test/' });
+    const rendered = await observe(root, 'render', { target: 'https://example.test/', lookup: publicLookup });
     assert.equal(rendered.observations[0].state, 'not_evidenced');
   } finally {
     if (oldGsc) process.env.GSC_ACCESS_TOKEN = oldGsc;
@@ -129,7 +437,7 @@ test('render profiles preserve partial failures and resume only successful immut
     if (name === 'javascript_disabled') throw new Error('fixture profile failure');
     return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: `<main>${name} rendered content</main>`, text: `${name} rendered content`, screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [{ tag: 'summary', text: 'Details' }], executed: ['Details'] } };
   };
-  const first = await observe(root, 'render', { target, interactions: true, captureProfile, fetchUrl });
+  const first = await observe(root, 'render', { target, interactions: true, captureProfile, fetchUrl, lookup: publicLookup });
     assert.equal(first.manifest.status, 'incomplete');
     assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
     assert.equal(first.observations.find((item) => item.data.profile === 'javascript_disabled').state, 'failed');
@@ -137,7 +445,7 @@ test('render profiles preserve partial failures and resume only successful immut
     assert.ok(fs.existsSync(path.join(first.dir, 'screenshots', 'mobile.png')));
 
     captured.length = 0;
-    const resumed = await observe(root, 'render', { target, interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+    const resumed = await observe(root, 'render', { target, interactions: true, resumeRun: first.runId, fetchUrl, lookup: publicLookup, captureProfile: async (name, viewport, settings = {}) => {
       captured.push(name);
       return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Server fallback content</main>', text: 'Server fallback content', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
     } });
@@ -148,7 +456,7 @@ test('render profiles preserve partial failures and resume only successful immut
   assert.match(resumed.manifest.warnings.join(' '), /reused from immutable run/);
 
   captured.length = 0;
-  await observe(root, 'render', { target: 'https://other.example.test/', interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+  await observe(root, 'render', { target: 'https://other.example.test/', interactions: true, resumeRun: first.runId, fetchUrl, lookup: publicLookup, captureProfile: async (name, viewport, settings = {}) => {
     captured.push(name);
     return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Other target</main>', text: 'Other target', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
   } });
@@ -160,6 +468,7 @@ test('browser evidence plans preserve cross-browser artifacts and partial journe
   const planFile = path.join(OBS, 'browser-plan.json');
   const result = await observe(root, 'render', {
     input: planFile,
+    lookup: publicLookup,
     fetchUrl: async () => ({ body: '<main>Initial response</main>', headers: { 'content-type': 'text/html' } }),
     captureJourney: async (profile) => {
       if (profile.profile_id === 'firefox-mobile') throw new Error('fixture engine unavailable');
@@ -179,6 +488,9 @@ test('browser evidence plans preserve cross-browser artifacts and partial journe
   assert.equal(observed.data.browser.engine, 'chromium');
   assert.equal(observed.data.consent_state, 'not_present');
   assert.equal(observed.data.authentication_state, 'anonymous');
+  assert.equal(observed.data.render_parity.policy_id, 'RENDER-POLICY-FIXTURE');
+  assert.equal(observed.data.render_parity.semantic_review_status, 'review_required');
+  assert.ok(observed.data.render_parity.policy_violations.some((item) => item.check === 'text_retention'));
   assert.match(observed.data.interpretation_boundary, /do not establish semantic/);
   for (const relative of ['initial/response.html', 'journeys/chromium-desktop/dom.html', 'journeys/chromium-desktop/accessibility-tree.txt', 'journeys/chromium-desktop/final.png', 'journeys/chromium-desktop/failures.json', 'journeys/chromium-desktop/steps.json', 'journeys/firefox-mobile/failure.json']) {
     assert.ok(fs.existsSync(path.join(result.dir, relative)), relative);
@@ -191,13 +503,13 @@ test('browser evidence plans reject ambiguous profiles and target changes', asyn
   plan.profiles[1].profile_id = plan.profiles[0].profile_id;
   const duplicateFile = path.join(root, 'duplicate-browser-plan.json');
   fs.writeFileSync(duplicateFile, JSON.stringify(plan));
-  await assert.rejects(observe(root, 'render', { input: duplicateFile, captureJourney: async () => ({}) }), /duplicate profile ids/);
-  await assert.rejects(observe(root, 'render', { input: path.join(OBS, 'browser-plan.json'), target: 'https://other.test/', captureJourney: async () => ({}) }), /differs from the plan target/);
+  await assert.rejects(observe(root, 'render', { input: duplicateFile, captureJourney: async () => ({}), lookup: publicLookup }), /duplicate profile ids/);
+  await assert.rejects(observe(root, 'render', { input: path.join(OBS, 'browser-plan.json'), target: 'https://other.test/', captureJourney: async () => ({}), lookup: publicLookup }), /differs from the plan target/);
   const crossOrigin = readJson(path.join(OBS, 'browser-plan.json'));
   crossOrigin.profiles[0].steps[0] = { step_id: 'leave-origin', action: 'navigate', locator: null, value_env: null, key: null, url: 'https://other.test/', required: true, capture_screenshot: false };
   const crossOriginFile = path.join(root, 'cross-origin-browser-plan.json');
   fs.writeFileSync(crossOriginFile, JSON.stringify(crossOrigin));
-  await assert.rejects(observe(root, 'render', { input: crossOriginFile, captureJourney: async () => ({}) }), /cross-origin navigation is not allowed/);
+  await assert.rejects(observe(root, 'render', { input: crossOriginFile, captureJourney: async () => ({}), lookup: publicLookup }), /cross-origin navigation is not allowed/);
 });
 
 test('local Lighthouse execution preserves repeated lab runs and a median summary', async () => {

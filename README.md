@@ -25,7 +25,12 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   ENTITY, CLAIM, EVD, SCHEMA, LINK, EXT, GEO, RECO, LIFE, MEAS, HREFLANG, CWV, AGENT), each with
   remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
-  robots/sitemaps/headers/schema/link graph, checksums.
+  robots/sitemaps/headers/raw JSON-LD, a schema-validated normalized entity
+  graph with unresolved references and parse failures, link graph, and
+  checksums. A source identity-chain artifact joins declared publisher, author
+  affiliation, reviewer, evidence-owner, and correction-path records. Literal
+  or registry linkage does not assert semantic correctness, visible disclosure,
+  independence, or search-engine recognition.
 - **Separate state reporting** for retrieval eligibility, source extraction and
   support suitability, and observed citation behavior. These are never merged
   into an "AI visibility score."
@@ -36,6 +41,9 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   mandatory human-review conditions.
 - **Multi-agent distribution**: Claude Code, Codex-compatible, Cursor, Gemini,
   generic — generated from one canonical `skill/` source.
+- **Evidence-phase agent profiles**: Claude Code receives a guarded auditor and
+  read-only semantic reviewer. Other hosts remain explicitly unsupported until
+  their native profile contracts are verified.
 - **Agent-readiness detectors** (AGENT namespace): agents are both readers
   and writers of your site — `llms.txt` and Markdown content negotiation shape
   what they consume; MCP Server Cards and A2A Agent Cards expose what they can
@@ -93,7 +101,15 @@ Diagnose installation problems:
 
 ```bash
 npx @nebulacomponents/citable doctor
+npx @nebulacomponents/citable doctor --json
 ```
+
+`doctor` also reports independent runtime capability states for optional
+Playwright rendering, local Lighthouse, OCR, CrUX, GSC, and GA4 collection.
+Missing optional dependencies or credentials do not fail installer integrity.
+A `ready` capability establishes dependency or credential presence only; the
+reported limitations preserve that browser launch, authorization, property
+access, quota, and collection success remain untested.
 
 The npm package is scoped as `@nebulacomponents/citable`; the installed
 executable is still named `citable`.
@@ -128,8 +144,13 @@ used. Symlink mode is intentionally unsupported: provider-specific payloads and
 their manifests must remain an atomic managed unit so validation and uninstall
 do not cross ownership boundaries.
 
-The initial installer installs the skill payload only. It does not install
-provider hooks, sidecar configuration, telemetry, or unrelated agent settings.
+Claude Code installs also receive separately manifested profiles under
+`.claude/agents/citable/` or `~/.claude/agents/citable/`. Profile collisions,
+local modifications, updates, and uninstall use the same managed-copy
+boundaries as the skill. See [Agent profiles](docs/AGENT_PROFILES.md).
+Other providers receive the skill only until their native profile discovery
+and permission contracts are verified. The installer does not install provider
+hooks, MCP configuration, telemetry, or unrelated agent settings.
 The package ships `dist/universal/` for offline installation from the npm
 tarball; no Git checkout or npm cache files are required after installation.
 Windows PowerShell, Linux shells, and macOS shells are supported through Node's
@@ -146,12 +167,14 @@ npx @nebulacomponents/citable help
 
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)
+citable plan-audit --target ./dist --base-url https://example.com # read-only profile/capability plan
 citable audit --target ./dist --base-url https://example.com
 citable action-plan <run-id> # ordered actions, blockers, review gates, verification
 citable observe passages --target ./dist --base-url https://example.com
 citable observe index --input search-console-export.json
 citable observe citations --input prompt-results.json --target https://example.com
 citable observe logs --input edge-logs.json
+citable observe probes --target https://example.com --region local-office
 citable observe bing --dataset ai_performance --input bing-ai-performance.csv
 citable observe consensus --target ./dist --base-url https://example.com
 citable observe performance --target https://example.com # CRUX_API_KEY
@@ -202,6 +225,20 @@ citable validate              # registry schema + referential integrity
 
 ## Documentation
 
+- [Documentation index](docs/README.md) — task-oriented navigation for users,
+  operators, and reviewers
+- [Getting started](docs/GETTING_STARTED.md) — five-minute workflow, persona
+  routes, evidence journey, and annotated synthetic-fixture output
+- [Command guide](docs/COMMANDS.md) — workflow-oriented command families and
+  evidence boundaries
+- [Agent profiles](docs/AGENT_PROFILES.md) — Claude auditor and semantic-review
+  roles, installation, routing, and authority boundaries
+- [Integrations](docs/INTEGRATIONS.md) — current connectors, import contracts,
+  and the proposed fail-closed MCP transport
+- [Troubleshooting](docs/TROUBLESHOOTING.md) — incomplete collection,
+  authorization, import, and governance failures
+- [Migrations](docs/MIGRATIONS.md) — contract migration workflow and current
+  schema notes
 - [Architecture decision record](docs/architecture/adr-001-architecture.md)
 - [Traceability matrix](docs/architecture/traceability-matrix.md) — every
   material source requirement mapped to a control
@@ -216,8 +253,6 @@ citable validate              # registry schema + referential integrity
 - [Reviewer and exception governance](docs/governance/reviewer-exceptions.md) —
   policy-driven authority, separation of duties, expiry, invalidation, and
   immutable enforcement dispositions
-- [Known limitations](docs/known-limitations.md) includes medium-specific PDF,
-  transcript, image-context, and optional OCR boundaries.
 
 ## Community And Governance
 

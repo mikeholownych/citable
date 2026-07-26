@@ -9,6 +9,20 @@
     "schema_version": { "const": 1 },
     "plan_id": { "type": "string", "pattern": "^BROWSER-PLAN-[A-Z0-9_-]+$" },
     "target": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "semantic_impact_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "review_owner", "min_text_retention_ratio", "require_heading_parity", "require_link_parity", "require_structured_data_parity", "limitations"],
+      "properties": {
+        "policy_id": { "type": "string", "pattern": "^RENDER-POLICY-[A-Z0-9_-]+$" },
+        "review_owner": { "type": "string", "minLength": 1 },
+        "min_text_retention_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "require_heading_parity": { "type": "boolean" },
+        "require_link_parity": { "type": "boolean" },
+        "require_structured_data_parity": { "type": "boolean" },
+        "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
     "profiles": {
       "type": "array",
       "minItems": 1,

@@ -23,6 +23,9 @@ entries:
     evidence_references: [EVD-ARCH-SPEC]
     content_owner: Content Owner
     factual_reviewer: SME Reviewer
+    author_entities: [ENT-AUTHOR]
+    publisher_entity: ENT-ORG
+    correction_path: /corrections/
     lifecycle_class: product_capability
     review_cadence: release-driven
     next_review_date: "2026-12-01"

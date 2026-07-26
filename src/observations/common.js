@@ -51,6 +51,17 @@ export function summarizeObservations(items) {
     providers[provider].runs++;
     if (item.data.property_cited) providers[provider].property_cited++;
   }
+  const competitiveSourceMap = new Map();
+  for (const review of reviews.filter((item) => !item.data.first_party)) {
+    let domain;
+    try { domain = new URL(review.data.canonical_url).hostname; } catch { continue; }
+    const current = competitiveSourceMap.get(domain) || { domain, citation_count: 0, declared_profiles: [] };
+    current.citation_count++;
+    if (review.data.source_profile && !current.declared_profiles.some((item) => JSON.stringify(item) === JSON.stringify(review.data.source_profile))) {
+      current.declared_profiles.push(review.data.source_profile);
+    }
+    competitiveSourceMap.set(domain, current);
+  }
   return {
     total: items.length, by_kind: byKind, by_state: byState,
     citation_metrics: citations.length ? {
@@ -61,6 +72,7 @@ export function summarizeObservations(items) {
       claim_diff: claimDiffCounts,
       provider_results: providers,
       competitive_domains: [...new Set(reviews.filter((x) => !x.data.first_party).map((x) => { try { return new URL(x.data.canonical_url).hostname; } catch { return null; } }).filter(Boolean))].sort(),
+      competitive_sources: [...competitiveSourceMap.values()].sort((a, b) => a.domain.localeCompare(b.domain)),
     } : null,
   };
 }

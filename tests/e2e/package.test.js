@@ -19,6 +19,9 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
   const dryFiles = new Set(dry.files.map((file) => file.path));
   assert.ok(dryFiles.has('cli/bin/citable.js'));
   assert.ok(dryFiles.has('dist/universal/.claude/skills/citable/SKILL.md'));
+  assert.ok(dryFiles.has('dist/universal/.claude/agents/citable/citable-auditor.md'));
+  assert.ok(dryFiles.has('dist/universal/.claude/agents/citable/citable-semantic-reviewer.md'));
+  assert.ok(dryFiles.has('dist/universal/.claude/agents/citable/manifest.json'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/SKILL.md'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/schemas/metric.schema.json'));
   assert.ok(dryFiles.has('dist/universal/.agents/skills/citable/schemas/crawler-identity.schema.json'));
@@ -65,5 +68,7 @@ test('packed npm artifact contains runtime files and installs with npx', { timeo
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   assert.equal(fs.existsSync(path.join(project, '.claude', 'skills', 'citable', 'SKILL.md')), true);
+  assert.equal(fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-auditor.md')), true);
+  assert.equal(fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-semantic-reviewer.md')), true);
   assert.equal(fs.existsSync(path.join(project, '.agents', 'skills', 'citable', 'manifest.json')), true);
 });

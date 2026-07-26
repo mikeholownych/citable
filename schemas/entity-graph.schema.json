@@ -1,0 +1,75 @@
+{
+  "$id": "citable://schemas/entity-graph.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Normalized JSON-LD entity graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "nodes", "edges", "unresolved_references", "parse_failures", "limitations"],
+  "properties": {
+    "version": { "const": 1 },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "types", "names", "source_blocks", "visible_support"],
+        "properties": {
+          "node_id": { "type": "string", "minLength": 1 },
+          "types": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+          "names": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+          "source_blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url", "block_hash"],
+              "properties": {
+                "url": { "type": "string", "minLength": 1 },
+                "block_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              }
+            }
+          },
+          "visible_support": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "matched_fields"],
+            "properties": {
+              "status": { "type": "string", "enum": ["supported", "not_observed", "not_testable"] },
+              "matched_fields": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+            }
+          }
+        }
+      }
+    },
+    "edges": { "type": "array", "items": { "$ref": "#/definitions/edge" } },
+    "unresolved_references": { "type": "array", "items": { "$ref": "#/definitions/edge" } },
+    "parse_failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "error", "raw_hash"],
+        "properties": {
+          "url": { "type": "string", "minLength": 1 },
+          "error": { "type": "string", "minLength": 1 },
+          "raw_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  },
+  "definitions": {
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "relation", "target_id", "source_url", "target_declared"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "relation": { "type": "string", "minLength": 1 },
+        "target_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": "string", "minLength": 1 },
+        "target_declared": { "type": "boolean" }
+      }
+    }
+  }
+}

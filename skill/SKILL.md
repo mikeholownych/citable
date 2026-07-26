@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.13.1
+version: 1.14.0
 ---
 
 # Citable — evidence and change control for search and AI citation readiness
@@ -87,6 +87,7 @@ prefer running it over re-deriving its checks by hand:
 ```
 citable init                        # initialize .citable/ (non-destructive)
 citable audit [scope] --target <dir|url> [--base-url <url>] [--ref-date YYYY-MM-DD]
+citable plan-audit --target <dir|url> [--base-url <url>]
 citable inspect <page> --target <dir|url>
 citable map-claims --target <dir|url> [--write]
 citable substantiate [--write]
@@ -94,8 +95,10 @@ citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
-citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
+citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance evidence
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
+citable observe probes --target <url> [--region <label>]
+citable observe network --input <regional-network-import.json>
 citable observe render --target <url> [--interactions] [--resume-run <run-id>]
 citable observe render --input <browser-evidence-plan.json>
 citable observe performance --target <url> --lighthouse [--repeat 1..5]
@@ -134,8 +137,14 @@ citable artifacts import --input <directory>
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
 lifecycle corroboration`. Every audit writes an evidence package to
 `.citable/runs/<run-id>/` (manifest, findings.json, report.md, headers, robots,
-sitemaps, schema, link graph, checksums). A report without its evidence package
-is not a deliverable.
+sitemaps, raw JSON-LD, normalized entity graph, link graph, checksums). The
+entity graph preserves declared nodes, relations, unresolved references, parse
+failures, and literal visible-text support; it does not prove semantic
+correctness or search-engine recognition. The source identity-chain artifact
+joins declared publisher, author affiliations, content owner, factual reviewer,
+evidence owner, and correction path while preserving missing links. Registry
+linkage does not prove that disclosures are visible, current, or independent.
+A report without its evidence package is not a deliverable.
 
 ## Finding-to-action protocol
 

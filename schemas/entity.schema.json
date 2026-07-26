@@ -23,6 +23,19 @@
         "canonical_url": { "type": "string" },
         "external_identifiers": { "type": "array", "items": { "type": ["string", "object"] } },
         "authoritative_profiles": { "type": "array", "items": { "type": "string" } },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entity_id", "relationship", "disclosure_status"],
+            "properties": {
+              "entity_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
+              "relationship": { "type": "string", "enum": ["employee", "contractor", "member", "owner", "partner", "other"] },
+              "disclosure_status": { "type": "string", "enum": ["disclosed", "not_disclosed", "unknown"] }
+            }
+          }
+        },
         "category": { "type": "string" },
         "secondary_categories": { "type": "array", "items": { "type": "string" } },
         "definition": { "type": "string" },

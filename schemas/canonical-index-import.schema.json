@@ -1,0 +1,30 @@
+{
+  "$id": "citable://schemas/canonical-index-import.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Engine-selected canonical import",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "collected_at", "collection_authority", "authenticity_status", "observations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "collection_authority": { "type": "string", "enum": ["owner_export", "third_party_export"] },
+    "authenticity_status": { "type": "string", "enum": ["cryptographically_authenticated", "owner_attested", "transport_authenticated", "checksum_protected_only", "unverified"] },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "engine", "selected_canonical", "indexed", "observed_at"],
+        "properties": {
+          "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "engine": { "type": "string", "minLength": 1 },
+          "selected_canonical": { "type": ["string", "null"], "format": "uri" },
+          "indexed": { "type": ["boolean", "null"] },
+          "observed_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

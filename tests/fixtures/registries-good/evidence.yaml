@@ -5,6 +5,7 @@ entries:
     title: Gatekeeper architecture specification v2
     evidence_type: architecture_specification
     source: internal://specs/gatekeeper-v2.md
+    source_owner: Example Evidence Team
     primary_or_secondary: primary
     supports_claims: [CLAIM-ENFORCE]
     methodology: design review

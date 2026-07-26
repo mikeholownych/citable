@@ -58,8 +58,13 @@ function renderPlan(plan) {
       lines.push(`### ${action.priority.toUpperCase()} · ${action.action_id} · ${action.status}`);
       lines.push('', `- Subject: \`${action.subject}\``, `- Action: ${action.action}`);
       lines.push(`- Owner: ${action.owner ?? 'unassigned'}`);
+      lines.push(`- Decision owner: ${action.decision_owner ?? 'unassigned'}`);
+      lines.push(`- Dependencies: ${action.depends_on_action_ids.length ? action.depends_on_action_ids.join(', ') : 'none established'}`);
       if (action.required_input.length) lines.push(`- Required input: ${action.required_input.join(', ')}`);
       if (action.semantic_gates.length) lines.push(`- Semantic gates: ${action.semantic_gates.join(', ')}`);
+      lines.push(`- Failure condition: ${action.failure_condition}`);
+      lines.push(`- Leading indicators: ${action.leading_indicators.length ? action.leading_indicators.join(', ') : 'none established'}`);
+      lines.push(`- Monitoring window: ${action.monitoring_window ?? 'not established'}`);
       lines.push(`- Verify: \`${action.verification.command}\``, '');
     }
   }
@@ -84,15 +89,20 @@ export function actionPlan(root, { runId } = {}) {
     return {
       action_id: `ACT-${finding.finding_id.replace(/^F-/, '')}`,
       finding_ids: [finding.finding_id],
+      depends_on_action_ids: [],
       phase: phaseFor(finding),
       priority: ['informational', 'experimental'].includes(finding.classification.severity) ? 'low' : finding.classification.severity,
       subject: finding.subject.identifier,
       action: finding.remediation.preferred,
       owner,
+      decision_owner: owner,
       status: blocked ? 'blocked' : 'ready',
       required_input: blocked ? toStringArray([checklistItem('owner', 'accountable owner')]) : [],
       semantic_gates: semanticGates(finding),
       unsafe_shortcuts: finding.remediation.unsafe_shortcuts || [],
+      failure_condition: `${finding.verification.detector_to_rerun} still reports the exact subject, or verification cannot complete with sufficient evidence`,
+      leading_indicators: [],
+      monitoring_window: null,
       verification: {
         method: finding.verification.method,
         detector: finding.verification.detector_to_rerun,

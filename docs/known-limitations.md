@@ -129,8 +129,12 @@ convict.
 
 - URL fetching requires network access, remains same-origin, rejects private
   destinations, and enforces redirect/time/body limits. Run against production
-  only with permission; DNS policy checks reduce but do not eliminate all
-  network-environment risk.
+  only with permission. Browser targets, subresources, and journey navigation
+  use the same public-destination policy; custom citation adapters additionally
+  require HTTPS and refuse redirects. DNS is validated before collection, but
+  the validated address is not pinned to the Node or browser connection, so
+  DNS rebinding remains a residual risk. Use network-level egress controls for
+  untrusted targets.
 - Framework detection covers the mainstream JS ecosystem (Next/Astro/Nuxt/
   SvelteKit/Gatsby); other stacks are audited via built HTML output only.
 

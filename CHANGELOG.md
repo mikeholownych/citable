@@ -15,6 +15,168 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.14.0 — 2026-07-26
+
+### Added — Evidence-Phase Agent Profiles
+
+- Added canonical `citable-auditor` and `citable-semantic-reviewer` profiles.
+  The auditor may run guarded Citable collection commands but cannot edit the
+  target; the reviewer is read-only and cannot collect evidence, approve
+  publication, or upgrade claims.
+- Claude Code installs generate and manage the profiles under its recursively
+  discovered agent directory with a separate hash manifest. Dry-run, check,
+  collision refusal, idempotent update, and uninstall preserve the profile
+  boundary independently from the skill.
+- Other agent hosts continue to receive the canonical skill but report native
+  profiles as unsupported until their discovery and permission contracts are
+  verified.
+
+### Documentation — Task Guides and MCP Transport Roadmap
+
+- Added task-oriented command, integration, troubleshooting, and migration
+  guides with a documentation index.
+- Documented MCP as a future evidence transport rather than an authority,
+  including staged delivery, provenance requirements, security gates, and
+  explicit non-goals. Citable does not currently implement an MCP client or
+  connector.
+
+### Added — Question-to-Passage Review Context
+
+- Passage observations now use a versioned record and join each page's declared
+  prompt IDs to canonical questions and expected answer components.
+- Registry linkage creates review context only. Every candidate remains
+  `review_required`; Citable does not infer question-to-passage suitability or
+  semantic completeness.
+
+### Added — Regional Network Imports
+
+- `observe network --input <regional-network-import.json>` validates and seals
+  timestamped regional observations covering network label, request identity,
+  DNS answers, TLS authorization and certificate fingerprint, HTTP status,
+  latency, and cache state.
+- Authority, authenticity, and representativeness remain explicit. Citable does
+  not operate a managed multi-region runner, infer global coverage, or treat
+  imported probes as crawler-identity evidence.
+
+### Added — Render Semantic Review Policies
+
+- Browser evidence plans may declare a semantic-impact policy with a review
+  owner and thresholds for main-text retention, headings, links, and structured
+  data. Each successful journey records deterministic initial/rendered hashes,
+  additions, removals, and policy violations.
+- Policy evaluation always remains `review_required`. A passing deterministic
+  comparison does not establish semantic, retrieval, citation, ranking, or
+  business equivalence.
+
+### Added — Engine Canonical Consensus
+
+- `observe consensus --input <canonical-index-import.json>` joins strict,
+  timestamped engine-selected canonical observations with final URL, HTML,
+  Open Graph, and sitemap signals.
+- Collection authority and authenticity remain attached to each engine
+  observation. Missing engine evidence remains `null`, and malformed or
+  incomplete imports fail closed.
+
+### Added — Competitive Citation Profiles
+
+- Citation objects may carry a strict source profile with content format, word
+  and heading counts, freshness date, and disclosed evidence features.
+  Observation summaries group unique declared profiles and citation counts by
+  competing domain.
+- Malformed profile fields fail closed. Profile metadata remains imported
+  comparative evidence and is not treated as an independently fetched quality,
+  authority, or ranking assessment.
+
+### Migration — Source Identity Chains
+
+- Page records gain optional `author_entities`, `publisher_entity`, and
+  `correction_path` fields; entity records gain structured affiliation
+  disclosures. Existing registries remain valid, while populated records feed
+  the new `identity/source-chain.json` audit artifact.
+- The versioned chain joins publisher, author affiliation, content owner,
+  factual reviewer, evidence owner, and correction path, preserving every
+  missing link. These are declared registry relationships and do not prove
+  visible, current, or independent disclosure.
+
+### Added — Repeated-Region Extraction Evidence
+
+- Passage observations now record raw/extracted byte ratios, raw-visible versus
+  extracted token ratios, and exact structural-region hashes for headers,
+  navigation, asides, and footers.
+- Regions occurring on two or more pages in the audited cohort are labelled
+  `repeated_site_region`; other captured regions remain `page_local_region`.
+  These are descriptive extraction signals and do not establish content harm,
+  retrieval effects, or ranking effects.
+
+### Added — Normalized Entity Graphs
+
+- Every site audit now writes `schema/entity-graph.json` alongside the preserved
+  raw JSON-LD artifact. The versioned graph contract merges stable `@id` nodes,
+  records source-block hashes, normalizes declared relations, and retains
+  undeclared targets and JSON parse failures.
+- Visible-content support is a bounded literal match over names, headlines, and
+  descriptions. It does not establish semantic correctness, structured-data
+  eligibility, search-engine recognition, or ranking impact.
+
+### Added — Freshness Consensus
+
+- `observe consensus` now records normalized HTTP `Last-Modified`, sitemap
+  `lastmod`, and visible/meta modification signals, including invalid values
+  excluded from comparison. It distinguishes aligned, conflicting, and
+  insufficient signal sets.
+- Current page hashes are compared with the latest immutable audit snapshot.
+  A difference records only the interval after the prior capture in which a
+  change was observed; it does not assert the exact modification time, cause,
+  quality, or ranking effect. Page lifecycle review dates remain separate
+  governance metadata.
+
+### Added — Per-Agent Synthetic Probes
+
+- `observe probes --target <URL> [--region <label>]` exercises every active
+  identity declared in `crawlers.yaml`. Each immutable observation preserves
+  the status, redirects, response hash, allowlisted diagnostic headers, raw
+  body, region label, and coarse accessible/challenged/blocked/error
+  classification.
+- Probe evidence is always labelled synthetic and single-observation. Spoofed
+  user agents never establish verified crawler identity, production access,
+  regional representativeness, or policy enforcement. Partial failures remain
+  explicit and sensitive response headers are not persisted.
+
+### Migration — Corroboration Imports
+
+- `observe corroboration` now requires the versioned
+  `corroboration-import.schema.json` contract. Imports must disclose collection
+  authority, authenticity, representativeness, population coverage, source
+  control, and relationship status. Legacy arrays and `independent` booleans
+  are rejected; fixtures and integrations must migrate to `schema_version: 1`.
+- Independence is classified only when control is declared `independent` and
+  the relationship is `none_disclosed`. Every resulting observation preserves
+  the import authority and coverage while stating that a mention alone does
+  not establish authority, support, ranking impact, citation eligibility, or
+  representative coverage.
+
+### Security — Outbound Collection
+
+- Browser render targets, browser-plan targets and navigation, and every
+  Playwright subresource now share the crawler's public-destination policy.
+  Controlled citation adapters require HTTPS, reject configured non-public
+  ranges, and refuse redirects. The blocked range set now includes IPv4/IPv6
+  documentation ranges and IPv4 benchmarking/reserved ranges. Safe
+  browser-local `data:`, `blob:`, and `about:` resources remain usable.
+- DNS validation and connection address pinning remain distinct: Node fetch and
+  Playwright do not currently bind the validated DNS result to the subsequent
+  connection. This residual rebinding risk is now explicit in security and
+  known-limitations documentation, with isolated execution and network egress
+  controls required for untrusted targets.
+
+### Added — Action Plans
+
+- Generated actions now expose dependency IDs, decision ownership, explicit
+  failure conditions, leading indicators, and monitoring windows. The schema
+  additions are optional for compatibility with existing action-plan
+  artifacts; newly generated plans leave unsupported dependencies and
+  indicators empty instead of inventing causal or sequencing relationships.
+
 ### Migration — Provenance seededFrom
 
 - `common.defs.json`'s shared `provenance` definition (used by claim, entity,
@@ -25,6 +187,16 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ### Added — CLI
 
+- `citable plan-audit` performs a read-only target inspection, labels business
+  profiles as evidence-backed probabilistic inferences, proposes the full audit
+  and profile-specific semantic emphasis, and reports optional collectors as
+  available or blocked. It creates no audit, observation, snapshot, or
+  remediation artifact.
+- `citable doctor` now includes a read-only runtime capability matrix for
+  Playwright rendering, local Lighthouse, OCR, CrUX, GSC, and GA4. Optional
+  gaps do not fail installer integrity, credential values are never emitted,
+  and `ready` means prerequisite presence rather than proven launch,
+  authorization, property access, or collection success.
 - `citable init --seed <name>` overlays a bundled starter registry bundle
   (v1 ships `saas-pricing`) onto `.citable/`. Every seeded record is stamped
   `status: unverified` and `provenance.seededFrom`, regardless of what the
@@ -42,6 +214,14 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
   assertion is or isn't supported by the caller's own evidence — and never
   claims to have live-queried an answer engine. Degrades gracefully to
   `unsupported` when no `.citable/` registry exists yet.
+
+### Added — Documentation
+
+- A task-oriented getting-started guide now provides persona-specific entry
+  points, a five-minute audit-to-action workflow, an evidence-journey map,
+  interpretation mistakes, and excerpts generated from the bundled synthetic
+  fixture. The examples preserve `pass`, `not_established`, and
+  `not_evidenced` as separate states and make no live-property outcome claims.
 
 ### Added — Demo
 

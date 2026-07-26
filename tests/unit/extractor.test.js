@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { extractPage } from '../../src/extractor/page.js';
 import { parseRobots, isAllowed } from '../../src/crawler/robots.js';
 import { parseSitemap } from '../../src/crawler/sitemap.js';
-import { fetchUrl } from '../../src/crawler/fetch.js';
+import { fetchUrl, handlePublicBrowserRoute } from '../../src/crawler/fetch.js';
 
 test('extractPage captures title, canonical, robots, headings, links, jsonld', () => {
   const html = `<!doctype html><html lang="en"><head><title>T</title>
     <meta name="description" content="D"><meta name="robots" content="noindex, nosnippet">
     <link rel="canonical" href="https://x.test/a/">
     <script type="application/ld+json">{"@type":"Organization","name":"X"}</script>
-    </head><body><h1>H</h1><h2>Sub</h2><p>Hello world text.</p><a href="/b/">to b</a>
+    </head><body><header>Shared masthead words</header><nav>Shared navigation words</nav>
+    <h1>H</h1><h2>Sub</h2><p>Hello world text.</p><a href="/b/">to b</a>
     <div style="display:none">hidden secret</div></body></html>`;
   const p = extractPage({ url: 'https://x.test/a/', html });
   assert.equal(p.title, 'T');
@@ -24,6 +25,8 @@ test('extractPage captures title, canonical, robots, headings, links, jsonld', (
   assert.equal(p.jsonLd[0].blocks[0].name, 'X');
   assert.ok(p.hiddenTexts.includes('hidden secret'));
   assert.ok(p.wordCount > 0);
+  assert.equal(p.structuralRegions.length, 2);
+  assert.ok(p.rawVisibleWordCount > p.wordCount);
 });
 
 test('extractPage reports JSON-LD parse errors without throwing', () => {
@@ -63,7 +66,7 @@ test('sitemap parser: urlset and index', () => {
   assert.equal(i.children.length, 1);
 });
 
-const publicLookup = async () => [{ address: '203.0.113.10', family: 4 }];
+const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('fetchUrl refuses redirects outside the audited origin', async () => {
   const fetchImpl = async () => new Response(null, {
@@ -85,6 +88,40 @@ test('fetchUrl refuses private and loopback destinations', async () => {
     fetchUrl('http://[::1]/private', { fetchImpl: globalThis.fetch }),
     /private|loopback/i,
   );
+});
+
+test('fetchUrl refuses documentation and benchmark address ranges', async () => {
+  for (const url of [
+    'http://192.0.2.1/',
+    'http://198.18.0.1/',
+    'http://198.51.100.1/',
+    'http://203.0.113.1/',
+    'http://[2001:db8::1]/',
+  ]) {
+    await assert.rejects(
+      fetchUrl(url, { fetchImpl: globalThis.fetch }),
+      /private|loopback|non-public/i,
+      url,
+    );
+  }
+});
+
+test('browser route guard allows safe local schemes and aborts private or unsupported requests', async () => {
+  const outcome = async (url) => {
+    let state = null;
+    await handlePublicBrowserRoute({
+      request: () => ({ url: () => url }),
+      continue: async () => { state = 'continued'; },
+      abort: async () => { state = 'aborted'; },
+    }, { lookup: publicLookup });
+    return state;
+  };
+  assert.equal(await outcome('data:text/plain,hello'), 'continued');
+  assert.equal(await outcome('blob:https://audit.example/id'), 'continued');
+  assert.equal(await outcome('about:blank'), 'continued');
+  assert.equal(await outcome('https://audit.example/image.png'), 'continued');
+  assert.equal(await outcome('http://127.0.0.1/internal'), 'aborted');
+  assert.equal(await outcome('file:///etc/passwd'), 'aborted');
 });
 
 test('fetchUrl rejects response bodies above the configured byte limit', async () => {

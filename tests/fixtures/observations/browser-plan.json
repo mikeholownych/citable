@@ -2,6 +2,15 @@
   "schema_version": 1,
   "plan_id": "BROWSER-PLAN-FIXTURE",
   "target": "https://example.test/",
+  "semantic_impact_policy": {
+    "policy_id": "RENDER-POLICY-FIXTURE",
+    "review_owner": "Fixture Semantic Reviewer",
+    "min_text_retention_ratio": 0.8,
+    "require_heading_parity": true,
+    "require_link_parity": true,
+    "require_structured_data_parity": true,
+    "limitations": ["Deterministic parity checks do not replace semantic review."]
+  },
   "profiles": [
     {
       "profile_id": "chromium-desktop",

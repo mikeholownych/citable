@@ -26,3 +26,15 @@ entries:
     status: verified
     last_verified: "2026-06-01"
     owner: Entity Owner
+  - entity_id: ENT-AUTHOR
+    canonical_name: Alex Example
+    entity_type: author
+    owner_entity: ENT-ORG
+    canonical_url: https://example.test/authors/alex-example/
+    affiliations:
+      - entity_id: ENT-ORG
+        relationship: employee
+        disclosure_status: disclosed
+    status: verified
+    last_verified: "2026-06-01"
+    owner: Entity Owner

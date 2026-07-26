@@ -4,9 +4,11 @@ import net from 'node:net';
 const blockedAddresses = new net.BlockList();
 for (const [network, prefix] of [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
-  ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.168.0.0', 16], ['224.0.0.0', 4],
+  ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
+  ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24],
+  ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4],
 ]) blockedAddresses.addSubnet(network, prefix, 'ipv4');
-for (const [network, prefix] of [['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]]) {
+for (const [network, prefix] of [['::', 128], ['::1', 128], ['2001:db8::', 32], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]]) {
   blockedAddresses.addSubnet(network, prefix, 'ipv6');
 }
 
@@ -19,7 +21,7 @@ function isBlockedAddress(address) {
   return blockedAddresses.check(address, family === 4 ? 'ipv4' : 'ipv6');
 }
 
-async function validateDestination(url, lookup) {
+export async function validatePublicUrl(url, { lookup = dns.promises.lookup } = {}) {
   const parsed = new URL(url);
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(`unsupported URL protocol: ${parsed.protocol}`);
   if (parsed.username || parsed.password) throw new Error('URL credentials are not permitted');
@@ -32,6 +34,32 @@ async function validateDestination(url, lookup) {
     throw new Error(`refusing private, loopback, or non-public destination: ${hostname}`);
   }
   return parsed;
+}
+
+/** Enforce the public-network policy for each Playwright request. */
+export async function handlePublicBrowserRoute(route, { lookup = dns.promises.lookup } = {}) {
+  const url = route.request().url();
+  let protocol;
+  try {
+    protocol = new URL(url).protocol;
+  } catch {
+    await route.abort('blockedbyclient');
+    return;
+  }
+  if (['data:', 'blob:', 'about:'].includes(protocol)) {
+    await route.continue();
+    return;
+  }
+  if (!['http:', 'https:'].includes(protocol)) {
+    await route.abort('blockedbyclient');
+    return;
+  }
+  try {
+    await validatePublicUrl(url, { lookup });
+    await route.continue();
+  } catch {
+    await route.abort('blockedbyclient');
+  }
 }
 
 async function readBodyLimited(res, maxBodyBytes) {
@@ -66,13 +94,13 @@ export async function fetchUrl(url, {
   maxRetries = 3, retryDelayMs = 1000, maxBodyBytes = 5 * 1024 * 1024,
   fetchImpl = globalThis.fetch, lookup = dns.promises.lookup,
 } = {}) {
-  const requested = await validateDestination(url, lookup);
+  const requested = await validatePublicUrl(url, { lookup });
   const allowedOrigin = requested.origin;
   const chain = [];
   let current = requested.href;
 
   for (let redirects = 0; redirects <= maxRedirects; redirects += 1) {
-    await validateDestination(current, lookup);
+    await validatePublicUrl(current, { lookup });
     let res;
     let lastError;
     for (let attempt = 0; attempt < Math.max(1, maxRetries); attempt += 1) {
@@ -108,7 +136,7 @@ export async function fetchUrl(url, {
       if (redirects === maxRedirects) break;
       const next = new URL(headers.location, current);
       if (next.origin !== allowedOrigin) throw new Error(`redirect leaves audited origin: ${next.href}`);
-      await validateDestination(next.href, lookup);
+      await validatePublicUrl(next.href, { lookup });
       chain.push({ url: current, status: res.status, location: headers.location });
       current = next.href;
       await res.body?.cancel();
