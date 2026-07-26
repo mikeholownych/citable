@@ -15,6 +15,8 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.14.0 — 2026-07-26
+
 ### Added — Evidence-Phase Agent Profiles
 
 - Added canonical `citable-auditor` and `citable-semantic-reviewer` profiles.
