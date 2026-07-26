@@ -4,6 +4,8 @@ node_modules/
 !.env.example
 dist/
 coverage/
+graphify-out/
+tasks/lessons.md
 .citable/runs/
 .citable/snapshots/
 .citable/
