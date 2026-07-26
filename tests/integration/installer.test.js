@@ -6,6 +6,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   checkCommand,
+  doctorCommand,
   installCommand,
   parseInstallerArgs,
   uninstallCommand,
@@ -113,6 +114,39 @@ test('uninstall removes managed files and preserves unrelated user files', async
   assert.equal(removed.ok, true);
   assert.equal(fs.existsSync(path.join(skillDir, 'SKILL.md')), false);
   assert.equal(fs.readFileSync(path.join(skillDir, 'local-notes.md'), 'utf8'), 'keep me\n');
+});
+
+test('doctor reports optional runtime capabilities independently without exposing credentials', async () => {
+  const { options } = tmpProject('citable-doctor-');
+  const secret = 'not-for-output';
+  const result = await doctorCommand(
+    parseInstallerArgs(['--providers=claude', '--project', '--json']),
+    {
+      ...options,
+      env: {
+        ...options.env,
+        CRUX_API_KEY: secret,
+        GSC_ACCESS_TOKEN: secret,
+      },
+      capabilityResolver: async (name) => ({
+        playwright: true,
+        lighthouse: true,
+        'chrome-launcher': false,
+        'tesseract.js': false,
+      })[name] ?? false,
+    },
+  );
+
+  assert.deepEqual(result.capabilities, [
+    { id: 'browser_render', state: 'ready', requirements: ['playwright'], limitations: ['dependency presence does not establish browser launch readiness'] },
+    { id: 'lighthouse_lab', state: 'missing_dependency', requirements: ['lighthouse', 'chrome-launcher'], limitations: ['optional dependency chrome-launcher is not installed'] },
+    { id: 'ocr', state: 'missing_dependency', requirements: ['tesseract.js'], limitations: ['optional dependency tesseract.js is not installed'] },
+    { id: 'crux_field', state: 'ready', requirements: ['CRUX_API_KEY'], limitations: ['credential presence does not establish validity, scope, quota, or API availability'] },
+    { id: 'gsc_index', state: 'ready', requirements: ['GSC_ACCESS_TOKEN'], limitations: ['credential presence does not establish validity, scope, property access, or API availability'] },
+    { id: 'ga4_metrics', state: 'missing_credential', requirements: ['GA4_ACCESS_TOKEN'], limitations: ['GA4_ACCESS_TOKEN is not configured'] },
+  ]);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+  assert.equal(result.ok, true, 'missing optional capabilities must not fail installer integrity');
 });
 
 function readJsonOrNull(filePath) {

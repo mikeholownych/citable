@@ -42,5 +42,19 @@ Optional browser, OCR, connector, imported-log, and third-party adapter paths
 have additional trust boundaries documented in the repository. Run audits only
 against properties you are authorized to assess.
 
+Outbound raw HTTP, browser targets and subresources, browser-plan navigation,
+and controlled citation-adapter endpoints reject credentials in URLs and
+private, loopback, link-local, reserved, documentation, benchmark, multicast,
+and other configured non-public address ranges. Citation adapters require
+HTTPS and refuse redirects. Browser routing permits only public HTTP(S) plus
+browser-local `data:`, `blob:`, and `about:` resources; other schemes abort.
+
+Hostname policy is checked through DNS before a request, but the current Node
+and Playwright transports do not pin the validated address to the subsequent
+connection. DNS rebinding between validation and connection therefore remains
+a residual risk. Run untrusted remote collection inside an isolated environment
+with network-level egress controls; application validation is not a substitute
+for that boundary.
+
 The GEO-001 detector reports crawler prompt-injection content. Citable must not
 be used to create or distribute such content.

@@ -1,11 +1,14 @@
 import { envelope, observationRun, readInput } from './common.js';
-import { fetchUrl } from '../crawler/fetch.js';
+import { fetchUrl, handlePublicBrowserRoute, validatePublicUrl } from '../crawler/fetch.js';
 import { sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 
-async function executeStep(page, step) {
+async function executeStep(page, step, lookup) {
   const locator = step.locator ? page.locator(step.locator).first() : null;
-  if (step.action === 'navigate') await page.goto(step.url, { waitUntil: 'networkidle' });
+  if (step.action === 'navigate') {
+    await validatePublicUrl(step.url, lookup ? { lookup } : {});
+    await page.goto(step.url, { waitUntil: 'networkidle' });
+  }
   else if (step.action === 'click') await locator.click();
   else if (step.action === 'fill') {
     const value = process.env[step.value_env];
@@ -22,7 +25,7 @@ async function executeStep(page, step) {
   else if (step.action === 'scroll') await locator.scrollIntoViewIfNeeded();
 }
 
-async function playwrightCapture(profile, plan, playwright) {
+async function playwrightCapture(profile, plan, playwright, lookup) {
   if (profile.authentication_state !== 'anonymous') throw new Error(`authentication state ${profile.authentication_state} requires a disclosed custom adapter`);
   const browserType = playwright[profile.browser.engine];
   if (!browserType) throw new Error(`Playwright engine ${profile.browser.engine} is unavailable`);
@@ -35,6 +38,7 @@ async function playwrightCapture(profile, plan, playwright) {
       locale: profile.locale,
     });
     try {
+      await context.route('**/*', (route) => handlePublicBrowserRoute(route, lookup ? { lookup } : {}));
       const page = await context.newPage();
       const consoleErrors = [], networkFailures = [], steps = [], stepScreenshots = {};
       page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
@@ -43,7 +47,7 @@ async function playwrightCapture(profile, plan, playwright) {
       for (const step of profile.steps) {
         const record = { step_id: step.step_id, action: step.action, status: 'completed', failure: null, screenshot_ref: null };
         try {
-          await executeStep(page, step);
+          await executeStep(page, step, lookup);
           if (step.capture_screenshot) {
             record.screenshot_ref = `journeys/${profile.profile_id}/steps/${step.step_id}.png`;
             stepScreenshots[record.screenshot_ref] = await page.screenshot({ fullPage: true });
@@ -79,6 +83,7 @@ export async function observeBrowserPlan(root, options) {
   const check = validateAgainst('browser-evidence-plan.schema.json', plan);
   if (!check.valid) throw new Error(`browser evidence plan violates contract: ${check.errors.join('; ')}`);
   if (options.target && options.target !== plan.target) throw new Error('browser evidence target differs from the plan target');
+  await validatePublicUrl(plan.target, options.lookup ? { lookup: options.lookup } : {});
   const profileIds = plan.profiles.map((item) => item.profile_id);
   if (new Set(profileIds).size !== profileIds.length) throw new Error('browser evidence plan contains duplicate profile ids');
   const targetOrigin = new URL(plan.target).origin;
@@ -113,7 +118,7 @@ export async function observeBrowserPlan(root, options) {
     try {
       const capture = options.captureJourney
         ? await options.captureJourney(profile, plan)
-        : await playwrightCapture(profile, plan, playwright);
+        : await playwrightCapture(profile, plan, playwright, options.lookup);
       if (!capture || typeof capture.dom !== 'string' || typeof capture.text !== 'string' || typeof capture.browser_version !== 'string' || capture.screenshot == null) {
         throw new Error('browser adapter returned an incomplete capture contract');
       }

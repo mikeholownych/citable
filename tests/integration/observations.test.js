@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import http from 'node:http';
 import { init } from '../../src/commands/init.js';
 import { audit } from '../../src/commands/audit.js';
 import { observe } from '../../src/commands/observe.js';
@@ -15,6 +14,7 @@ import { readJson, sha256 } from '../../src/shared/io.js';
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
 const OBS = path.join(FIX, 'observations');
 const fresh = () => { const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-obs-')); init(root); return root; };
+const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('observation collectors normalize owner evidence and preserve boundaries', async () => {
   const root = fresh();
@@ -44,9 +44,99 @@ test('observation collectors normalize owner evidence and preserve boundaries', 
   assert.equal(performance.observations[0].data.evidence_type, 'field');
   const corroboration = await observe(root, 'corroboration', { input: path.join(OBS, 'corroboration.json') });
   assert.equal(corroboration.observations[0].confidence, 'high');
+  assert.deepEqual(corroboration.observations[0].authority, {
+    source_authority: 'independently_controlled',
+    collection_authority: 'third_party_export',
+    authenticity_status: 'checksum_protected_only',
+    representativeness: 'convenience_sample',
+  });
+  assert.match(corroboration.observations[0].limitations.join(' '), /does not establish.*authority|authority.*does not establish/i);
   for (const result of [index, citations, logs, performance, corroboration]) {
     assert.ok(fs.existsSync(path.join(result.dir, 'checksums.json')));
   }
+});
+
+test('corroboration imports reject legacy independence booleans and undisclosed control', async () => {
+  const root = fresh();
+  const legacy = path.join(root, 'legacy-corroboration.json');
+  fs.writeFileSync(legacy, JSON.stringify({
+    mentions: [{
+      url: 'https://publisher.example/report',
+      publisher: 'Publisher',
+      entity: 'Example',
+      independent: true,
+      observed_at: '2026-07-18T12:00:00Z',
+    }],
+  }));
+  await assert.rejects(observe(root, 'corroboration', { input: legacy }), /contract|schema_version|source_control/i);
+
+  const controlled = JSON.parse(fs.readFileSync(path.join(OBS, 'corroboration.json'), 'utf8'));
+  controlled.mentions[0].source_control = 'owner_controlled';
+  controlled.mentions[0].relationship_disclosure = 'unknown';
+  const controlledFile = path.join(root, 'controlled-corroboration.json');
+  fs.writeFileSync(controlledFile, JSON.stringify(controlled));
+  const result = await observe(root, 'corroboration', { input: controlledFile });
+  assert.equal(result.observations[0].confidence, 'low');
+  assert.match(result.observations[0].limitations.join(' '), /independence is not established/i);
+});
+
+test('crawler probes exercise every declared identity without becoming production access evidence', async () => {
+  const root = fresh();
+  const calls = [];
+  const result = await observe(root, 'probes', {
+    target: 'https://example.test/important',
+    region: 'local-fixture',
+    lookup: publicLookup,
+    fetchUrl: async (url, options) => {
+      calls.push({ url, userAgent: options.userAgent });
+      const challenged = options.userAgent === 'GPTBot';
+      return {
+        url,
+        status: challenged ? 403 : 200,
+        headers: challenged ? { 'content-type': 'text/html', 'cf-mitigated': 'challenge', 'set-cookie': 'secret=must-not-persist' } : { 'content-type': 'text/html' },
+        body: challenged ? '<title>Attention required</title>Verify you are human' : '<title>OK</title>Public content',
+        redirectChain: [],
+      };
+    },
+  });
+
+  assert.equal(calls.length, 8);
+  assert.equal(result.observations.length, 8);
+  assert.ok(result.observations.every((item) => item.kind === 'crawler_probe'));
+  assert.ok(result.observations.every((item) => item.collection_method === 'synthetic_fetch'));
+  assert.ok(result.observations.every((item) => item.authority.source_authority === 'synthetic'));
+  assert.ok(result.observations.every((item) => item.data.identity_status === 'synthetically_observed'));
+  assert.ok(result.observations.every((item) => item.data.production_access_established === false));
+  assert.equal(result.observations.find((item) => item.data.user_agent === 'GPTBot').data.edge_classification, 'challenged');
+  assert.ok(!JSON.stringify(result).includes('secret=must-not-persist'));
+  assert.match(result.observations[0].limitations.join(' '), /spoofed|synthetic.*not.*production/i);
+});
+
+test('crawler probes preserve partial failures and reject missing registry or unsafe targets', async () => {
+  const root = fresh();
+  let calls = 0;
+  const partial = await observe(root, 'probes', {
+    target: 'https://example.test/',
+    lookup: publicLookup,
+    fetchUrl: async (url, options) => {
+      calls++;
+      if (options.userAgent === 'ClaudeBot') throw new Error('fixture timeout');
+      return { url, status: 200, headers: {}, body: 'ok', redirectChain: [] };
+    },
+  });
+  assert.equal(calls, 8);
+  assert.equal(partial.manifest.status, 'incomplete');
+  assert.equal(partial.observations.find((item) => item.data.user_agent === 'ClaudeBot').state, 'failed');
+
+  const missing = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-no-registry-'));
+  await assert.rejects(observe(missing, 'probes', { target: 'https://example.test/' }), /crawlers.*registry|init/i);
+
+  let unsafeCalls = 0;
+  await assert.rejects(observe(root, 'probes', {
+    target: 'http://127.0.0.1/',
+    fetchUrl: async () => { unsafeCalls++; return {}; },
+  }), /private|loopback|non-public/i);
+  assert.equal(unsafeCalls, 0);
 });
 
 test('Bing owner exports preserve dataset boundaries and never imply ranking or causation', async () => {
@@ -77,28 +167,101 @@ test('passage and consensus collectors analyze site artifacts without external c
   assert.ok(consensus.observations.every((o) => o.data.engine_selected_canonical === null));
 });
 
+test('freshness consensus normalizes dated signals and preserves content-change intervals', async () => {
+  const root = fresh();
+  const site = path.join(root, 'freshness-site');
+  fs.cpSync(path.join(FIX, 'site-clean'), site, { recursive: true });
+  const indexFile = path.join(site, 'index.html');
+  fs.writeFileSync(indexFile, fs.readFileSync(indexFile, 'utf8').replace(
+    '</head>',
+    '<meta property="article:modified_time" content="2026-07-02T08:30:00Z"></head>',
+  ));
+  const pricingFile = path.join(site, 'pricing', 'index.html');
+  fs.writeFileSync(pricingFile, fs.readFileSync(pricingFile, 'utf8').replace(
+    '</head>',
+    '<meta property="article:modified_time" content="2026-02-30"></head>',
+  ));
+  const snapshotDir = path.join(root, '.citable', 'snapshots');
+  fs.mkdirSync(snapshotDir, { recursive: true });
+  fs.writeFileSync(path.join(snapshotDir, 'pages-latest.json'), JSON.stringify({
+    taken_at: '2026-07-01T00:00:00Z',
+    run_id: 'RUN-PRIOR',
+    pages: {
+      'https://example.test/': { contentHash: '0'.repeat(64), dateModified: null, status: 200 },
+    },
+  }));
+
+  const result = await observe(root, 'consensus', { target: site, baseUrl: 'https://example.test' });
+  const home = result.observations.find((item) => item.data.url === 'https://example.test/');
+  assert.equal(home.data.date_consensus, false);
+  assert.equal(home.data.freshness_assessment, 'conflicting_signals');
+  assert.deepEqual(home.data.date_signals.map((item) => item.normalized_date), ['2026-07-01', '2026-07-02']);
+  assert.equal(home.data.content_snapshot.changed_since_snapshot, true);
+  assert.equal(home.data.content_snapshot.change_observed_after, '2026-07-01T00:00:00Z');
+  assert.equal(home.data.content_snapshot.exact_change_time_established, false);
+
+  const pricing = result.observations.find((item) => item.data.url === 'https://example.test/pricing/');
+  assert.equal(pricing.data.date_consensus, null);
+  assert.equal(pricing.data.freshness_assessment, 'insufficient_signals');
+  assert.equal(pricing.data.date_signals.find((item) => item.source === 'visible_or_meta_modified').valid, false);
+  assert.match(pricing.limitations.join(' '), /could not be parsed|excluded/i);
+});
+
 test('controlled citation runner repeats a disclosed prompt corpus through an adapter', async () => {
   const root = fresh();
   let calls = 0;
-  const server = http.createServer((request, response) => {
-    let body = '';
-    request.on('data', (chunk) => { body += chunk; });
-    request.on('end', () => {
-      calls++;
-      const payload = JSON.parse(body);
-      response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ provider: 'fixture-provider', answer_text: `Answer ${payload.run_index}`, citations: ['https://example.test/products/gatekeeper/'] }));
+  const adapterFetch = async (_url, request) => {
+    calls++;
+    assert.equal(request.redirect, 'error');
+    const payload = JSON.parse(request.body);
+    return new Response(JSON.stringify({ provider: 'fixture-provider', answer_text: `Answer ${payload.run_index}`, citations: ['https://example.test/products/gatekeeper/'] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
     });
+  };
+  const result = await observe(root, 'citations', {
+    input: path.join(OBS, 'prompt-corpus.json'),
+    endpoint: 'https://adapter.example/run',
+    repeat: 3,
+    target: 'https://example.test/',
+    adapterFetch,
+    lookup: async () => [{ address: '93.184.216.34', family: 4 }],
   });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  try {
-    const endpoint = `http://127.0.0.1:${server.address().port}/run`;
-    const result = await observe(root, 'citations', { input: path.join(OBS, 'prompt-corpus.json'), endpoint, repeat: 3, target: 'https://example.test/' });
-    assert.equal(calls, 3);
-    assert.equal(result.summary.citation_metrics.runs, 3);
-    assert.equal(result.summary.citation_metrics.citation_presence_rate, 1);
-    assert.ok(result.observations.filter((o) => o.kind === 'citation').every((o) => o.collection_method === 'live_api'));
-  } finally { await new Promise((resolve) => server.close(resolve)); }
+  assert.equal(calls, 3);
+  assert.equal(result.summary.citation_metrics.runs, 3);
+  assert.equal(result.summary.citation_metrics.citation_presence_rate, 1);
+  assert.ok(result.observations.filter((o) => o.kind === 'citation').every((o) => o.collection_method === 'live_api'));
+});
+
+test('browser and citation collectors refuse private network targets before adapters execute', async () => {
+  const root = fresh();
+  let renderCalls = 0;
+  await assert.rejects(observe(root, 'render', {
+    target: 'http://127.0.0.1/internal',
+    captureProfile: async () => { renderCalls++; return {}; },
+    fetchUrl: async () => ({ body: '' }),
+  }), /private|loopback|non-public/i);
+  assert.equal(renderCalls, 0);
+
+  let adapterCalls = 0;
+  await assert.rejects(observe(root, 'citations', {
+    input: path.join(OBS, 'prompt-corpus.json'),
+    endpoint: 'https://169.254.169.254/latest/meta-data',
+    adapterFetch: async () => { adapterCalls++; return new Response('{}'); },
+  }), /private|loopback|non-public/i);
+  assert.equal(adapterCalls, 0);
+
+  const plan = readJson(path.join(OBS, 'browser-plan.json'));
+  plan.target = 'http://127.0.0.1/internal';
+  const planFile = path.join(root, 'private-browser-plan.json');
+  fs.writeFileSync(planFile, JSON.stringify(plan));
+  let journeyCalls = 0;
+  await assert.rejects(observe(root, 'render', {
+    input: planFile,
+    captureJourney: async () => { journeyCalls++; return {}; },
+    fetchUrl: async () => ({ body: '', headers: {} }),
+  }), /private|loopback|non-public/i);
+  assert.equal(journeyCalls, 0);
 });
 
 test('missing live credentials and browser dependency fail closed as incomplete', async () => {
@@ -111,7 +274,7 @@ test('missing live credentials and browser dependency fail closed as incomplete'
     assert.equal(index.observations[0].state, 'not_evidenced');
     const perf = await observe(root, 'performance', { target: 'https://example.test/' });
     assert.equal(perf.observations[0].state, 'not_evidenced');
-    const rendered = await observe(root, 'render', { target: 'https://example.test/' });
+    const rendered = await observe(root, 'render', { target: 'https://example.test/', lookup: publicLookup });
     assert.equal(rendered.observations[0].state, 'not_evidenced');
   } finally {
     if (oldGsc) process.env.GSC_ACCESS_TOKEN = oldGsc;
@@ -129,7 +292,7 @@ test('render profiles preserve partial failures and resume only successful immut
     if (name === 'javascript_disabled') throw new Error('fixture profile failure');
     return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: `<main>${name} rendered content</main>`, text: `${name} rendered content`, screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [{ tag: 'summary', text: 'Details' }], executed: ['Details'] } };
   };
-  const first = await observe(root, 'render', { target, interactions: true, captureProfile, fetchUrl });
+  const first = await observe(root, 'render', { target, interactions: true, captureProfile, fetchUrl, lookup: publicLookup });
     assert.equal(first.manifest.status, 'incomplete');
     assert.deepEqual(captured, ['desktop', 'mobile', 'javascript_disabled']);
     assert.equal(first.observations.find((item) => item.data.profile === 'javascript_disabled').state, 'failed');
@@ -137,7 +300,7 @@ test('render profiles preserve partial failures and resume only successful immut
     assert.ok(fs.existsSync(path.join(first.dir, 'screenshots', 'mobile.png')));
 
     captured.length = 0;
-    const resumed = await observe(root, 'render', { target, interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+    const resumed = await observe(root, 'render', { target, interactions: true, resumeRun: first.runId, fetchUrl, lookup: publicLookup, captureProfile: async (name, viewport, settings = {}) => {
       captured.push(name);
       return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Server fallback content</main>', text: 'Server fallback content', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
     } });
@@ -148,7 +311,7 @@ test('render profiles preserve partial failures and resume only successful immut
   assert.match(resumed.manifest.warnings.join(' '), /reused from immutable run/);
 
   captured.length = 0;
-  await observe(root, 'render', { target: 'https://other.example.test/', interactions: true, resumeRun: first.runId, fetchUrl, captureProfile: async (name, viewport, settings = {}) => {
+  await observe(root, 'render', { target: 'https://other.example.test/', interactions: true, resumeRun: first.runId, fetchUrl, lookup: publicLookup, captureProfile: async (name, viewport, settings = {}) => {
     captured.push(name);
     return { name, final_url: target, status: 200, viewport, javaScriptEnabled: settings.javaScriptEnabled !== false, html: '<main>Other target</main>', text: 'Other target', screenshot: Buffer.from(name), failed_requests: [], interactions: { discovered: [], executed: [] } };
   } });
@@ -160,6 +323,7 @@ test('browser evidence plans preserve cross-browser artifacts and partial journe
   const planFile = path.join(OBS, 'browser-plan.json');
   const result = await observe(root, 'render', {
     input: planFile,
+    lookup: publicLookup,
     fetchUrl: async () => ({ body: '<main>Initial response</main>', headers: { 'content-type': 'text/html' } }),
     captureJourney: async (profile) => {
       if (profile.profile_id === 'firefox-mobile') throw new Error('fixture engine unavailable');
@@ -191,13 +355,13 @@ test('browser evidence plans reject ambiguous profiles and target changes', asyn
   plan.profiles[1].profile_id = plan.profiles[0].profile_id;
   const duplicateFile = path.join(root, 'duplicate-browser-plan.json');
   fs.writeFileSync(duplicateFile, JSON.stringify(plan));
-  await assert.rejects(observe(root, 'render', { input: duplicateFile, captureJourney: async () => ({}) }), /duplicate profile ids/);
-  await assert.rejects(observe(root, 'render', { input: path.join(OBS, 'browser-plan.json'), target: 'https://other.test/', captureJourney: async () => ({}) }), /differs from the plan target/);
+  await assert.rejects(observe(root, 'render', { input: duplicateFile, captureJourney: async () => ({}), lookup: publicLookup }), /duplicate profile ids/);
+  await assert.rejects(observe(root, 'render', { input: path.join(OBS, 'browser-plan.json'), target: 'https://other.test/', captureJourney: async () => ({}), lookup: publicLookup }), /differs from the plan target/);
   const crossOrigin = readJson(path.join(OBS, 'browser-plan.json'));
   crossOrigin.profiles[0].steps[0] = { step_id: 'leave-origin', action: 'navigate', locator: null, value_env: null, key: null, url: 'https://other.test/', required: true, capture_screenshot: false };
   const crossOriginFile = path.join(root, 'cross-origin-browser-plan.json');
   fs.writeFileSync(crossOriginFile, JSON.stringify(crossOrigin));
-  await assert.rejects(observe(root, 'render', { input: crossOriginFile, captureJourney: async () => ({}) }), /cross-origin navigation is not allowed/);
+  await assert.rejects(observe(root, 'render', { input: crossOriginFile, captureJourney: async () => ({}), lookup: publicLookup }), /cross-origin navigation is not allowed/);
 });
 
 test('local Lighthouse execution preserves repeated lab runs and a median summary', async () => {

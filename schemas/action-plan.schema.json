@@ -28,15 +28,28 @@
         "properties": {
           "action_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
           "finding_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "depends_on_action_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "citable://schemas/common.defs.json#/definitions/id" }
+          },
           "phase": { "type": "string", "enum": ["unblock", "governance", "content", "optimization"] },
           "priority": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
           "subject": { "type": "string" },
           "action": { "type": "string", "minLength": 1 },
           "owner": { "type": ["string", "null"] },
+          "decision_owner": { "type": ["string", "null"] },
           "status": { "type": "string", "enum": ["ready", "blocked"] },
           "required_input": { "type": "array", "items": { "type": "string" } },
           "semantic_gates": { "type": "array", "items": { "type": "string" } },
           "unsafe_shortcuts": { "type": "array", "items": { "type": "string" } },
+          "failure_condition": { "type": "string", "minLength": 1 },
+          "leading_indicators": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "monitoring_window": { "type": ["string", "null"], "minLength": 1 },
           "verification": {
             "type": "object",
             "additionalProperties": false,

@@ -8,7 +8,7 @@ current repository as of 2026-07-19; they are not outcome scores.
 | --- | --- | --- | --- | --- |
 | Separate top-level states | Implemented | None | complete | Audit summary/report exposes three independent states |
 | Policy-level crawler decisions | Implemented | No edge proof | P0 | Per-crawler purpose registry plus effective robots rule |
-| Per-agent synthetic edge probes | Partial | One audit UA; no crawler matrix, WAF/challenge classification, region matrix, or IP pinning | P0 | Timestamped probe artifacts for each declared agent, clearly labelled simulated |
+| Per-agent synthetic edge probes | Partial | Declared crawler matrix and coarse edge/challenge classification implemented; no managed region matrix or connection IP pinning | P0 | Timestamped probe artifacts for each declared agent, clearly labelled simulated |
 | Verified crawler identity | Contract implemented | Authentic production evidence remains owner supplied; no managed range retriever | P0 | Staged UA/IP/range-source/DNS/edge/origin record with contradiction handling |
 | Production crawler access | JSON/CSV import implemented | Multi-region collection remains external | P1 | Validated server/CDN events separated from policy, simulation, and absent evidence |
 | Search-index presence | Partial | Google API/import and Bing owner exports implemented; Bing AI dashboard has no captured API contract | P0 | Engine, canonical selected, crawl date, indexed/rendered evidence, timestamp |
@@ -18,10 +18,10 @@ current repository as of 2026-07-19; they are not outcome scores.
 | Canonical consensus matrix | Partial | Static matrix implemented; engine-selected canonical requires index observation | P1 | One table per URL covering redirects, HTML, sitemap, OG, links, engine observation |
 | Content-to-noise extraction | Partial | Ratio implemented; repeated-region classification remains | P1 | Raw/extracted byte and token ratios plus identified repeated regions |
 | Source identity chain | Partial | Entity/owner/reviewer controls; limited author-affiliation/correction checks | P1 | Organization, author, reviewer, publisher, evidence owner, correction path |
-| Freshness integrity | Partial | Lifecycle and date checks; no HTTP/sitemap/visible/content-diff consensus | P1 | Date consensus matrix linked to content snapshot hashes |
+| Freshness integrity | Partial | HTTP/sitemap/visible date consensus and content-snapshot intervals implemented; no external publication-history attestation | P1 | Date consensus matrix linked to content snapshot hashes |
 | Structured entity graph | Partial | JSON-LD capture and consistency detectors; no normalized graph artifact | P1 | Source JSON-LD plus normalized nodes/edges and visible-content support mapping |
 | Regional technical reliability | Not implemented | No multi-region/network runner | P2 | Repeated DNS/TLS/status/latency/cache results by region and UA |
-| External corroboration signals | Partial | Registry and detectors; no backlink/mention adapter | P2 | Observable source records labelled independently owned or controlled |
+| External corroboration signals | Partial | Schema-validated owner/third-party imports and detectors; no live backlink/mention adapter | P2 | Observable source records labelled independently owned or controlled |
 | Controlled citation testing | Import/custom adapter implemented | First-party consumer-product adapters remain | P0 | Versioned prompt corpus, repeated runs, full answers/citations/context/checksums |
 | Citation correctness | Review artifact implemented | Automated prioritization cannot confirm support | P1 | Citation URL, canonical URL, answer claim, source passage, support verdict/reviewer |
 | Competitive retrieval set | Partial | Cited domains reported; format/depth/freshness comparison remains | P2 | Per-prompt cited-domain set with format/depth/freshness/evidence comparison |

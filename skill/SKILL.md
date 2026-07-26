@@ -87,6 +87,7 @@ prefer running it over re-deriving its checks by hand:
 ```
 citable init                        # initialize .citable/ (non-destructive)
 citable audit [scope] --target <dir|url> [--base-url <url>] [--ref-date YYYY-MM-DD]
+citable plan-audit --target <dir|url> [--base-url <url>]
 citable inspect <page> --target <dir|url>
 citable map-claims --target <dir|url> [--write]
 citable substantiate [--write]
@@ -94,8 +95,9 @@ citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
-citable observe <mode> [options]      # render/index/citation/log/passage/consensus/performance evidence
+citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance evidence
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
+citable observe probes --target <url> [--region <label>]
 citable observe render --target <url> [--interactions] [--resume-run <run-id>]
 citable observe render --input <browser-evidence-plan.json>
 citable observe performance --target <url> --lighthouse [--repeat 1..5]

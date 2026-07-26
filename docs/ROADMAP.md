@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 259 pass on Node 24 |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 87 packaged files per provider |
+| Distribution | 89 packaged files per provider |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,12 +20,18 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 87 packaged files per provider after the
+The current development branch builds 89 packaged files per provider after the
 artifact-interchange contract is generated from canonical `skill/` sources.
 
 ## Delivered
 
 - Public npm package and provider-specific skill installation.
+- Read-only installer and runtime capability diagnosis that keeps optional
+  dependency or credential presence separate from successful browser launch,
+  API authorization, property access, and collection.
+- Read-only profile-aware audit planning with a two-signal inference threshold,
+  explicit evidence/confidence, full-audit preservation, and independently
+  blocked optional collectors.
 - Immutable audit evidence, checksums, snapshot comparison, and fail-closed
   registry validation.
 - Retry-bounded remote fetches with same-origin redirect enforcement,
@@ -33,12 +39,16 @@ artifact-interchange contract is generated from canonical `skill/` sources.
 - SEO, AEO, GEO, crawler, structured-data, hreflang, CWV-readiness, and
   agent-readiness detectors.
 - Prompt-to-page, entity, claim, and evidence mapping checks.
-- Source-run-bound action plans with blockers, owners, semantic review gates,
-  unsafe-shortcut warnings, and verification commands.
+- Source-run-bound action plans with blockers, owners, optional dependency
+  relationships, explicit failure conditions, semantic review gates,
+  unsafe-shortcut warnings, bounded monitoring fields, and verification
+  commands. Unsupported dependencies or indicators remain empty rather than
+  inferred.
 - Immutable observation collectors for optional desktop/mobile/JavaScript-disabled
   Chromium rendering with bounded interactions and resumable partial failures, Google or
-  imported index evidence, controlled citation cohorts, crawler logs, passages,
-  canonical/freshness consensus, CrUX/imported performance, and corroboration.
+  imported index evidence, controlled citation cohorts, crawler logs, per-agent
+  synthetic probes, passages, canonical/freshness consensus, CrUX/imported
+  performance, and corroboration.
 - Reviewed hash-locked remediation plus longitudinal evidence monitoring.
 - Policy-driven reviewer authority and governed exceptions that preserve failed
   technical state while independently recording enforcement disposition,

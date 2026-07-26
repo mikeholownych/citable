@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { init } from '../commands/init.js';
 import { audit } from '../commands/audit.js';
+import { planAudit } from '../commands/planAudit.js';
 import { demo } from '../commands/demo.js';
 import { validate } from '../commands/validate.js';
 import { mapClaims } from '../commands/mapClaims.js';
@@ -54,6 +55,7 @@ Commands
   demo                      Run the detector engine against a bundled offline example (no setup, no network)
   audit [scope]             Run detectors; scopes: technical seo aeo geo architecture entity
                             claims evidence schema lifecycle corroboration
+  plan-audit                Inspect target signals and propose an evidence-bounded audit plan
   inspect <page>            Profile one page (URL path or source file)
   map-claims                Extract material claim candidates from pages (--write to save)
   substantiate              Assess claim/evidence status (--write to apply downgrades)
@@ -62,7 +64,8 @@ Commands
   compare-snapshots [a b]   Regression diff between two audit runs
   action-plan [run]         Turn audit findings into ordered remediation work
   observe <mode>            Collect render, index, citation, log, Bing, passage,
-                            consensus, performance, corroboration, media evidence, or representation evidence
+                            consensus, performance, corroboration, crawler probes,
+                            media evidence, or representation evidence
   apply                     Apply a reviewed, hash-locked remediation spec
   monitor [runA runB]       Compare observation runs and emit regression alerts
   metrics import            Import declared metric observations from CSV/JSON
@@ -220,6 +223,13 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const scope = args._[0];
         const r = await audit(root, { target: args.target, scope, baseUrl: args.baseUrl, refDate: args.refDate });
         out(args, `Audit ${r.runId}: ${r.summary.total} finding(s) [${Object.entries(r.summary.by_severity).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nReport: ${path.join(r.dir, 'report.md')}\nStatus: ${r.manifest.status}${r.manifest.incomplete_checks.length ? `\nIncomplete: ${r.manifest.incomplete_checks.join('; ')}` : ''}`, { runId: r.runId, dir: r.dir, summary: r.summary, status: r.manifest.status });
+        break;
+      }
+      case 'plan-audit': {
+        const r = await planAudit(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+        const profiles = r.classification.profiles.map((profile) => `${profile.id}:${profile.confidence}`).join(', ') || 'none established';
+        const collectors = r.collectors.map((collector) => `  ${collector.id}: ${collector.status}`).join('\n');
+        out(args, `plan-audit\nProfiles (inference): ${profiles}\nAudit: ${r.audit.command}\nCollectors:\n${collectors}\n\nNo audit or observation package was created.`, r);
         break;
       }
       case 'inspect': {

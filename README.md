@@ -93,7 +93,15 @@ Diagnose installation problems:
 
 ```bash
 npx @nebulacomponents/citable doctor
+npx @nebulacomponents/citable doctor --json
 ```
+
+`doctor` also reports independent runtime capability states for optional
+Playwright rendering, local Lighthouse, OCR, CrUX, GSC, and GA4 collection.
+Missing optional dependencies or credentials do not fail installer integrity.
+A `ready` capability establishes dependency or credential presence only; the
+reported limitations preserve that browser launch, authorization, property
+access, quota, and collection success remain untested.
 
 The npm package is scoped as `@nebulacomponents/citable`; the installed
 executable is still named `citable`.
@@ -146,12 +154,14 @@ npx @nebulacomponents/citable help
 
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)
+citable plan-audit --target ./dist --base-url https://example.com # read-only profile/capability plan
 citable audit --target ./dist --base-url https://example.com
 citable action-plan <run-id> # ordered actions, blockers, review gates, verification
 citable observe passages --target ./dist --base-url https://example.com
 citable observe index --input search-console-export.json
 citable observe citations --input prompt-results.json --target https://example.com
 citable observe logs --input edge-logs.json
+citable observe probes --target https://example.com --region local-office
 citable observe bing --dataset ai_performance --input bing-ai-performance.csv
 citable observe consensus --target ./dist --base-url https://example.com
 citable observe performance --target https://example.com # CRUX_API_KEY
@@ -202,6 +212,8 @@ citable validate              # registry schema + referential integrity
 
 ## Documentation
 
+- [Getting started](docs/GETTING_STARTED.md) — five-minute workflow, persona
+  routes, evidence journey, and annotated synthetic-fixture output
 - [Architecture decision record](docs/architecture/adr-001-architecture.md)
 - [Traceability matrix](docs/architecture/traceability-matrix.md) — every
   material source requirement mapped to a control

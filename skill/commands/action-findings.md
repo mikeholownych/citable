@@ -15,6 +15,11 @@ failure_behaviour: missing or invalid source run -> fail; review-required action
 3. Assign owners. Resolve each blocked action's exact required input. Missing
    facts, evidence, legal review, or semantic review are blockers, not drafting
    opportunities.
+   Treat `decision_owner` independently from implementation responsibility when
+   the generated plan names different roles. Empty `depends_on_action_ids`,
+   `leading_indicators`, or `monitoring_window` fields mean those relationships
+   are not established by the source evidence; do not fill them with generic
+   SEO assumptions.
 4. Capture a before state for each subject. Use the finding's evidence,
    preferred remediation, unsafe shortcuts, and detector lineage as the change
    boundary.
@@ -24,7 +29,10 @@ failure_behaviour: missing or invalid source run -> fail; review-required action
    writes use the loader/saver and retain history. Content claims remain equal
    to or narrower than their registered scope.
 7. Build and test the target repository. Run the generated verification
-   command, then compare the new audit to the source run.
+   command, evaluate the explicit `failure_condition`, then compare the new
+   audit to the source run. Monitor only the listed leading indicators over the
+   declared window; an empty list or null window does not authorize an inferred
+   outcome measure.
 8. Close only with evidence: resolved detector/subject pair, before/after run
    IDs, diff, reviewer, and residual risk. Mark blocked, accepted risk, and
    false positive explicitly; do not silently drop findings.

@@ -1,10 +1,24 @@
 {
+  "schema_version": 1,
+  "provider": "fixture-export",
+  "dataset": "external_mentions",
+  "collected_at": "2026-07-18T12:30:00Z",
+  "collection_authority": "third_party_export",
+  "authenticity_status": "checksum_protected_only",
+  "representativeness": "convenience_sample",
+  "coverage": {
+    "population": "One disclosed fixture source",
+    "sampled": 1,
+    "exclusions": ["No web-wide coverage is claimed"]
+  },
   "mentions": [
     {
-      "url": "https://standards.example/report",
+      "source_url": "https://standards.example/report",
       "publisher": "Independent Standards Group",
       "entity": "Gatekeeper",
-      "independent": true,
+      "source_control": "independent",
+      "relationship_disclosure": "none_disclosed",
+      "source_type": "standards",
       "observed_at": "2026-07-18T12:00:00Z"
     }
   ]

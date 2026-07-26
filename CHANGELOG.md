@@ -15,6 +15,65 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Freshness Consensus
+
+- `observe consensus` now records normalized HTTP `Last-Modified`, sitemap
+  `lastmod`, and visible/meta modification signals, including invalid values
+  excluded from comparison. It distinguishes aligned, conflicting, and
+  insufficient signal sets.
+- Current page hashes are compared with the latest immutable audit snapshot.
+  A difference records only the interval after the prior capture in which a
+  change was observed; it does not assert the exact modification time, cause,
+  quality, or ranking effect. Page lifecycle review dates remain separate
+  governance metadata.
+
+### Added — Per-Agent Synthetic Probes
+
+- `observe probes --target <URL> [--region <label>]` exercises every active
+  identity declared in `crawlers.yaml`. Each immutable observation preserves
+  the status, redirects, response hash, allowlisted diagnostic headers, raw
+  body, region label, and coarse accessible/challenged/blocked/error
+  classification.
+- Probe evidence is always labelled synthetic and single-observation. Spoofed
+  user agents never establish verified crawler identity, production access,
+  regional representativeness, or policy enforcement. Partial failures remain
+  explicit and sensitive response headers are not persisted.
+
+### Migration — Corroboration Imports
+
+- `observe corroboration` now requires the versioned
+  `corroboration-import.schema.json` contract. Imports must disclose collection
+  authority, authenticity, representativeness, population coverage, source
+  control, and relationship status. Legacy arrays and `independent` booleans
+  are rejected; fixtures and integrations must migrate to `schema_version: 1`.
+- Independence is classified only when control is declared `independent` and
+  the relationship is `none_disclosed`. Every resulting observation preserves
+  the import authority and coverage while stating that a mention alone does
+  not establish authority, support, ranking impact, citation eligibility, or
+  representative coverage.
+
+### Security — Outbound Collection
+
+- Browser render targets, browser-plan targets and navigation, and every
+  Playwright subresource now share the crawler's public-destination policy.
+  Controlled citation adapters require HTTPS, reject configured non-public
+  ranges, and refuse redirects. The blocked range set now includes IPv4/IPv6
+  documentation ranges and IPv4 benchmarking/reserved ranges. Safe
+  browser-local `data:`, `blob:`, and `about:` resources remain usable.
+- DNS validation and connection address pinning remain distinct: Node fetch and
+  Playwright do not currently bind the validated DNS result to the subsequent
+  connection. This residual rebinding risk is now explicit in security and
+  known-limitations documentation, with isolated execution and network egress
+  controls required for untrusted targets.
+
+### Added — Action Plans
+
+- Generated actions now expose dependency IDs, decision ownership, explicit
+  failure conditions, leading indicators, and monitoring windows. The schema
+  additions are optional for compatibility with existing action-plan
+  artifacts; newly generated plans leave unsupported dependencies and
+  indicators empty instead of inventing causal or sequencing relationships.
+
 ### Migration — Provenance seededFrom
 
 - `common.defs.json`'s shared `provenance` definition (used by claim, entity,
@@ -25,6 +84,16 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ### Added — CLI
 
+- `citable plan-audit` performs a read-only target inspection, labels business
+  profiles as evidence-backed probabilistic inferences, proposes the full audit
+  and profile-specific semantic emphasis, and reports optional collectors as
+  available or blocked. It creates no audit, observation, snapshot, or
+  remediation artifact.
+- `citable doctor` now includes a read-only runtime capability matrix for
+  Playwright rendering, local Lighthouse, OCR, CrUX, GSC, and GA4. Optional
+  gaps do not fail installer integrity, credential values are never emitted,
+  and `ready` means prerequisite presence rather than proven launch,
+  authorization, property access, or collection success.
 - `citable init --seed <name>` overlays a bundled starter registry bundle
   (v1 ships `saas-pricing`) onto `.citable/`. Every seeded record is stamped
   `status: unverified` and `provenance.seededFrom`, regardless of what the
@@ -42,6 +111,14 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
   assertion is or isn't supported by the caller's own evidence — and never
   claims to have live-queried an answer engine. Degrades gracefully to
   `unsupported` when no `.citable/` registry exists yet.
+
+### Added — Documentation
+
+- A task-oriented getting-started guide now provides persona-specific entry
+  points, a five-minute audit-to-action workflow, an evidence-journey map,
+  interpretation mistakes, and excerpts generated from the bundled synthetic
+  fixture. The examples preserve `pass`, `not_established`, and
+  `not_evidenced` as separate states and make no live-property outcome claims.
 
 ### Added — Demo
 

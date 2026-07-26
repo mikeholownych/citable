@@ -868,6 +868,7 @@ async function inspectCommand(command, args, options = {}) {
 export async function doctorCommand(args, options = {}) {
   const context = resolveTargets('doctor', args, options);
   const packageInfo = loadPackageInfo(context.roots.packageRoot);
+  const capabilities = await runtimeCapabilities(options);
   const checks = [];
   const nodeMajor = Number.parseInt(process.versions.node.split('.')[0], 10);
   checks.push({ level: nodeMajor >= 20 ? 'PASS' : 'FAIL', message: `Node.js ${process.versions.node}` });
@@ -902,7 +903,81 @@ export async function doctorCommand(args, options = {}) {
   }
 
   const hasFail = checks.some((check) => check.level === 'FAIL');
-  return { ok: !hasFail, command: 'doctor', checks, exitCode: hasFail ? EXIT_CODES.integrityFailure : EXIT_CODES.success };
+  return { ok: !hasFail, command: 'doctor', checks, capabilities, exitCode: hasFail ? EXIT_CODES.integrityFailure : EXIT_CODES.success };
+}
+
+async function optionalDependencyAvailable(name, options = {}) {
+  if (options.capabilityResolver) return Boolean(await options.capabilityResolver(name));
+  try {
+    await import(name);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function runtimeCapabilities(options = {}) {
+  const env = options.env || process.env;
+  const dependencyDefinitions = [
+    {
+      id: 'browser_render',
+      requirements: ['playwright'],
+      readyLimitations: ['dependency presence does not establish browser launch readiness'],
+    },
+    {
+      id: 'lighthouse_lab',
+      requirements: ['lighthouse', 'chrome-launcher'],
+      readyLimitations: ['dependency presence does not establish Chrome launch readiness or a successful lab run'],
+    },
+    {
+      id: 'ocr',
+      requirements: ['tesseract.js'],
+      readyLimitations: ['dependency presence does not establish OCR accuracy or source-image availability'],
+    },
+  ];
+  const capabilities = [];
+  for (const definition of dependencyDefinitions) {
+    const availability = await Promise.all(definition.requirements.map(async (name) => ({
+      name,
+      available: await optionalDependencyAvailable(name, options),
+    })));
+    const missing = availability.filter((item) => !item.available).map((item) => item.name);
+    capabilities.push({
+      id: definition.id,
+      state: missing.length ? 'missing_dependency' : 'ready',
+      requirements: definition.requirements,
+      limitations: missing.length
+        ? missing.map((name) => `optional dependency ${name} is not installed`)
+        : definition.readyLimitations,
+    });
+  }
+
+  for (const definition of [
+    {
+      id: 'crux_field',
+      credential: 'CRUX_API_KEY',
+      readyLimitation: 'credential presence does not establish validity, scope, quota, or API availability',
+    },
+    {
+      id: 'gsc_index',
+      credential: 'GSC_ACCESS_TOKEN',
+      readyLimitation: 'credential presence does not establish validity, scope, property access, or API availability',
+    },
+    {
+      id: 'ga4_metrics',
+      credential: 'GA4_ACCESS_TOKEN',
+      readyLimitation: 'credential presence does not establish validity, scope, property access, or API availability',
+    },
+  ]) {
+    const configured = typeof env[definition.credential] === 'string' && env[definition.credential].length > 0;
+    capabilities.push({
+      id: definition.id,
+      state: configured ? 'ready' : 'missing_credential',
+      requirements: [definition.credential],
+      limitations: [configured ? definition.readyLimitation : `${definition.credential} is not configured`],
+    });
+  }
+  return capabilities;
 }
 
 function inspectInstallationWithOptionalBundle(target, packageRootPath, version) {
@@ -1103,7 +1178,15 @@ function renderList(result) {
 }
 
 function renderDoctor(result) {
-  return ['Citable doctor', '', ...result.checks.map((check) => `${check.level.padEnd(5)} ${check.message}`)].join('\n');
+  const lines = ['Citable doctor', '', ...result.checks.map((check) => `${check.level.padEnd(5)} ${check.message}`)];
+  if (result.capabilities?.length) {
+    lines.push('', 'Runtime capabilities');
+    for (const capability of result.capabilities) {
+      lines.push(`  ${capability.id.padEnd(18)} ${capability.state}`);
+      for (const limitation of capability.limitations) lines.push(`    ${limitation}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export function installerHelp() {
