@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { init } from '../../src/commands/init.js';
-import { configureConnection, connectionStatus, disconnectConnection, syncConnection } from '../../src/commands/connect.js';
+import { configureConnection, connectionStatus, disconnectConnection, syncConnection, readCmsContent, applyCmsRemediation } from '../../src/commands/connect.js';
 import { loadRegistries, saveRegistry } from '../../src/registries/index.js';
 
 test('connections are optional, dry-run by default, and persist no credentials', () => {
@@ -54,3 +54,106 @@ test('GSC sync writes immutable metric evidence and advances non-secret cursor',
   assert.equal(saved.state, 'synchronized');
   assert.equal(saved.cursor, '2026-07-18');
 });
+
+test('WordPress and Webflow CMS connections configure, read target, and apply reviewed remediation', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-cms-connect-'));
+  init(root);
+
+  // Configure WordPress connection
+  configureConnection(root, {
+    provider: 'wordpress',
+    connectionId: 'CONNECTION-WP',
+    propertyId: 'https://wp.example.test',
+    credentialEnv: 'WP_TOKEN',
+    write: true,
+  });
+
+  // Configure Webflow connection
+  configureConnection(root, {
+    provider: 'webflow',
+    connectionId: 'CONNECTION-WF',
+    propertyId: 'wf-site-xyz',
+    credentialEnv: 'WF_TOKEN',
+    write: true,
+  });
+
+  const status = connectionStatus(root);
+  assert.equal(status.connections.length, 2);
+
+  // Mock server state for WordPress page
+  let wpPage = {
+    id: 205,
+    type: 'page',
+    title: { raw: 'Pricing', rendered: 'Pricing' },
+    content: { raw: 'Starting at $10.', rendered: '<p>Starting at $10.</p>' },
+    excerpt: { raw: 'Plans', rendered: '<p>Plans</p>' },
+    slug: 'pricing',
+    status: 'publish',
+    meta: {},
+  };
+
+  const wpFetch = async (url, options = {}) => {
+    if (url.includes('/pages/205')) {
+      if (options.method === 'POST') {
+        const body = JSON.parse(options.body);
+        if (body.title) wpPage.title.raw = body.title;
+        if (body.content) wpPage.content.raw = body.content;
+      }
+      return new Response(JSON.stringify(wpPage), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+  };
+
+  // Read WordPress content
+  const readRes = await readCmsContent(root, {
+    connectionId: 'CONNECTION-WP',
+    targetId: '205',
+    env: { WP_TOKEN: 'token-secret' },
+    fetchImpl: wpFetch,
+  });
+  assert.equal(readRes.content.title, 'Pricing');
+  assert.ok(readRes.content.content_hash);
+
+  // Dry run apply
+  const dryRes = await applyCmsRemediation(root, {
+    connectionId: 'CONNECTION-WP',
+    input: {
+      target_id: '205',
+      expected_hash: readRes.content.content_hash,
+      updates: { title: 'Pricing & Tiers' },
+      reviewer: 'Finance Lead',
+    },
+    write: false,
+    env: { WP_TOKEN: 'token-secret' },
+    fetchImpl: wpFetch,
+  });
+  assert.equal(dryRes.status, 'proposed');
+  assert.equal(dryRes.dry_run, true);
+
+  // Live apply
+  const liveRes = await applyCmsRemediation(root, {
+    connectionId: 'CONNECTION-WP',
+    input: {
+      target_id: '205',
+      expected_hash: readRes.content.content_hash,
+      updates: { title: 'Pricing & Tiers' },
+      reviewer: 'Finance Lead',
+    },
+    write: true,
+    env: { WP_TOKEN: 'token-secret' },
+    fetchImpl: wpFetch,
+  });
+  assert.equal(liveRes.status, 'applied');
+  assert.equal(liveRes.dry_run, false);
+
+  // Verify WordPress state updated
+  const verified = await readCmsContent(root, {
+    connectionId: 'CONNECTION-WP',
+    targetId: '205',
+    env: { WP_TOKEN: 'token-secret' },
+    fetchImpl: wpFetch,
+  });
+  assert.equal(verified.content.title, 'Pricing & Tiers');
+  assert.equal(verified.content.content_hash, liveRes.after_hash);
+});
+

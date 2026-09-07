@@ -6,7 +6,7 @@
 - [x] Schema-validated registries, findings, manifests, and action plans
 - [x] HTML extraction, robots and sitemap parsing, bounded URL fetching, site
   modeling, and internal-link analysis
-- [x] 123 detectors across 18 namespaces with positive and negative fixtures
+- [x] 124 detectors across 18 namespaces with positive and negative fixtures
 - [x] Audit, inspection, mapping, validation, comparison, and action-plan commands
 - [x] Immutable evidence packages, checksums, reports, and snapshot comparison
 - [x] Canonical skill, 12 rubrics, command workflows, policy templates, and

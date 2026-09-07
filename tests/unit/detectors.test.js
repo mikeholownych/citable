@@ -217,3 +217,25 @@ test('AEO/GEO readiness detectors catch governance gaps and spare complete fixtu
     assert.ok(ids.has(id), `${id} should fire on incomplete AEO/GEO fixture`);
   }
 });
+
+test('GEO-007: detects unfavorable entity stance and spares favorable/neutral observations', () => {
+  const good = ctxFor('site-clean', 'registries-good', 'https://example.test');
+  const detectionObs = JSON.parse(fs.readFileSync(path.join(FIX, 'observations', 'stance-detection.json'), 'utf8')).observations;
+  const nonDetectionObs = JSON.parse(fs.readFileSync(path.join(FIX, 'observations', 'stance-non-detection.json'), 'utf8')).observations;
+
+  // Non-detection fixture: favorable stance
+  const ctxClean = { ...good, observations: nonDetectionObs.map((o) => ({ kind: 'citation', data: o })) };
+  const findingsClean = runDetectors(selectDetectors({ namespaces: ['GEO'] }), ctxClean).findings;
+  assert.ok(!findingsClean.some((f) => f.detector_id === 'GEO-007'), 'GEO-007 must not fire on favorable/neutral observations');
+
+  // Detection fixture: unfavorable stance
+  const ctxUnfavorable = { ...good, observations: detectionObs.map((o) => ({ kind: 'citation', data: o })) };
+  const findingsUnfavorable = runDetectors(selectDetectors({ namespaces: ['GEO'] }), ctxUnfavorable).findings;
+  const hit = findingsUnfavorable.find((f) => f.detector_id === 'GEO-007');
+  assert.ok(hit, 'GEO-007 must fire on unfavorable entity stance observation');
+  assert.equal(hit.subject.identifier, 'entities/ENT-GATEKEEPER');
+  assert.equal(hit.classification.finding_type, 'evidence_backed_semantic_finding');
+  assert.equal(hit.classification.severity, 'high');
+  assert.equal(hit.remediation.review_required, true);
+});
+

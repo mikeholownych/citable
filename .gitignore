@@ -15,3 +15,4 @@ tasks/lessons.md
 *.log
 .DS_Store
 Thumbs.db
+.claude/
