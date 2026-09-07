@@ -48,7 +48,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
   const second = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
-  assert.equal(first.manifest.facts.detectors, 123);
+  assert.equal(first.manifest.facts.detectors, 124);
   assert.equal(first.manifest.facts.distribution_files_per_provider, packagedSkillFileCount());
   assert.ok(first.manifest.projections.some((item) => item.projection_id === 'llms-txt'));
   assert.match(first.generated['release/llms.txt'], /Release commit: a{40}/);

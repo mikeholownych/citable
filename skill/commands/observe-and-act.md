@@ -91,9 +91,16 @@ reviewer, matches the exact file hash, and identifies exactly one source string.
 `--write` applies only after all operations validate. Build, tests, semantic
 review, re-audit, and snapshot comparison remain mandatory afterward.
 
-## Monitoring
+## Monitoring and alert delivery
 
-`monitor [runA runB]` reports state changes, missing observations, index loss,
-canonical disagreement, and citation-presence changes. Alerts are evidence
-changes, not causal explanations or ranking conclusions. Schedule it in CI at
-the cadence defined by lifecycle and experiment records.
+`monitor [runA runB] [--webhook <url>] [--min-severity <level>]` reports state
+changes, missing observations, index loss, canonical disagreement, and
+citation-presence changes. With `--webhook`, detected regressions matching or
+exceeding `--min-severity` (default `medium`) are dispatched as sealed JSON
+alert payloads and logged under `.citable/monitoring/deliveries/`. Destination
+URLs must be public network destinations (private/loopback addresses are blocked).
+Alerts are evidence changes, not causal explanations or ranking conclusions.
+
+Scheduled monitoring (`schedules run <id> --monitor [--webhook <url>]`) automatically
+compares the scheduled audit against the preceding baseline run and dispatches
+regression alerts when configured in `schedules.yaml`.

@@ -21,9 +21,12 @@ intent, not executability, so statuses are strict:
 | /citable validate, validate-claims, validate-evidence, validate-schema, validate-links | implemented |
 | /citable compare-snapshots / validate-regression | implemented |
 | /citable action-plan | implemented — writes ordered, source-run-bound action artifacts outside immutable evidence packages |
-| /citable observe | implemented — render, index, citation, crawler-log, passage, consensus, performance, and corroboration evidence |
+| /citable observe | implemented — render, index, citation, crawler-log, passage, consensus, performance, corroboration, and stance evidence |
 | /citable apply | implemented — reviewed, hash-locked source replacements; dry run by default |
+| /citable connect status / configure / discover / validate / sync / read / apply / disconnect | implemented — GA4, GSC, WordPress, and Webflow adapters with hash-locked CMS remediation |
 | /citable monitor | implemented — compares immutable observation runs and emits evidence-linked alerts |
+| /citable report dashboard | implemented — folds each run's recorded summary into a cross-run Markdown/HTML trend; derives no new findings and no combined score |
+| /citable report share-of-voice | implemented — joins competitor registry against recorded citation observations to compute verified share-of-citation |
 | /citable metrics import | implemented — validates declared CSV/JSON metrics and writes immutable observations |
 | /citable objectives init / validate | implemented — user-owned metric selection, cohorts, windows, and guardrails |
 | /citable evaluate | implemented — independent baseline/evaluation comparisons with inconclusive handling |

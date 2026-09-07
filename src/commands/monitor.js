@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readJson, writeJson, nowIso } from '../shared/io.js';
+import { buildAlertPayload, dispatchAlertWebhook, filterAlerts } from '../monitoring/alertDelivery.js';
 
 function observations(dir) {
   const folder = path.join(dir, 'observations');
@@ -47,3 +48,37 @@ export function monitor(root, { runA, runB } = {}) {
   writeJson(path.join(dir, 'latest.json'), result);
   return { ...result, dir };
 }
+
+export async function monitorAndAlert(root, {
+  runA,
+  runB,
+  webhookUrl,
+  minSeverity = 'medium',
+  fetchImpl,
+  lookup,
+  allowPrivateForTest = false,
+} = {}) {
+  const result = monitor(root, { runA, runB });
+  if (webhookUrl) {
+    const qualifying = filterAlerts(result.alerts, minSeverity);
+    if (qualifying.length > 0) {
+      const payload = buildAlertPayload({
+        runA: result.run_a,
+        runB: result.run_b,
+        source: 'monitor',
+        summary: result.summary,
+        alerts: qualifying,
+      });
+      const delivery = await dispatchAlertWebhook(root, payload, {
+        webhookUrl,
+        fetchImpl,
+        lookup,
+        allowPrivateForTest,
+      });
+      return { ...result, delivery };
+    }
+    return { ...result, delivery: { skipped: true, reason: `no alerts meet min_severity: ${minSeverity}` } };
+  }
+  return result;
+}
+

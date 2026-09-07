@@ -1,7 +1,9 @@
+import fs from 'node:fs';
 import { loadRegistries, saveRegistry } from '../registries/index.js';
 import { envelope, observationRun } from '../observations/common.js';
 import { getConnector, listConnectors } from '../connectors/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { readJson } from '../shared/io.js';
 
 function findConnection(root, connectionId) {
   const loaded = loadRegistries(root);
@@ -88,3 +90,30 @@ export async function syncConnection(root, { connectionId, startDate, endDate, a
   saveRegistry(root, 'connections', updated);
   return { ...run, connection_id: connectionId, provider: connector.provider };
 }
+
+export async function readCmsContent(root, { connectionId, targetId, accessToken, env, fetchImpl } = {}) {
+  if (!connectionId || !targetId) throw new Error('connect read requires --connection-id <id> and --target-id <id>');
+  const loaded = findConnection(root, connectionId);
+  const connector = getConnector(loaded.connection.provider);
+  if (!connector.readContent) {
+    throw new Error(`connector ${connector.provider} does not support CMS content reading`);
+  }
+  const context = contextFor(loaded.connection, connector, { accessToken, env, fetchImpl });
+  const content = await connector.readContent(loaded.connection, targetId, context);
+  return { connection_id: connectionId, provider: connector.provider, target_id: targetId, content };
+}
+
+export async function applyCmsRemediation(root, { connectionId, input, write = false, reviewer, accessToken, env, fetchImpl } = {}) {
+  if (!connectionId || !input) throw new Error('connect apply requires --connection-id <id> and --input <spec.json>');
+  const loaded = findConnection(root, connectionId);
+  const connector = getConnector(loaded.connection.provider);
+  if (!connector.applyRemediation) {
+    throw new Error(`connector ${connector.provider} does not support CMS remediation updates`);
+  }
+  const spec = typeof input === 'string' && fs.existsSync(input) ? readJson(input) : typeof input === 'object' ? input : JSON.parse(input);
+  const context = { ...contextFor(loaded.connection, connector, { accessToken, env, fetchImpl }), write: Boolean(write) };
+  if (reviewer && !spec.reviewer) spec.reviewer = reviewer;
+  const result = await connector.applyRemediation(loaded.connection, spec, context);
+  return { connection_id: connectionId, provider: connector.provider, ...result };
+}
+
