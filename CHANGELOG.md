@@ -15,6 +15,8 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.15.0 — 2026-09-07
+
 ### Added — Cross-Run Evidence Dashboard
 
 - Added `citable report dashboard [--last N] [--since <run-id>]`, which folds
