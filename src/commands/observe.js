@@ -12,6 +12,7 @@ import { observeMedia } from '../observations/media.js';
 import { parse as parseHtml } from 'node-html-parser';
 import { verifyManifestIntegrity } from '../release/governance.js';
 import { observeBrowserPlan } from '../observations/browserJourney.js';
+import { observeStance } from '../observations/stance.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -761,6 +762,7 @@ export async function observe(root, mode, options = {}) {
     case 'network': return observeRegionalNetwork(root, options);
     case 'media': return observeMedia(root, options);
     case 'representation': return observeRepresentation(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, or representation');
+    case 'stance': return observeStance(root, options);
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, representation, or stance');
   }
 }

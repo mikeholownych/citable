@@ -16,9 +16,11 @@ import { projectGithub, runSchedule } from '../commands/delivery.js';
 import { actionPlan } from '../commands/actionPlan.js';
 import { observe } from '../commands/observe.js';
 import { applyRemediation } from '../commands/applyRemediation.js';
-import { monitor } from '../commands/monitor.js';
+import { monitor, monitorAndAlert } from '../commands/monitor.js';
+import { reportDashboard } from '../commands/reportDashboard.js';
+import { reportShareOfVoice } from '../commands/reportShareOfVoice.js';
 import { evaluateObjective, importMetrics, initializeObjective, validateObjectives } from '../commands/measurement.js';
-import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection } from '../commands/connect.js';
+import { configureConnection, connectionStatus, discoverConnections, disconnectConnection, syncConnection, validateConnection, readCmsContent, applyCmsRemediation } from '../commands/connect.js';
 import { evaluateDispositions, validateGovernance } from '../commands/governance.js';
 import { evaluateReviews, initializeSamplingPlan, prioritizeReviews, queueReviews, selectSample } from '../commands/reviews.js';
 import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
@@ -67,13 +69,17 @@ Commands
                             consensus, performance, corroboration, crawler or regional probes,
                             media evidence, or representation evidence
   apply                     Apply a reviewed, hash-locked remediation spec
-  monitor [runA runB]       Compare observation runs and emit regression alerts
+  monitor [runA runB]       Compare observation runs and emit regression alerts [--webhook <url>]
+  report dashboard [--last N] [--since <run-id>]   Render a cross-run evidence trend as Markdown + HTML
+  report share-of-voice [--last N]                 Compute first-party and competitor citation share
   metrics import            Import declared metric observations from CSV/JSON
   connect status            List optional connectors and configured connections
   connect configure         Configure non-secret connection state (--write to save)
   connect discover          Discover provider properties using environment auth
   connect validate          Verify configured property access
   connect sync              Collect declared metrics into immutable observations
+  connect read              Read CMS content and hash for remediation targeting
+  connect apply             Apply reviewed, hash-locked CMS remediation (--write to apply)
   connect disconnect        Remove optional connection state (--write to confirm)
   objectives init           Validate/add one objective from --input (--write to save)
   objectives validate       Validate objective contracts and metric references
@@ -85,7 +91,7 @@ Commands
   reviews plan              Validate/add a sampling plan from --input
   reviews sample [plan]     Select a reproducible census or seeded random sample
   reviews evaluate          Detect stale decisions and require disagreement adjudication
-  schedules run [id]        Execute an active version-pinned audit schedule
+  schedules run [id]        Execute an active version-pinned schedule [--monitor] [--webhook <url>]
   project github [run]      Render non-authoritative GitHub annotations from a run
   corpus evaluate           Evaluate a disclosed real-property acceptance corpus
   corpus publish            Validate and project an owner-authorized public corpus
@@ -156,6 +162,8 @@ function parseArgs(argv) {
     else if (a === '--input') args.input = argv[++i];
     else if (a === '--output') args.output = argv[++i];
     else if (a === '--run') args.runId = argv[++i];
+    else if (a === '--since') args.since = argv[++i];
+    else if (a === '--last') args.last = argv[++i];
     else if (a === '--provider') args.provider = argv[++i];
     else if (a === '--dataset') args.dataset = argv[++i];
     else if (a === '--connection-id') args.connectionId = argv[++i];
@@ -175,6 +183,12 @@ function parseArgs(argv) {
     else if (a === '--timeout') args.timeout = Number(argv[++i]);
     else if (a === '--force') args.force = true;
     else if (a === '--seed') args.seed = argv[++i];
+     else if (a === '--webhook') args.webhook = argv[++i];
+    else if (a === '--min-severity') args.minSeverity = argv[++i];
+    else if (a === '--monitor') args.monitor = true;
+    else if (a === '--target-id') args.targetId = argv[++i];
+    else if (a === '--reviewer') args.reviewer = argv[++i];
+    else if (a === '--entity') args.entity = argv[++i];
     else args._.push(a);
   }
   return args;
@@ -276,7 +290,9 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         const r = await observe(root, mode, args);
         const claimDiffLine = r.summary.citation_metrics?.claim_diff
           ? `\nClaim diff: ${Object.entries(r.summary.citation_metrics.claim_diff).map(([k, v]) => `${k}:${v}`).join(' ')}` : '';
-        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]${claimDiffLine}\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
+        const stanceLine = r.summary.stance_metrics
+          ? `\nStance summary: favorable:${r.summary.stance_metrics.favorable} neutral:${r.summary.stance_metrics.neutral} unfavorable:${r.summary.stance_metrics.unfavorable} mixed:${r.summary.stance_metrics.mixed} review_required:${r.summary.stance_metrics.review_required}` : '';
+        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]${claimDiffLine}${stanceLine}\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
         break;
       }
       case 'apply': {
@@ -285,9 +301,33 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         break;
       }
       case 'monitor': {
-        const r = monitor(root, { runA: args._[0], runB: args._[1] });
-        out(args, `monitor ${r.run_a} → ${r.run_b}: ${r.summary.alerts} alert(s), ${r.summary.critical_or_high} critical/high\nReport: ${path.join(r.dir, 'latest.json')}`, r);
+        const r = await monitorAndAlert(root, {
+          runA: args._[0],
+          runB: args._[1],
+          webhookUrl: args.webhook,
+          minSeverity: args.minSeverity,
+        });
+        let msg = `monitor ${r.run_a} → ${r.run_b}: ${r.summary.alerts} alert(s), ${r.summary.critical_or_high} critical/high\nReport: ${path.join(r.dir, 'latest.json')}`;
+        if (r.delivery) {
+          if (r.delivery.skipped) msg += `\nDelivery: skipped (${r.delivery.reason})`;
+          else if (r.delivery.success) msg += `\nDelivery: webhook dispatched to ${r.delivery.target_url} (HTTP ${r.delivery.status_code})`;
+          else msg += `\nDelivery: webhook FAILED (${r.delivery.error})`;
+        }
+        out(args, msg, r);
         if (r.summary.critical_or_high > 0) process.exitCode = 1;
+        break;
+      }
+      case 'report': {
+        const sub = args._[0];
+        if (sub === 'dashboard') {
+          const r = reportDashboard(root, { since: args.since, last: args.last ? Number(args.last) : undefined });
+          out(args, `report dashboard: ${r.included} audit run(s) included, ${r.skipped} skipped\nMarkdown: ${r.path_md}\nHTML: ${r.path_html}`, r);
+        } else if (sub === 'share-of-voice' || sub === 'citations' || sub === 'share') {
+          const r = reportShareOfVoice(root, { since: args.since, last: args.last ? Number(args.last) : undefined });
+          out(args, `report share-of-voice: ${r.included} citation run(s) included, ${r.competitors_evaluated} competitor(s) evaluated\nMarkdown: ${r.path_md}\nHTML: ${r.path_html}`, r);
+        } else {
+          throw new Error('usage: citable report <dashboard|share-of-voice> [--last <n>] [--since <run-id>]');
+        }
         break;
       }
       case 'metrics': {
@@ -314,10 +354,16 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         } else if (mode === 'sync') {
           const r = await syncConnection(root, args);
           out(args, `connect sync ${r.connection_id}: ${r.summary.total} metric observation(s)\nEvidence package: ${r.dir}`, r);
+        } else if (mode === 'read') {
+          const r = await readCmsContent(root, args);
+          out(args, `connect read ${r.connection_id} [${r.target_id}]: title="${r.content.title}" hash=${r.content.content_hash.slice(0, 12)}…\nURL: ${r.content.url || 'n/a'}`, r);
+        } else if (mode === 'apply') {
+          const r = await applyCmsRemediation(root, args);
+          out(args, `connect apply ${r.connection_id} [${r.target_id}]: ${r.status} ${r.dry_run ? '(dry run; use --write to apply)' : 'applied'}\nBefore: ${r.before_hash?.slice(0, 12)}… After: ${r.after_hash?.slice(0, 12)}…\nReviewer: ${r.reviewer}`, r);
         } else if (mode === 'disconnect') {
           const r = disconnectConnection(root, args);
           out(args, `connect disconnect ${r.connection_id}: ${r.disconnected ? 'removed' : 'dry run; use --write to remove'}`, r);
-        } else throw new Error('usage: citable connect <status|configure|discover|validate|sync> [options]');
+        } else throw new Error('usage: citable connect <status|configure|discover|validate|sync|read|apply|disconnect> [options]');
         break;
       }
       case 'objectives': {
@@ -363,9 +409,30 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         break;
       }
       case 'schedules': {
-        if(args._[0]!=='run') throw new Error('usage: citable schedules run <schedule-id> [--ref-date YYYY-MM-DD]');
-        const r=await runSchedule(root,{scheduleId:args._[1],refDate:args.refDate});
-        out(args,`schedule ${r.schedule_execution.schedule_id}: audit ${r.runId}\nEvidence package: ${r.dir}\nExecution record: ${r.execution_file}`,r);
+        if (args._[0] !== 'run') throw new Error('usage: citable schedules run <schedule-id> [--ref-date YYYY-MM-DD] [--webhook <url>] [--monitor]');
+        const r = await runSchedule(root, {
+          scheduleId: args._[1],
+          refDate: args.refDate,
+          webhook: args.webhook,
+          monitor: args.monitor,
+          minSeverity: args.minSeverity,
+        });
+        let msg = `schedule ${r.schedule_execution.schedule_id}: audit ${r.runId}\nEvidence package: ${r.dir}\nExecution record: ${r.execution_file}`;
+        if (r.schedule_execution.monitor) {
+          const m = r.schedule_execution.monitor;
+          if (m.status === 'insufficient_history') {
+            msg += `\nMonitor: insufficient history (${m.message})`;
+          } else {
+            msg += `\nMonitor: compared to ${m.baseline_run} (${m.regressions_count} regression(s), ${m.summary.regression_critical_or_high} critical/high)`;
+          }
+        }
+        if (r.schedule_execution.alert_delivery) {
+          const d = r.schedule_execution.alert_delivery;
+          if (d.skipped) msg += `\nAlert delivery: skipped (${d.reason})`;
+          else if (d.success) msg += `\nAlert delivery: dispatched to ${d.target_url} (HTTP ${d.status_code})`;
+          else msg += `\nAlert delivery: FAILED (${d.error})`;
+        }
+        out(args, msg, r);
         break;
       }
       case 'project': {

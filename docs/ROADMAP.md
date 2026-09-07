@@ -8,7 +8,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 123 across 18 namespaces |
+| Detectors | 124 across 18 namespaces |
 | Tests | 302 pass on Node 24 |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |

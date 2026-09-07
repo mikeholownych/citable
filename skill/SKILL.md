@@ -95,7 +95,8 @@ citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
-citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance evidence
+citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance/stance evidence
+citable observe stance --input <citations|prompts.json> [--entity <id>]
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
 citable observe probes --target <url> [--region <label>]
 citable observe network --input <regional-network-import.json>
@@ -103,13 +104,17 @@ citable observe render --target <url> [--interactions] [--resume-run <run-id>]
 citable observe render --input <browser-evidence-plan.json>
 citable observe performance --target <url> --lighthouse [--repeat 1..5]
 citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry run by default
-citable monitor [runA runB]           # observation regression alerts
+citable monitor [runA runB] [--webhook <url>] [--min-severity <sev>]  # observation regression alerts
+citable report dashboard [--last N] [--since <run-id>]  # cross-run evidence trend (Markdown + HTML)
+citable report share-of-voice [--last N] [--since <run-id>]  # competitor citation share (Markdown + HTML)
 citable metrics import --provider <name> --input <csv|json>
 citable connect status
-citable connect configure --provider <gsc|ga4> --connection-id <id> --property-id <id> [--credential-env <name>] [--write]
-citable connect discover --provider <gsc|ga4>
+citable connect configure --provider <gsc|ga4|wordpress|webflow> --connection-id <id> --property-id <id> [--credential-env <name>] [--write]
+citable connect discover --provider <gsc|ga4|wordpress|webflow>
 citable connect validate --connection-id <id>
 citable connect sync --connection-id <id> --start-date YYYY-MM-DD --end-date YYYY-MM-DD
+citable connect read --connection-id <id> --target-id <id>
+citable connect apply --connection-id <id> --input <cms-spec.json> [--write]
 citable connect disconnect --connection-id <id> [--write]
 citable objectives init --input <json|yaml> [--write]
 citable objectives validate
@@ -121,7 +126,7 @@ citable reviews prioritize [--write]
 citable reviews plan --input <json|yaml> [--write]
 citable reviews sample <sampling-plan-id> [--write]
 citable reviews evaluate
-citable schedules run <schedule-id> [--ref-date YYYY-MM-DD]
+citable schedules run <schedule-id> [--ref-date YYYY-MM-DD] [--monitor] [--webhook <url>]
 citable project github <run-id>
 citable observe media --input <manifest.json> [--ocr]
 citable observe representation --input <release-manifest.json> --target <controlled-url>
