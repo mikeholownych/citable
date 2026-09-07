@@ -41,6 +41,20 @@ export async function buildContext(root, { target, baseUrl, refDate } = {}) {
     }
   }
 
+  // Observations recorded under .citable/runs/*/observations/
+  const observations = [];
+  if (fs.existsSync(runsDir)) {
+    for (const run of fs.readdirSync(runsDir)) {
+      const obsDir = path.join(runsDir, run, 'observations');
+      if (!fs.existsSync(obsDir)) continue;
+      for (const f of fs.readdirSync(obsDir)) {
+        if (f.endsWith('.json')) {
+          try { observations.push(readJson(path.join(obsDir, f))); } catch { warnings.push(`unreadable observation: ${run}/${f}`); }
+        }
+      }
+    }
+  }
+
   // Latest page snapshot (for regression/freshness comparison)
   let snapshots = null;
   const snapFile = path.join(root, '.citable', 'snapshots', 'pages-latest.json');
@@ -54,6 +68,7 @@ export async function buildContext(root, { target, baseUrl, refDate } = {}) {
     registries,
     site,
     promptResults: promptResults.length ? promptResults : null,
+    observations: observations.length ? observations : null,
     snapshots,
     refDate: parseRefDate(refDate),
     hashPage: (p) => sha256(p.text),

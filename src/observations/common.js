@@ -62,6 +62,7 @@ export function summarizeObservations(items) {
     }
     competitiveSourceMap.set(domain, current);
   }
+  const stances = items.filter((item) => item.kind === 'stance');
   return {
     total: items.length, by_kind: byKind, by_state: byState,
     citation_metrics: citations.length ? {
@@ -73,6 +74,15 @@ export function summarizeObservations(items) {
       provider_results: providers,
       competitive_domains: [...new Set(reviews.filter((x) => !x.data.first_party).map((x) => { try { return new URL(x.data.canonical_url).hostname; } catch { return null; } }).filter(Boolean))].sort(),
       competitive_sources: [...competitiveSourceMap.values()].sort((a, b) => a.domain.localeCompare(b.domain)),
+    } : null,
+    stance_metrics: stances.length ? {
+      total: stances.length,
+      favorable: stances.filter((x) => x.data.stance === 'favorable').length,
+      neutral: stances.filter((x) => x.data.stance === 'neutral').length,
+      unfavorable: stances.filter((x) => x.data.stance === 'unfavorable').length,
+      mixed: stances.filter((x) => x.data.stance === 'mixed').length,
+      ambiguous: stances.filter((x) => x.data.stance === 'ambiguous').length,
+      review_required: stances.filter((x) => x.state === 'review_required').length,
     } : null,
   };
 }

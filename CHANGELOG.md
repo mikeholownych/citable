@@ -15,6 +15,70 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Cross-Run Evidence Dashboard
+
+- Added `citable report dashboard [--last N] [--since <run-id>]`, which folds
+  the `summary.json` each audit run already records into
+  `.citable/reports/dashboard.md` and a self-contained
+  `.citable/reports/dashboard.html` with inline SVG trend lines. It reads only
+  values the runs computed, adds no dependency, and never edits a run package.
+- Fewer than two audit runs produces an explicit insufficient-history state
+  rather than a trend. Runs whose summary or manifest cannot be parsed, and
+  observation runs that record no severity or posture, are listed as skipped
+  with a reason instead of being counted as zero findings.
+- Categorical posture series render as labelled states; they are not plotted
+  as numbers and are never combined with severity counts into a single score.
+
+### Added — Automated Regression Alert Delivery and Scheduled Monitoring
+
+- Extended `citable monitor` with optional `--webhook <url>` and `--min-severity <level>`
+  for automated regression alerting. When regressions are detected, a signed, hash-bound
+  payload is dispatched to the target endpoint and logged as an immutable delivery receipt
+  in `.citable/monitoring/deliveries/`.
+- Extended `citable schedules run` with `--monitor` and `--webhook <url>` flags, plus
+  optional `monitor` configuration in `schedules.yaml` (`schemas/schedule.schema.json`).
+  Scheduled audit executions automatically run comparative regression checks against
+  prior baseline runs and dispatch alerts when critical or high regressions occur.
+- Added strict fail-closed network validation for webhook endpoints: private and loopback
+  destinations are blocked, timeouts are enforced with AbortController, and delivery failures
+  are captured in sealed receipts rather than silently dropped.
+
+### Added — Competitor Share-of-Citation and Share-of-Voice Reporting
+
+- Added `citable report share-of-voice [--last N] [--since <run-id>]` (and aliases
+  `report citations` / `report share`), which joins the competitor registry
+  (`.citable/competitors.yaml`) against recorded citation observation runs.
+- Derives verified prompt-level and aggregate citation share, first-party presence rate,
+  and competitor presence without scraping engine UIs or fabricating estimates.
+- Unevaluated prompts and competitors with no recorded observations are marked as
+  `not_evidenced`. Renders both a committed Markdown report and a self-contained HTML
+  distribution bar visualization in `.citable/reports/`.
+
+### Added — Stance & Sentiment Observation Module and Semantic Detector (G4)
+
+- Added `src/observations/stance.js` and `citable observe stance --input <file> [--entity <id>]`
+  to classify recorded engine answer tone toward registered entities as evidence-backed semantic
+  findings without fabricating sentiment scores.
+- Added detector `GEO-007` ("Unfavorable or distorted entity stance in recorded generative answers")
+  in `src/detectors/geoReco.js`, identifying negative or distorted characterizations across
+  prompt-results and citation observations. Gated by human review per the narrative-accuracy rubric
+  (`review_required: true`, `finding_type: 'evidence_backed_semantic_finding'`).
+- Added positive and negative test fixtures in `tests/fixtures/observations/` proving detection
+  and non-detection.
+
+### Added — WordPress and Webflow CMS Connectors for Remediation Targets (G5)
+
+- Added CMS connectors for WordPress (`src/connectors/wordpress.js`) and Webflow
+  (`src/connectors/webflow.js`), mirroring the connector interface alongside GSC and GA4.
+- Implemented read and apply adapters scoped to the fields action-plan items target (`title`,
+  `content`, `excerpt`, `meta`, `slug`, `seo`, structured data) with SHA-256 hash-locking to
+  prevent race conditions and unreviewed overwrites.
+- Added `citable connect read --connection-id <id> --target-id <id>` and
+  `citable connect apply --connection-id <id> --input <spec.json> [--write]` with fail-closed
+  requirements for named human reviewers and matching content hashes.
+
+
+
 ## 1.14.0 — 2026-07-26
 
 ### Added — Evidence-Phase Agent Profiles

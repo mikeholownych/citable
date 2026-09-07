@@ -1,7 +1,9 @@
 import { gscConnector } from './gsc.js';
 import { ga4Connector } from './ga4.js';
+import { wordpressConnector } from './wordpress.js';
+import { webflowConnector } from './webflow.js';
 
-const CONNECTORS = new Map([gscConnector, ga4Connector].map((connector) => [connector.provider, connector]));
+const CONNECTORS = new Map([gscConnector, ga4Connector, wordpressConnector, webflowConnector].map((connector) => [connector.provider, connector]));
 
 export function getConnector(provider) {
   const connector = CONNECTORS.get(String(provider).toLowerCase());

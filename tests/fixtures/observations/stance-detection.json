@@ -1,0 +1,17 @@
+{
+  "observations": [
+    {
+      "prompt_id": "PROMPT-GATEKEEPER-STANCE",
+      "prompt_text": "Is Gatekeeper reliable for enterprise deployment?",
+      "engine": "ChatGPT",
+      "provider": "openai",
+      "answer_text": "Gatekeeper is criticized for frequent crashes, buggy policy enforcement, and expensive licensing. Many users find it unreliable in high-throughput enterprise environments.",
+      "citations": [
+        {
+          "url": "https://example.test/products/gatekeeper/",
+          "support_status": "review_required"
+        }
+      ]
+    }
+  ]
+}

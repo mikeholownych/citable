@@ -1,4 +1,5 @@
 import { defineDetector, indexTargets, registryPageFor, sitePageFor, pageSubject, entrySubject } from './framework.js';
+import { classifyAnswerStance } from '../observations/stance.js';
 
 const D = [];
 
@@ -220,6 +221,106 @@ D.push(defineDetector({
           evidence: [`missing: ${missing.join(', ')}`],
         }] : [];
       });
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-007', name: 'Unfavorable or distorted entity stance in recorded generative answers', namespace: 'GEO',
+  description: 'Recorded generative engine answers express an unfavorable, negative, or critically distorted stance toward a registered entity.',
+  discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
+  finding_type: 'evidence_backed_semantic_finding',
+  impact: { representation: 'high', reputational: 'high', conversion: 'medium' },
+  applicable_requirement: 'GEO §6: accurate synthesis and entity representation; Rubric: narrative accuracy (§4 & §5)',
+  false_positive_conditions: ['Legitimate negative comparison where a product does not support a feature by design'],
+  remediation: 'Review the recorded answers against the narrative-accuracy rubric, identify whether the negative characterization reflects true product limitations or factual inaccuracies/outdated information, and publish authoritative corroborating evidence or file model corrections.',
+  unsafe_shortcuts: ['publishing fabricated positive reviews', 'manipulating third-party review sites', 'crawler prompt injection (GEO-001)'],
+  verification: 'Follow-up generative engine observations demonstrate neutral or favorable stance with no narrative-accuracy violations.',
+  review_required: true,
+  check(ctx) {
+    const entities = (ctx.registries?.entities?.entries || []).filter((e) => e.status !== 'retired');
+    if (!entities.length) return [];
+    const hits = [];
+
+    // 1. Check promptResults
+    for (const pr of ctx.promptResults || []) {
+      for (const e of entities) {
+        const names = [e.canonical_name, ...(e.aliases || [])].map((n) => n.toLowerCase());
+        const text = `${pr.prompt_text || ''} ${pr.answer_text || ''}`.toLowerCase();
+        const mentioned = names.some((n) => text.includes(n));
+        if (!mentioned) continue;
+
+        const classification = classifyAnswerStance(pr.answer_text || '', e, { reviewer: pr.evaluator });
+        const isNegativeSentiment = pr.sentiment === 'negative' || pr.recommendation_status === 'not_recommended';
+        if (classification.stance === 'unfavorable' || isNegativeSentiment) {
+          hits.push({
+            subject: entrySubject('entities', e.entity_id),
+            summary: `Generative engine ${pr.engine || 'unknown'} expresses unfavorable stance toward entity "${e.canonical_name}"`,
+            evidence: [
+              `engine: ${pr.engine || 'unknown'}`,
+              `prompt: ${pr.prompt_text || pr.prompt_id || 'unknown'}`,
+              `stance: unfavorable`,
+              `markers: ${classification.unfavorable_markers?.join(', ') || 'recorded negative sentiment'}`,
+              `excerpt: "${(classification.evidence_passages?.[0] || pr.answer_text || '').slice(0, 160)}"`,
+              `reviewer: ${pr.evaluator || 'unreviewed (semantic review required)'}`,
+            ],
+            confidence: pr.evaluator ? 'confirmed' : 'medium',
+            finding_type: 'evidence_backed_semantic_finding',
+          });
+        }
+      }
+    }
+
+    // 2. Check observations (stance or citation)
+    for (const obs of ctx.observations || []) {
+      if (obs.kind === 'stance' && obs.data?.stance === 'unfavorable') {
+        const e = entities.find((ent) => ent.entity_id === obs.data.entity_id);
+        if (e) {
+          hits.push({
+            subject: entrySubject('entities', e.entity_id),
+            summary: `Generative engine ${obs.data.engine || 'unknown'} expresses unfavorable stance toward entity "${e.canonical_name}"`,
+            evidence: [
+              `engine: ${obs.data.engine || 'unknown'}`,
+              `prompt: ${obs.data.prompt_text || obs.data.prompt_id || 'unknown'}`,
+              `stance: unfavorable`,
+              `markers: ${(obs.data.unfavorable_markers || []).join(', ') || 'unfavorable markers'}`,
+              `excerpt: "${(obs.data.evidence_passages?.[0] || '').slice(0, 160)}"`,
+              `reviewer: ${obs.data.reviewer || 'unreviewed (semantic review required)'}`,
+            ],
+            confidence: obs.data.reviewer ? 'confirmed' : 'medium',
+            finding_type: 'evidence_backed_semantic_finding',
+          });
+        }
+      } else if (obs.kind === 'citation' && obs.data?.answer_text) {
+        for (const e of entities) {
+          const classification = classifyAnswerStance(obs.data.answer_text, e);
+          if (classification.mentioned && classification.stance === 'unfavorable') {
+            hits.push({
+              subject: entrySubject('entities', e.entity_id),
+              summary: `Generative engine ${obs.data.provider || 'unknown'} expresses unfavorable stance toward entity "${e.canonical_name}"`,
+              evidence: [
+                `engine: ${obs.data.provider || 'unknown'}`,
+                `prompt: ${obs.data.prompt_text || obs.data.prompt_id || 'unknown'}`,
+                `stance: unfavorable`,
+                `markers: ${(classification.unfavorable_markers || []).join(', ')}`,
+                `excerpt: "${(classification.evidence_passages?.[0] || obs.data.answer_text).slice(0, 160)}"`,
+                `reviewer: unreviewed (semantic review required)`,
+              ],
+              confidence: 'medium',
+              finding_type: 'evidence_backed_semantic_finding',
+            });
+          }
+        }
+      }
+    }
+
+    // Deduplicate by entity and summary
+    const seen = new Set();
+    return hits.filter((h) => {
+      const k = `${h.subject.identifier}|${h.summary}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   },
 }));
 
