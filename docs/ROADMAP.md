@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 302 pass on Node 24 |
 | Registries | 27 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 95 packaged skill files per provider; 2 managed Claude profiles |
+| Distribution | 96 packaged files per provider; 2 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,7 +20,7 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 95 packaged skill files per provider
+The current development branch builds 96 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
 manifested two-profile discovery payload.

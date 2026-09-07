@@ -18,6 +18,7 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 ### Changed — Domain Configuration
 
 - Updated controlled deployment surface URLs, citation URL, and contact addresses from deprecated `nebulacomponents.shop` to `nebulacomponents.com`.
+- Updated documented distribution file count in `docs/ROADMAP.md` to 96 packaged files per provider.
 
 ## 1.15.0 — 2026-09-07
 
