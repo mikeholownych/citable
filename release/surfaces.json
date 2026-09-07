@@ -3,7 +3,7 @@
   "controlled_surfaces": [
     {
       "surface_id": "nebula-citable-resource",
-      "url": "https://nebulacomponents.shop/resources/citable",
+      "url": "https://nebulacomponents.com/resources/citable",
       "projection_id": "resource-data",
       "verification_method": "response_header",
       "verification_header": "x-citable-projection-sha256",
@@ -11,7 +11,7 @@
     },
     {
       "surface_id": "nebula-llms-txt",
-      "url": "https://nebulacomponents.shop/resources/citable/llms.txt",
+      "url": "https://nebulacomponents.com/resources/citable/llms.txt",
       "projection_id": "llms-txt",
       "verification_method": "exact_response_body",
       "verification_header": null,

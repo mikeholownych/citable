@@ -15,6 +15,10 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Changed — Domain Configuration
+
+- Updated controlled deployment surface URLs, citation URL, and contact addresses from deprecated `nebulacomponents.shop` to `nebulacomponents.com`.
+
 ## 1.15.0 — 2026-09-07
 
 ### Added — Cross-Run Evidence Dashboard

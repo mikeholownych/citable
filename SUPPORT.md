@@ -12,7 +12,7 @@ Choose the narrowest channel that fits the request:
 | Product idea not yet accepted for implementation | GitHub Discussions: Ideas |
 | Provider research or standards change | GitHub Discussions: Research and standards |
 | Security vulnerability | Private vulnerability report on the Security tab |
-| Conduct concern | `hello@nebulacomponents.shop` |
+| Conduct concern | `hello@nebulacomponents.com` |
 
 ## Boundaries
 

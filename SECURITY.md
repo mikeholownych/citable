@@ -11,7 +11,7 @@ current release on npm before reporting or validating a fix.
 Use GitHub private vulnerability reporting from this repository's **Security**
 tab. Do not open a public issue or Discussion for a suspected vulnerability.
 If GitHub private reporting is unavailable, contact
-`hello@nebulacomponents.shop` with only enough information to establish a safe
+`hello@nebulacomponents.com` with only enough information to establish a safe
 private channel.
 
 Include, when available:

@@ -43,7 +43,7 @@ officially representing the project in public spaces.
 
 ## Enforcement
 
-Report conduct concerns privately to `hello@nebulacomponents.shop`. Do not open
+Report conduct concerns privately to `hello@nebulacomponents.com`. Do not open
 a public issue. Reports will be reviewed promptly and fairly, and reporter
 privacy will be protected to the extent reasonably possible.
 
