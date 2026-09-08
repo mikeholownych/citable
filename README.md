@@ -21,7 +21,7 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   objectives, interventions, optional connections, reviewers, review policies,
   governed exceptions, semantic review items, sampling plans, and audit schedules — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **180 detectors** across 19 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
+- **181 detectors** across 19 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
   SCHEMA, CWV, GEO, AEO, CLAIM, EVD, LIFE, AGENT, MEAS, EXP, CONF, SEC, LINK,
   CRO), each with remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
@@ -210,6 +210,19 @@ citable artifacts verify --input ./portable-run
 citable artifacts import --input ./portable-run
 citable substantiate          # claim/evidence assessment (dry run)
 citable validate              # registry schema + referential integrity
+
+# CRO remediation loop: audit → explain → remediate → verify → hand off
+citable inspect cro <page> --target ./dist
+citable remediate --finding CRO-007 --target src/Form.jsx        # dry run: diff + validation + confidence
+citable remediate --finding CRO-007 --target src/Form.jsx --write # gated; rollback snapshot created
+citable verify remediation --run <run-id> --finding CRO-007 --target src/Form.jsx --apply
+citable kit export --run <run-id> --finding CRO-007 --target src/Form.jsx
+citable check experiment <id> --observed-control 5000 --observed-variant 4980 --days-running 6
+citable verify page /pricing --target ./dist
+citable compatibility
+citable audit edge worker.js --format cloudflare-worker
+citable test visual
+citable corpus benchmark
 ```
 
 ## Repository map
@@ -218,8 +231,8 @@ citable validate              # registry schema + referential integrity
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 27 registries plus findings, runs, observations, release governance, remediation, config, and prompt results |
-| `tests/` | Unit + integration suites; positive/negative fixtures |
+| `schemas/` | JSON Schemas: 29 registries plus findings, runs, observations, release governance, remediation verification, the CLI output envelope, config, and prompt results |
+| `tests/` | Unit + integration suites; positive/negative fixtures; labeled golden benchmark corpus |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |
 

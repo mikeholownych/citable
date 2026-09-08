@@ -12,8 +12,8 @@ import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
-export async function audit(root, { target, scope, baseUrl, refDate } = {}) {
-  const ctx = await buildContext(root, { target, baseUrl, refDate });
+export async function audit(root, { target, scope, baseUrl, refDate, viewport = null } = {}) {
+  const ctx = await buildContext(root, { target, baseUrl, refDate, viewport });
   const detectors = selectDetectors({ scope });
 
   const run = createRun(root, {

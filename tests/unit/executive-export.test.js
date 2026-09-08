@@ -24,6 +24,15 @@ test("exportExecutiveReport creates HTML brief and Markdown deck with disclaimer
   });
   assert.equal(deckRes.format, "markdown-deck");
   assert.ok(deckRes.content.includes("<!-- slide -->"));
+
+  const slidesRes = await exportExecutiveReport(tmpDir, "RUN-TEST-001", {
+    format: "slides",
+    clientName: "Nebula Enterprise Client",
+  });
+  assert.equal(slidesRes.format, "slides");
+  assert.ok(slidesRes.content.includes("Executive CRO Briefing"));
+  assert.ok(slidesRes.content.includes("Friction Surface Area"));
+  assert.ok(slidesRes.content.includes("Nebula Enterprise Client"));
 });
 
 test("alert formatters format Slack, Teams, and Discord payloads cleanly", () => {

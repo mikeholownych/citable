@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { init } from '../commands/init.js';
 import { audit } from '../commands/audit.js';
+import { auditEdgeCode } from '../commands/edgeSecurity.js';
 import { planAudit } from '../commands/planAudit.js';
 import { demo } from '../commands/demo.js';
 import { validate } from '../commands/validate.js';
@@ -21,6 +23,14 @@ import { probeEngine } from '../commands/probe.js';
 import { lintComponents } from '../commands/lintComponents.js';
 import { exportExecutiveReport } from '../reporting/executiveExport.js';
 import { attributeImpact } from '../commands/attributeImpact.js';
+import { remediateCommand } from '../commands/remediate.js';
+import { verifyRemediation } from '../commands/verifyRemediation.js';
+import { exportImplementationKit } from '../commands/implementationKit.js';
+import { compatibilityCommand, verifyPage } from '../commands/compatibility.js';
+import { runVisualRegression } from '../commands/visualRegression.js';
+import { checkExperiment } from '../commands/experimentGuardrails.js';
+import { runGoldenBenchmark } from '../commands/goldenCorpus.js';
+import { previewCroCommand } from '../commands/previewCro.js';
 import { schemaCommand } from '../commands/schemaCmd.js';
 import { compareSnapshots } from '../commands/compareSnapshots.js';
 import { isInstallerCommand, runInstallerCommand } from '../installer/index.js';
@@ -76,10 +86,15 @@ Commands
   inspect <page>            Profile one page (URL path or source file)
   inspect serp <page>       Simulate Google SERP title/snippet truncation and rich results
   inspect cro <page>        Evaluate page conversion readiness, CTA visibility, and friction
+  inspect saliency <page>   Evaluate privacy-first algorithmic visual attention and CTA conspicuity
   inspect aeo <page>        Evaluate answer extractability, question density, and structure
   inspect geo <page>        Evaluate RAG chunkability, section density, and retrieval posture
+  preview cro <page>        Interactive split-screen visual preview of original vs remediated page
+  remediate [finding]       Synthesize accessible Nebula Components; safe patches with diff, validation, confidence, rollback (--write gated, fail closed)
   test funnel [id]          Test multi-step conversion funnel continuity and parameter persistence
+  test visual               Deterministic layout-contract checks + viewport/variant screenshot matrix (screenshots need playwright)
   plan experiment           Calculate statistical sample size and duration for A/B testing
+  check experiment          Experiment guardrails: SRM, stopping, power, contamination, lifecycle status
   map-claims                Extract material claim candidates from pages (--write to save)
   substantiate              Assess claim/evidence status (--write to apply downgrades)
   schema                    Validate deployed JSON-LD and propose registry-derived schema
@@ -123,9 +138,14 @@ Commands
   corpus evaluate           Evaluate a disclosed real-property acceptance corpus
   corpus publish            Validate and project an owner-authorized public corpus
   corpus receipt            Create a reproducibility receipt for a sealed run
+  corpus benchmark          Run the labeled golden fixture corpus and report per-detector precision/recall
   corpus compare-receipts   Compare two acceptance-run receipt envelopes
   artifacts export         Export one sealed run as a portable verified directory
   artifacts verify         Verify an exported artifact interchange directory
+  verify remediation       Closed loop: re-run the detector after a patch and emit a before/after evidence bundle
+  verify page <page>       Run all detectors scoped to one page and report posture (pass/attention/blocked)
+  compatibility            Pre-flight: Node engine, optional adapters, browser, framework, registries, edge limits
+  kit export               Customer-ready implementation kit: finding, diff, evidence, acceptance tests, deployment
   artifacts import         Import a verified run without changing its canonical bytes
   self-upgrade              Check for a newer version and upgrade the npx cache
   kpi [list|show|validate]  KPI architecture — govern metric definitions, sources, targets
@@ -203,6 +223,7 @@ function parseArgs(argv) {
     else if (a === '--target') args.target = argv[++i];
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
+    else if (a === '--viewport') args.viewport = argv[++i];
     else if (a === '--input') args.input = argv[++i];
     else if (a === '--output') args.output = argv[++i];
     else if (a === '--run') args.runId = argv[++i];
@@ -254,14 +275,53 @@ function parseArgs(argv) {
     else if (a === '--note') args.note = argv[++i];
     else if (a === '--expired') args.expiredOnly = true;
     else if (a === '--expiring-soon') args.expiringSoonDays = Number(argv[++i]);
+    else if (a === '--finding') args.finding = argv[++i];
+    else if (a === '--component') args.component = argv[++i];
+    else if (a === '--format') args.format = argv[++i];
+    else if (a === '--strict') args.strict = true;
+    else if (a === '--export') args.export = argv[++i];
+    else if (a === '--apply') args.apply = true;
+    else if (a === '--preview-file') args['preview-file'] = argv[++i];
+    else if (a === '--observed-control') args['observed-control'] = argv[++i];
+    else if (a === '--observed-variant') args['observed-variant'] = argv[++i];
+    else if (a === '--days-running') args['days-running'] = argv[++i];
+    else if (a === '--baseline-rate') args['baseline-rate'] = argv[++i];
+    else if (a === '--p-value') args['p-value'] = argv[++i];
+    else if (a === '--revenue-claimed') args['revenue-claimed'] = true;
     else args._.push(a);
   }
   return args;
 }
 
-function out(args, human, data) {
-  if (args.json) console.log(JSON.stringify(data, null, 2));
-  else console.log(human);
+const TOOL_VERSION_CLI = JSON.parse(
+  fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+).version;
+
+// Set by main(); read by out() for the JSON envelope. Kept off `args` because
+// several commands spread parsed args directly into option objects.
+let CURRENT_COMMAND = null;
+
+/**
+ * Stable machine-readable output contract (citable_output_schema 1.0):
+ * every command's --json payload is wrapped in this envelope so CI systems
+ * and agencies can consume results without parsing terminal text. The
+ * envelope version changes only on breaking envelope changes; command
+ * payloads evolve backward-compatibly inside `result`.
+ */
+const OUTPUT_SCHEMA_VERSION = '1.0';
+
+function out(args, human, data, command = null) {
+  if (args.json) {
+    console.log(JSON.stringify({
+      citable_output_schema: OUTPUT_SCHEMA_VERSION,
+      tool_version: TOOL_VERSION_CLI,
+      command: command ?? CURRENT_COMMAND,
+      generated_at: new Date().toISOString(),
+      result: data,
+    }, null, 2));
+  } else {
+    console.log(human);
+  }
 }
 
 export async function main(argv = process.argv.slice(2), options = {}) {
@@ -272,6 +332,7 @@ export async function main(argv = process.argv.slice(2), options = {}) {
   }
   if (isInstallerCommand(cmd)) return runInstallerCommand(cmd, argv.slice(1), options);
   const args = parseArgs(argv.slice(1));
+  CURRENT_COMMAND = cmd;
   const root = options.cwd ?? process.cwd();
 
   try {
@@ -299,8 +360,20 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         break;
       }
       case 'audit': {
+        if (args._[0] === 'edge') {
+          const file = args._[1];
+          if (!file || !args.format) throw new Error('usage: citable audit edge <file> --format <cloudflare-worker|cloudflare-cro|vercel-middleware|shopify-snippet|html>');
+          const content = fs.readFileSync(path.resolve(root, file), 'utf8');
+          const r = auditEdgeCode(content, { format: args.format, name: file });
+          const txt = `audit edge ${file} (${r.format}, ${r.byte_size} bytes)
+  Findings: ${r.finding_count} (high:${r.high} medium:${r.medium} advisory:${r.advisory})
+${r.findings.map((f) => `  [${f.rule_id}] (${f.severity}) ${f.summary}\n    Fix: ${f.remediation}`).join('\n') || '  no risk patterns found'}
+  Methodology: ${r.methodology}`;
+          out(args, txt, r);
+          break;
+        }
         const scope = args._[0];
-        const r = await audit(root, { target: args.target, scope, baseUrl: args.baseUrl, refDate: args.refDate });
+        const r = await audit(root, { target: args.target, scope, baseUrl: args.baseUrl, refDate: args.refDate, viewport: args.viewport });
         out(args, `Audit ${r.runId}: ${r.summary.total} finding(s) [${Object.entries(r.summary.by_severity).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nReport: ${path.join(r.dir, 'report.md')}\nStatus: ${r.manifest.status}${r.manifest.incomplete_checks.length ? `\nIncomplete: ${r.manifest.incomplete_checks.join('; ')}` : ''}`, { runId: r.runId, dir: r.dir, summary: r.summary, status: r.manifest.status });
         break;
       }
@@ -337,10 +410,15 @@ ${richList}
           const r = await inspectCro(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
           const txt = `Inspect CRO ${r.url}
   Status: ${r.conversion_status}
+  Friction Surface Area: ${r.friction_surface_area}
   Declared Conversion Action: ${r.declared_conversion_action || 'none'}
   Page Type: ${r.page_type || 'unregistered'}; Intent: ${r.primary_intent || 'unregistered'}
   Analytics Instrumentation: ${r.analytics_installed ? `INSTALLED (${r.analytics_tags.length} tag${r.analytics_tags.length === 1 ? '' : 's'})` : 'NOT DETECTED'}
   Hero CTAs: ${r.hero_cta_count}; Choice Overload: ${r.has_choice_overload ? 'YES (paralysis risk)' : 'no'}
+  Primary CTA Conspicuity: ${r.saliency?.primary_cta_conspicuity_index ?? 'N/A'} (${r.saliency?.pci_assessment ?? 'unassessed'}) — modeled heuristic index, not observed attention
+  Keystroke Effort: ${r.keystroke_effort?.autofill_coverage_pct}% autofill coverage (${r.keystroke_effort?.keystroke_reduction_pct}% modeled mobile friction reduction)
+  Payment Wallet Readiness: ${r.express_checkout_readiness?.payment_wallet_readiness?.supported ? 'SUPPORTED' : 'NOT DETECTED (CRO-021)'}
+  Authentication Readiness (passkeys/WebAuthn): ${r.express_checkout_readiness?.authentication_readiness?.supported ? 'DETECTED' : 'NOT DETECTED'} (informational index; authentication, not payment)
   CTAs (${r.ctas.length}):
 ${r.ctas.map((c) => `    [${c.isPrimary ? 'PRIMARY' : 'SECONDARY'}${c.inHero ? ' - HERO' : ''}] "${c.text}" (${c.tag}) → ${c.target || 'no target'}`).join('\n') || '    none'}
   Forms (${r.forms.length}):
@@ -348,6 +426,20 @@ ${r.forms.map((f, i) => `    Form ${i + 1}: ${f.fieldCount} fields (autocomplete
   Trust Signals: ${r.trustBadges.join(', ') || 'none'}
   CRO Findings: ${r.findings.length ? r.findings.map((f) => `${f.detector_id} (${f.severity}): ${f.summary}`).join('; ') : 'none'}`;
           out(args, txt, r);
+          break;
+        }
+        if (args._[0] === 'saliency') {
+          if (!args._[1]) throw new Error('usage: citable inspect saliency <page> --target <dir|url>');
+          const r = await inspectCro(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+          const sal = r.saliency;
+          const gazeLines = (sal?.predicted_gaze_path || []).map((g) => `    ${g.order}. [${g.type.toUpperCase()}] "${g.label}" (salience: ${Math.round(g.salience_score * 100)}%)`).join('\n');
+          const txt = `Inspect Saliency ${r.url}
+  Primary CTA Conspicuity Index: ${sal?.primary_cta_conspicuity_index ?? 'N/A'} [${sal?.pci_assessment ?? 'unassessed'}]
+  Visual Clutter Risk: ${sal?.visual_clutter ?? 'clean'} (${sal?.competing_hero_elements_count ?? 0} high-salience hero elements)
+  Predicted Gaze Path (First 3 Fixations):
+${gazeLines || '    none predicted'}
+  SVG Attention Heatmap: generated (${sal?.elements_evaluated ?? 0} elements mapped)`;
+          out(args, txt, { url: r.url, saliency: sal });
           break;
         }
         if (args._[0] === 'aeo') {
@@ -451,8 +543,84 @@ ${r.headings.questions.map((q) => `    [H${q.level}] "${q.text}"`).join('\n') ||
         out(args, txt, r);
         break;
       }
+      case 'preview': {
+        const sub = args._[0];
+        if (sub !== 'cro') throw new Error('usage: citable preview cro <page> [--target <dir|url>] [--export <path>]');
+        const page = args._[1] || 'home';
+        const r = await previewCroCommand(root, page, { target: args.target, export: args.export });
+        const txt = `Preview CRO ${r.url}
+  Friction Surface Area (Before): ${r.fsa_before}
+  Friction Surface Area (Modeled Target): ${r.fsa_after} (modeled index, not a measured outcome)
+  Resolved Findings: ${r.findings_count}
+  HTML Preview: ${r.saved_file || 'rendered in memory (use --export <file.html> to save)'}`;
+        out(args, txt, r);
+        break;
+      }
+      case 'remediate': {
+        const r = await remediateCommand(root, {
+          finding: args.finding || args._[0],
+          component: args.component,
+          target: args.target,
+          format: args.format || 'react',
+          write: args.write,
+        });
+        if (r.target) {
+          const parts = [`Remediate ${r.finding_id} → ${r.recommended_component}`, `  Rationale: ${r.rationale}`, `  Scaffold Command: ${r.scaffold_command}`];
+          parts.push(`  Target File: ${r.target}`);
+          parts.push(`  Framework: ${r.framework?.framework || 'unknown'} (detection confidence ${r.framework?.confidence ?? 0})`);
+          parts.push(`  Patch: ${r.changed ? `${r.match_count} match(es)` : 'no match (already remediated or not applicable)'}, idempotent: ${r.idempotent}, class: ${r.patcher_class}`);
+          if (r.validation) {
+            for (const c of r.validation.checks) parts.push(`  Check ${c.check_id}: ${c.passed ? 'PASS' : 'FAIL'} — ${c.detail}`);
+            if (r.validation.methodology) parts.push(`  Methodology: ${r.validation.methodology}`);
+          }
+          if (r.confidence) {
+            parts.push(`  Confidence: ${r.confidence.score} (write threshold ${r.write_policy?.min_confidence ?? 0.7})`);
+            for (const f of r.confidence.factors) parts.push(`    - ${f.factor}: ${f.weight} (${f.detail})`);
+          }
+          parts.push(r.written
+            ? `  Written. Rollback snapshot: ${r.rollback?.snapshot_file}`
+            : r.write_refused
+              ? `  Write REFUSED (fail closed): ${r.refusal_reason}`
+              : `  Dry run — unified diff below. Use --write to apply.`);
+          if (r.diff) parts.push('Unified Diff:', r.diff.trimEnd());
+          parts.push('', 'Code Snippet (recommended component):', '--------------------------------------------------', r.code, '--------------------------------------------------');
+          out(args, parts.join('\n'), r);
+          break;
+        }
+        const txt = r.recommended_component
+          ? `Remediate ${r.finding_id} → ${r.recommended_component}
+  Rationale: ${r.rationale}
+  Scaffold Command: ${r.scaffold_command}
+Code Snippet (${r.format}):
+--------------------------------------------------
+${r.code}
+--------------------------------------------------`
+          : r.component
+            ? `Remediate Component: ${r.component}
+  Scaffold Command: ${r.scaffold_command}
+Code Snippet:
+--------------------------------------------------
+${r.code}
+--------------------------------------------------`
+            : `Available Components:
+${(r.available_components || []).map((c) => `  - ${c.name} (${c.id}): ${c.description}`).join('\n')}
+Supported Findings: ${(r.supported_findings || []).join(', ')}`;
+        out(args, txt, r);
+        break;
+      }
       case 'test-funnel':
       case 'test': {
+        if (cmd === 'test' && args._[0] === 'visual') {
+          const preview = args['preview-file'] ? fs.readFileSync(path.resolve(root, args['preview-file']), 'utf8') : null;
+          const r = await runVisualRegression(root, { previewHtml: preview, output: args.output });
+          const txt = `test visual
+  Contract checks: ${r.contract.ok ? 'ALL PASS' : 'FAIL'} (${r.contract.checks.filter((c) => c.passed).length}/${r.contract.checks.length})
+${r.contract.checks.map((c) => `  ${c.passed ? '✔' : '✖'} ${c.check_id}: ${c.detail}`).join('\n')}
+  Matrix cells: ${r.matrix_cells.length}
+  Screenshots: ${r.screenshots.status}${r.screenshots.required_input ? ` (required_input: ${r.screenshots.required_input})` : ` (${r.screenshots.captured.length} captured)`}`;
+          out(args, txt, r);
+          break;
+        }
         if (cmd === 'test-funnel' || args._[0] === 'funnel') {
           const funnelId = cmd === 'test-funnel' ? args._[0] : args._[1];
           const r = await testFunnel(root, funnelId, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
@@ -510,7 +678,8 @@ ${r.issues.map((iss) => `    - ${iss}`).join('\n') || '    none'}
         if (sub === 'edge') {
           const format = args.format || 'cloudflare-redirects';
           const r = await exportEdgeRules(root, { format, output: args.output });
-          out(args, `Exported ${r.rules_count} edge rule(s) in format "${r.format}"${r.output_path ? ` to ${r.output_path}` : ''}\n${r.content}`, r);
+          const sec = r.security;
+          out(args, `Exported ${r.rules_count} edge rule(s) in format "${r.format}"${r.output_path ? ` to ${r.output_path}` : ''}\nSecurity audit: ${sec.high} high, ${sec.medium} medium, ${sec.advisory} advisory finding(s)\n${sec.findings.map((f) => `  [${f.rule_id}] (${f.severity}) ${f.summary}`).join('\n') || '  no risk patterns found'}\n${r.content}`, r);
           break;
         }
         throw new Error('usage: citable export edge [--format <cloudflare-redirects|cloudflare-waf|cloudflare-worker>]');
@@ -831,7 +1000,14 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
         } else if (mode === 'compare-receipts') {
           const r = readAndCompareAcceptanceReceipts(args._[1], args._[2]);
           out(args, `corpus compare-receipts ${r.receipt_a} → ${r.receipt_b}\nComparable envelope: ${r.comparable}\nFingerprint equal: ${r.fingerprint_equal}\nPartial runs: ${r.partial_runs.length}`, r);
-        } else throw new Error('usage: citable corpus <evaluate|publish|receipt|compare-receipts> [options]');
+        } else if (mode === 'benchmark') {
+          const r = await runGoldenBenchmark(root, { corpusDir: args.input, writeReport: args.output });
+          const txt = `corpus benchmark v${r.corpus_version}: ${r.pages_evaluated} page(s) across ${r.sites_evaluated} site(s)
+  Gate: ${r.gate.ok ? 'PASS' : 'FAIL'} (violations: ${r.gate.violation_count}, recall failures: ${r.gate.recall_failures.join(', ') || 'none'}, precision failures: ${r.gate.precision_failures.join(', ') || 'none'})
+${r.per_detector.filter((d) => d.true_positives + d.false_negatives + d.false_positives > 0).map((d) => `  ${d.detector_id}: TP ${d.true_positives}, FP ${d.false_positives}, FN ${d.false_negatives}, P ${d.precision ?? 'n/a'}, R ${d.recall ?? 'n/a'}`).join('\n')}
+  Limitations: ${r.limitations[0]}`;
+          out(args, txt, r);
+        } else throw new Error('usage: citable corpus <evaluate|publish|receipt|compare-receipts|benchmark> [options]');
         break;
       }
       case 'artifacts': {
@@ -847,6 +1023,93 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
           out(args, `artifacts import ${r.run_id}: ${r.status}\nRun package: ${r.destination}`, r);
         } else throw new Error('usage: citable artifacts <export <run-id> --output <directory>|verify --input <directory>|import --input <directory>>');
         break;
+      }
+      case 'verify': {
+        const mode = args._[0];
+        if (mode === 'page') {
+          const r = await verifyPage(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, viewport: args.viewport });
+          const sev = Object.entries(r.by_severity).filter(([, n]) => n > 0).map(([k, n]) => `${k}:${n}`).join(' ') || 'none';
+          const txt = `verify page ${r.page}
+  Status: ${r.status}
+  Findings: ${r.finding_count} (${sev})
+  Detectors run: ${r.provenance.detectors_run.length}
+  Definition: ${r.provenance.definition}`;
+          out(args, txt, r);
+          break;
+        }
+        if (mode !== 'remediation') throw new Error('usage: citable verify <remediation --run <run-id> --finding <detector-id> [|page <page>] [--target <dir|file>] [--apply]');
+        const r = await verifyRemediation(root, {
+          run: args.runId || args._[1],
+          finding: args.finding,
+          target: args.target,
+          apply: args.apply,
+          subject: args.subject,
+          baseUrl: args['base-url'],
+          refDate: args['ref-date'],
+        });
+        const subject = r.subject?.identifier || 'unknown subject';
+        const patchLine = r.patch
+          ? `\n  Patch: applied=${r.patch.applied}${r.patch.refusal_reason ? ` (refused: ${r.patch.refusal_reason})` : ''}${r.patch.rollback_snapshot ? `\n  Rollback snapshot: ${r.patch.rollback_snapshot}` : ''}`
+          : '';
+        const txt = `verify remediation ${r.detector_id} on ${subject}
+  Verdict: ${r.status}${r.verdict.resolved ? ' (finding no longer reported)' : ''}
+  Before finding(s): ${r.verdict.before_finding_ids.join(', ') || 'none'}
+  After finding(s): ${r.verdict.after_finding_ids.join(', ') || 'none'}
+  New critical/high regressions: ${r.verdict.new_regressions.length}${patchLine}
+  Re-check target: ${r.provenance.recheck_target || 'n/a'}
+  Resolution criterion: detector absence for the same subject; not an outcome guarantee
+  Bundle: ${r.bundle_dir || 'not written'}`;
+        out(args, txt, r);
+        break;
+      }
+      case 'kit': {
+        if (args._[0] !== 'export') throw new Error('usage: citable kit export --run <run-id> --finding <detector-id> [--target <file>] [--subject <id|url>] [--output <dir>]');
+        const r = await exportImplementationKit(root, {
+          run: args.runId,
+          finding: args.finding,
+          target: args.target,
+          subject: args.subject,
+          output: args.output,
+          format: args.format,
+        });
+        const txt = `kit export ${r.detector_id}
+  Kit directory: ${r.kit_dir}
+  Files: ${r.files.length}
+  Rendering evidence files: ${r.rendering_evidence_count}
+  Patch diff included: ${r.has_patch_diff}`;
+        out(args, txt, r);
+        break;
+      }
+      case 'compatibility': {
+        const r = await compatibilityCommand(root, args);
+        const txt = `compatibility (citable ${r.tool_version}, Node ${r.node})
+${r.checks.map((c) => `  [${c.severity.toUpperCase()}] ${c.check_id}: ${c.detail}`).join('\n')}
+  Blockers: ${r.blocker_count}
+  Note: ${r.note}`;
+        out(args, txt, r);
+        break;
+      }
+      case 'check': {
+        if (args._[0] === 'experiment') {
+          const r = await checkExperiment(root, {
+            experimentId: args._[1],
+            observedControl: args['observed-control'] !== undefined ? Number(args['observed-control']) : undefined,
+            observedVariant: args['observed-variant'] !== undefined ? Number(args['observed-variant']) : undefined,
+            daysRunning: args['days-running'] !== undefined ? Number(args['days-running']) : undefined,
+            baselineRate: args['baseline-rate'],
+            mde: args.mde,
+            pValue: args['p-value'],
+            revenueClaimed: args['revenue-claimed'],
+          });
+          const txt = `check experiment ${r.experiment_id}
+  Lifecycle: ${r.lifecycle} — ${r.lifecycle_definition}
+  Guardrails: ${r.guardrail_count} finding(s)
+${r.findings.map((f) => `  [${f.guardrail_id}] (${f.severity}) ${f.summary}`).join('\n') || '  no guardrail findings'}
+  Note: ${r.note}`;
+          out(args, txt, r);
+          break;
+        }
+        throw new Error('usage: citable check experiment <id> [--observed-control N --observed-variant N --days-running N --p-value X --revenue-claimed]');
       }
       case 'self-upgrade': {
         const output = await selfUpgradeCommand(argv.slice(1));

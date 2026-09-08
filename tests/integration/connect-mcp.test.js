@@ -64,7 +64,7 @@ test("CLI: citable connect mcp executes against allowlisted pilot server and out
     ], { cwd: tempDir });
 
     assert.equal(stderr, "");
-    const output = JSON.parse(stdout);
+    const output = JSON.parse(stdout).result;
     assert.ok(output.runId);
     assert.equal(output.transportEnvelope.status, "success");
     assert.equal(output.transportEnvelope.server.server_id, "citable-evidence-pilot");
@@ -162,7 +162,7 @@ test("CLI: citable connect mcp executes against gsc-mcp with auto-mapped argumen
     ], { cwd: tempDir });
 
     assert.equal(stderr, "");
-    const output = JSON.parse(stdout);
+    const output = JSON.parse(stdout).result;
     assert.ok(output.runId);
     assert.equal(output.transportEnvelope.status, "success");
     assert.equal(output.transportEnvelope.server.server_id, "gsc-mcp");

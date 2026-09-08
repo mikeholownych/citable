@@ -53,7 +53,7 @@ test('cli report consensus executes against real observe consensus runs', async 
     // Step 3: Run with --json
     stdout = '';
     await main(['report', 'consensus', '--json']);
-    const parsed = JSON.parse(stdout);
+    const parsed = JSON.parse(stdout).result;
     assert.ok(parsed.urls_evaluated > 0);
     assert.ok(parsed.canonical_consensus_count > 0);
     assert.ok(parsed.path_md);

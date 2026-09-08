@@ -33,6 +33,19 @@ test("exportEdgeRules generates Cloudflare redirects, WAF expressions, and worke
   const workerRes = await exportEdgeRules(root, { format: "cloudflare-worker" });
   assert.equal(workerRes.format, "cloudflare-worker");
   assert.ok(workerRes.content.includes("HTMLRewriter") || workerRes.content.includes("/llms.txt"));
+
+  const croRes = await exportEdgeRules(root, { format: "cloudflare-cro" });
+  assert.equal(croRes.format, "cloudflare-cro");
+  assert.ok(croRes.content.includes("HTMLRewriter"));
+  assert.ok(croRes.content.includes("autocomplete"));
+
+  const vercelRes = await exportEdgeRules(root, { format: "vercel-middleware" });
+  assert.equal(vercelRes.format, "vercel-middleware");
+  assert.ok(vercelRes.content.includes("NextResponse"));
+
+  const shopifyRes = await exportEdgeRules(root, { format: "shopify-snippet" });
+  assert.equal(shopifyRes.format, "shopify-snippet");
+  assert.ok(shopifyRes.content.includes("autocomplete"));
 });
 
 test("testEdgeRules validates Cloudflare headers and catches edge challenges", async () => {

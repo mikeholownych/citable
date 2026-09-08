@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.16.0
+version: 1.17.0
 ---
 
 # Citable — evidence and change control for search and AI citation readiness
@@ -138,9 +138,18 @@ citable corpus evaluate --input <acceptance-corpus.json>
 citable corpus publish --input <acceptance-corpus.json> --output <public-corpus.json>
 citable corpus receipt --run <run-id> [--input <execution-context.json>]
 citable corpus compare-receipts <receipt-a.json> <receipt-b.json>
+citable corpus benchmark [--corpus <dir>] [--output <report.json>]  # labeled golden fixtures → per-detector precision/recall gate
 citable artifacts export <run-id> --output <directory>
 citable artifacts verify --input <directory>
 citable artifacts import --input <directory>
+citable inspect cro <page> --target <dir|url>   # CRO readiness: CTAs, forms, payment-wallet vs authentication readiness, modeled saliency indices
+citable preview cro <page> [--export <file.html>]  # split-screen before/remediated sandbox (layout-contract checked; accessibility-aware)
+citable remediate --finding <id> [--target <file>] [--write]  # production-safe patch: framework detection, unified diff, static validation, confidence gate, rollback snapshot; semantic copy changes always refuse automated write
+citable verify remediation --run <run-id> --finding <id> [--target <file>] [--apply]  # closed loop: re-run the detector and emit a before/after evidence bundle (schema remediation-verification)
+citable verify page <page> --target <dir|url>   # all detectors scoped to one page; pass = no detector currently reports it, never an outcome guarantee
+citable check experiment <id> [--observed-control N --observed-variant N --days-running N]  # SRM, stopping, power, contamination; lifecycle: planned|running|inconclusive|validated
+citable compatibility   # Node engine, optional adapters, browser, framework, registries, edge size limits
+citable kit export --run <run-id> --finding <id> [--target <file>]  # customer-ready implementation kit (finding, diff, evidence, acceptance tests, deployment, limitations)
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema
@@ -193,6 +202,43 @@ the controlled citation adapter protocol, remediation refusal conditions, and
 monitoring interpretation.
 Use `commands/field-validation.md` for acceptance-corpus authorization,
 sanitization, publication refusal, reproducibility, and evidence boundaries.
+
+## CRO remediation loop (audit → explain → remediate → verify → hand off)
+
+The CRO suite completes the loop. Rules that govern every step:
+
+1. **Safe patches only.** `remediate --write` is gated on framework detection,
+   static structural validation, idempotency, and an explicit confidence
+   threshold. Semantic microcopy replacements are refused for automated write
+   (fact ≠ inference): they require a human editorial decision. Every write
+   creates a rollback snapshot under `.citable/remediation/snapshots/`.
+2. **A written patch is not a verified repair.** Run
+   `verify remediation --run <run-id> --finding <id>`. Resolution means the
+   detector no longer reports the same subject — never a conversion guarantee.
+   The verification bundle is schema-validated
+   (`schemas/remediation-verification.schema.json`).
+3. **Payment wallets ≠ authentication.** Apple Pay/Google Pay/PayPal are
+   payment methods; WebAuthn/passkeys are account authentication. Report them
+   separately (`inspect cro` returns `payment_wallet_readiness` and
+   `authentication_readiness`). Never use "biometric readiness" as a claim.
+4. **Modeled indices are labeled.** Friction Surface Area, CTA Conspicuity
+   Index, and gaze-path ordering are heuristic indices over captured DOM
+   conditions — not observed user behavior and not revenue estimates. Slide
+   decks and kits must keep measured (deterministic findings) and modeled
+   (indices, projections) in separate, labeled categories. No latency,
+   speed, or "percentage eliminated" figure may be stated without a
+   documented measurement methodology.
+5. **Referral fragments are untrusted input.** ScentBeacon-style components
+   may match referrer/`:~:text=` against a fixed allowlist to detect the
+   referral state; raw values are never rendered, persisted, or transmitted.
+   Dynamic claim text must come from registry-bound developer props.
+6. **Experiments carry guardrails.** `check experiment` reports SRM, stopping
+   early, underpowered samples, contamination, and unsupported revenue
+   attribution, and derives one lifecycle of `planned`, `running`,
+   `inconclusive`, or `validated` — never "winner".
+7. **Machine-readable output is a contract.** `--json` wraps every command
+   payload in the `citable_output_schema` 1.0 envelope
+   (`schemas/cli-output-envelope.schema.json`).
 
 ## Command workflows
 

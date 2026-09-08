@@ -257,6 +257,75 @@
         }
       }
     },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "detector_version",
+        "tool_version",
+        "evidence_source",
+        "methodology",
+        "revalidation_required"
+      ],
+      "properties": {
+        "detector_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tool_version": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_selector": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_source": {
+          "type": "string",
+          "enum": [
+            "dom_parse",
+            "registry",
+            "registry+dom_parse",
+            "controlled_observation",
+            "configuration"
+          ]
+        },
+        "viewport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewport_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "methodology": {
+          "type": "string"
+        },
+        "revalidation_required": {
+          "type": "string",
+          "enum": [
+            "on_next_audit",
+            "human_review_before_action"
+          ]
+        }
+      }
+    },
     "status": {
       "type": "object",
       "required": [

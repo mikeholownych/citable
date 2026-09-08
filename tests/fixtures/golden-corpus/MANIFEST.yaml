@@ -1,0 +1,49 @@
+corpus_version: 1
+anonymized: true
+description: >
+  Golden benchmark corpus of anonymized, synthetic page fixtures spanning five
+  commercial verticals. Labels are page-level expectations for deterministic
+  CRO detectors and saliency bounds. The corpus exists to track precision and
+  recall per detector over time, with emphasis on CRO-021 (express payment)
+  and the saliency indices. It is a benchmark of detectors, not a claim about
+  any real property.
+namespaces: [CRO]
+thresholds:
+  recall_min: 1.0
+  precision_min: 1.0
+sites:
+  ecommerce:
+    kind: ecommerce
+    pages:
+      index.html:
+        expect_findings: [CRO-015]
+        expect_clean: [CRO-021, CRO-007, CRO-008, CRO-013]
+        saliency: { pci_min: 0.4 }
+  checkout:
+    kind: checkout
+    pages:
+      checkout.html:
+        expect_findings: [CRO-021, CRO-013, CRO-006]
+        expect_clean: [CRO-015, CRO-007, CRO-008]
+        saliency: { pci_min: 0.3 }
+  saas:
+    kind: saas
+    pages:
+      pricing.html:
+        expect_findings: [CRO-007, CRO-009]
+        expect_clean: [CRO-021, CRO-008, CRO-013]
+        saliency: { pci_min: 0.4 }
+  leadgen:
+    kind: lead_generation
+    pages:
+      landing.html:
+        expect_findings: [CRO-008, CRO-006, CRO-007]
+        expect_clean: [CRO-021, CRO-015, CRO-013]
+        saliency: { pci_min: 0.3 }
+  agency:
+    kind: agency
+    pages:
+      contact.html:
+        expect_findings: []
+        expect_clean: [CRO-007, CRO-008, CRO-009, CRO-006, CRO-021, CRO-013, CRO-015]
+        saliency: { pci_min: 0.3 }

@@ -1,0 +1,98 @@
+{
+  "$id": "citable://schemas/remediation-verification.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Remediation verification record",
+  "description": "Closed-loop evidence that a detector finding was addressed: before-run finding, applied patch, re-run detector result, and verdict. Proves only that the detector no longer reports the same subject; it never proves a conversion or outcome guarantee.",
+  "type": "object",
+  "required": [
+    "verification_id", "timestamp", "status", "tool_version",
+    "source_run_id", "detector_id", "subject", "verdict",
+    "provenance", "limitations"
+  ],
+  "properties": {
+    "verification_id": { "type": "string", "pattern": "^VR-[0-9]{14,20}-[a-z0-9]{2,8}$" },
+    "timestamp": { "type": "string" },
+    "status": { "type": "string", "enum": ["verified", "not_resolved", "blocked", "patch_refused"] },
+    "tool_version": { "type": "string" },
+    "repository_commit": { "type": ["string", "null"] },
+    "source_run_id": { "type": ["string", "null"], "minLength": 1 },
+    "recheck_run_id": { "type": ["string", "null"] },
+    "detector_id": { "type": ["string", "null"] },
+    "subject": {
+      "type": ["object", "null"],
+      "properties": {
+        "type": { "type": "string" },
+        "identifier": { "type": ["string", "null"] }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["resolved"],
+      "properties": {
+        "resolved": { "type": "boolean" },
+        "before_finding_ids": { "type": "array", "items": { "type": "string" } },
+        "after_finding_ids": { "type": "array", "items": { "type": "string" } },
+        "new_regressions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["finding_id", "detector_id", "severity", "summary"],
+            "properties": {
+              "finding_id": { "type": "string" },
+              "detector_id": { "type": "string" },
+              "severity": { "type": "string" },
+              "summary": { "type": "string" }
+            }
+          }
+        },
+        "resolution_definition": {
+          "type": "string",
+          "description": "States the exact resolution criterion used; detector absence is not an outcome guarantee."
+        }
+      }
+    },
+    "patch": {
+      "type": ["object", "null"],
+      "properties": {
+        "target_file": { "type": "string" },
+        "framework": { "type": ["string", "null"] },
+        "patcher_class": { "type": ["string", "null"] },
+        "confidence": { "type": ["number", "null"] },
+        "validation_passed": { "type": "boolean" },
+        "applied": { "type": "boolean" },
+        "refusal_reason": { "type": ["string", "null"] },
+        "rollback_snapshot": { "type": ["string", "null"] },
+        "before_sha256": { "type": ["string", "null"] },
+        "after_sha256": { "type": ["string", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["command", "recheck_target", "detectors_run"],
+      "properties": {
+        "command": { "type": "string" },
+        "recheck_target": { "type": ["string", "null"] },
+        "detectors_run": { "type": "array", "items": { "type": "string" } },
+        "detectors_skipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "detector_id": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "recheck_errors": { "type": "array", "items": { "type": "string" } },
+        "recheck_warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "bundle_dir": { "type": ["string", "null"] },
+    "bundle_checksums": { "type": "object" }
+  }
+}
