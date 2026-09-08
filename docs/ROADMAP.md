@@ -4,15 +4,15 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.16.0)
+## Current State (v1.17.0)
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 180 across 19 namespaces |
-| Tests | 302 pass on Node 24 |
+| Detectors | 181 across 19 namespaces |
+| Tests | 526 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 99 packaged files per provider; 2 managed Claude profiles |
+| Distribution | 101 packaged files per provider; 2 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,7 +20,7 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 99 packaged skill files per provider
+The current development branch builds 101 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
 manifested two-profile discovery payload.
@@ -73,6 +73,18 @@ manifested two-profile discovery payload.
 - Citation volatility and temporal stability tracking (`GEO-009`).
 - MCP transport diagnostic suite for stdio execution, HTTP guards, schema validation, and registry bindings (`citable doctor --mcp`).
 - Continuous longitudinal monitoring webhook delivery with HMAC-SHA256 request signing and dispatch receipts (`citable monitor --webhook`).
+- Cross-Run Evidence Dashboard (`citable report dashboard`) generating Markdown and self-contained HTML reports with inline SVG trend visualization.
+- Multi-Property Fleet Governance with schema `schemas/fleet.schema.json`, registry `fleet.yaml` (29th schema-validated registry), and command `citable fleet [summary|audit]`.
+- Cloudflare & Edge Worker remediation adapter in `src/commands/edgeRules.js` (`citable export edge` and `citable test edge`) for redirects, WAF bot blocking expressions, and `HTMLRewriter` Worker scripts with synthetic edge pass-through verification.
+- Automated AI Search Engine probing runner `citable probe <query|prompt_id>` in `src/commands/probe.js` generating schema-validated observation envelopes (`observation.schema.json`) for Perplexity, SearchGPT, and Gemini.
+- Component-level static AST linter `citable lint components [dir]` in `src/commands/lintComponents.js` detecting touch target violations, unlabelled icon buttons, generic CTA microcopy, missing input labels, autocomplete omission, and image dimension defects.
+- Executive presentation and client deliverables exporter `citable report export` in `src/reporting/executiveExport.js` supporting printable HTML briefing documents and slide decks, alongside Slack, Microsoft Teams, and Discord structured alert formatters in `src/monitoring/alertDelivery.js`.
+- Causal impact and differential intervention attribution command `citable attribute impact` in `src/commands/attributeImpact.js` calculating difference-in-differences lift estimates with explicit statistical caveats.
+- Real-time brand hallucination sentinel detector `GEO-013` in `src/detectors/geoReco.js`.
+- Comprehensive Conversion Rate Optimization (CRO) Suite with detectors `CRO-007` through `CRO-020`, multi-step funnel modeling (`funnels.yaml`, `schemas/funnel.schema.json`, `citable test funnel`), and statistical A/B experiment sample size and power planning (`citable plan experiment`).
+- Pre-commit CRO auditing in CI/CD pipelines via `citable audit --scope cro`.
+- Closed-loop remediation and fulfillment (Nebula release requests): production-safe patch review (framework detection, unified diffs, structural validation, confidence gate, rollback snapshots), `citable verify remediation` with schema-bound before/after evidence bundles, `citable kit export` customer implementation kits, per-finding provenance envelopes, `citable compatibility` and `citable verify page`, edge-code security audit (EDGSEC-001..007), experiment safety guardrails with an explicit lifecycle, deterministic visual layout contracts plus a viewport/variant screenshot matrix, the stable `citable_output_schema` 1.0 JSON envelope, and the labeled golden benchmark corpus (`citable corpus benchmark`).
+- Terminology hardening: CRO-021 v2 separates payment-wallet readiness from passkey/WebAuthn authentication readiness; unsupported latency claims removed; ScentBeacon referral fragments documented and enforced as untrusted input; FSA/PCI/gaze outputs labeled as modeled heuristic indices; executive decks separate measured outcomes from modeled estimates and never claim revenue or conversion uplift.
 
 ## v1.13 Validation Gates In Progress
 
@@ -199,6 +211,150 @@ The proposed provenance fields and security gates are documented in
   are implemented. Stratified allocation remains a future version gate.
 - Expiring, evidence-backed exception renewal workflows and reviewer
   reassignment without weakening immutable source findings.
+
+## Nebula CRO Strategic Roadmap: The Unrivaled Conversion Platform ("The Obvious Choice")
+
+### Strategic Vision: The "FUCK YES! FINALLY" Paradigm
+
+Traditional CRO audits fail developers, growth teams, and founders. When a team submits a URL to legacy optimization platforms, they typically receive a 40-page generic PDF filled with vague, speculative feedback ("improve value proposition", "make the primary CTA orange", "add social proof"). Developers don't know what code to write, designers don't have mockups, executives don't see deterministic proof, and the audit languishes in a Jira backlog for months.
+
+Nebula Components (`nebulacomponents.com`) transforms conversion rate optimization from an academic critique into an instant, mechanical remediation engine. When an engineer or marketer submits a page for audit, their reaction must be an immediate, visceral: **"FUCK YES! FINALLY."**
+
+This breakthrough experience is built on six operational pillars:
+1. **Instant Drop-In Code Synthesis**: The audit never stops at diagnosing defects; it generates the exact, production-ready, fully accessible React, Next.js, Vue, or Tailwind component or unified AST patch ready to paste or commit (`npx nebulacomponents add <component>`).
+2. **Interactive Visual "Before & Remediated" Sandbox**: Immediate visual gratification through a side-by-side interactive split-screen preview showing the live friction hotspots on the left and the clean, high-converting Nebula remediation on the right across mobile, tablet, and desktop viewports.
+3. **Zero-Deploy CDN Edge Remediation**: For organizations blocked by frozen CMS platforms (Shopify, Webflow, WordPress, legacy monoliths), instant Cloudflare Worker (`HTMLRewriter`), Vercel Edge Middleware, or Fastly scripts patch friction directly at the CDN layer in under 60 seconds without code deployments.
+4. **AI-Search "Query-to-Scent" Dynamic Personalization**: In an era where commercial traffic increasingly originates from conversational AI engines (ChatGPT Search, Perplexity, Gemini, Claude), landing pages must dynamically anchor to the exact cited passage and surface context-aligned conversion hooks (`NebulaScentBeacon`).
+5. **Zero-Tracker Algorithmic Attention Heatmaps**: Visual conspicuity scoring computed directly from DOM luminance-contrast geometry — eliminating intrusive tracking scripts, privacy risks, and GDPR consent banners. Output is a modeled heuristic index, never observed user behavior.
+6. **Deterministic Friction Surface Area Modeling**: Honoring Citable's Premise 1 (*No guarantees*), replace fabricated revenue promises with rigorous, deterministic accounting of eliminated mechanical friction, verified touch boundaries, and unbroken funnel continuity.
+
+---
+
+### Strategic Opportunity Tracks
+
+#### Track 1: "Audit-to-Component" 1-Click Code Synthesis & Drop-in Remediation Engine
+
+- **The Problem**: Audits diagnose problems; engineering has to build solutions. Bridging the gap between an audit finding and a production pull request takes weeks of design and development time.
+- **The Nebula Solution**: Deterministic 1:1 binding between Citable CRO findings and battle-tested, accessible Nebula Component primitives:
+  - `CRO-007` (Autocomplete missing) & `COMP-005` (Input labels/autocomplete) ➔ `<NebulaFrictionlessInput />` and `<NebulaAddressAutofill />` with validated W3C `autocomplete` tokens (`name`, `email`, `tel`, `address-line1`, `postal-code`) and floating labels.
+  - `CRO-008` (Disappearing placeholder-only labels) ➔ `<NebulaFloatingLabelField />` ensuring cognitive label persistence across all viewport states.
+  - `CRO-009` (Mobile keyboard mismatch) ➔ `<NebulaKeyboardAdaptiveInput />` with device-native virtual keyboard mappings (`type="tel"`, `type="email"`, `inputmode="numeric"`, `enterkeyhint="next"`).
+  - `CRO-010` (Hero choice overload) ➔ `<NebulaHeroCTA />` enforcing single dominant visual action (60%+ visual contrast dominance) with secondary actions demoted to accessible ghost/link variants.
+  - `CRO-011` (Buried CTA) ➔ `<NebulaStickyMobileDock />` providing an ergonomic 48px sticky thumb-zone conversion dock with scroll-depth disclosure.
+  - `CRO-012` (Low-intent generic microcopy) & `COMP-003` (Generic CTA text) ➔ `<NebulaIntentMicrocopy />` replacing dead-end generic verbs ("Submit", "Click Here") with outcome-oriented action verbs based on detected page intent.
+  - `CRO-013` (Enclosed checkout distraction leaks) ➔ `<NebulaEnclosedCheckoutHeader />` stripping primary navigation, search bars, social icons, and extraneous footer links during checkout steps.
+  - `CRO-014` (Receipt page missing noindex) ➔ Auto-injecting `noindex, nofollow` headers/meta alongside `<NebulaOrderConfirmationReceipt />` with self-service retention hooks.
+  - `CRO-015` (Touch target < 44px) & `COMP-001` (Touch target dimension violation) ➔ `<NebulaTouchTarget />` ensuring 48x48px accessible hit areas with zero layout distortion.
+  - `CRO-016` (CTA font size < 12px) ➔ `<NebulaTypographyScale />` enforcing minimum 16px body/button legible baselines across responsive breakpoints.
+  - `CRO-017` & `CRO-018` (Funnel step breaks & stripped campaign tracking) ➔ `<NebulaFunnelLink />` ensuring unbroken URL parameters, campaign tracking, and prefetching.
+  - `CRO-019` (AI Search claim-to-conversion gap) ➔ `<NebulaScentBeacon />` dynamic passage anchoring.
+- **Automated AST Code Modding (`citable remediate --component <name> --target <file>`)**:
+  - Parses JSX/TSX ASTs via `@babel/parser` and `@babel/traverse`.
+  - Replaces non-conforming HTML primitives with corresponding Nebula Components while preserving all existing event handlers, state hooks, and custom props.
+  - Emits clean unified Git diffs ready for review and merge.
+- **Terminal Scaffolding**: Audit CLI outputs copy-pasteable scaffolding commands (e.g. `npx nebulacomponents add sticky-dock`) directly below each finding.
+
+#### Track 2: Interactive Visual "Before / Remediated" Sandbox & Live DOM Mutation Previews
+
+- **The Problem**: Stakeholders cannot visualize what an audit recommendation actually looks like without design meetings and mockups.
+- **The Nebula Solution**: CLI command `citable preview cro <url|file>`:
+  - Spins up a local, zero-dependency sandboxed preview server.
+  - Generates a side-by-side interactive split-screen view:
+    - **Left Pane (Current Page)**: Interactive DOM snapshot with highlighted friction hotspots (red boundary boxes with detector tooltips and issue severity).
+    - **Right Pane (Remediated Page)**: Live rendered DOM with Nebula Components seamlessly swapped in.
+  - **Interactive Features**:
+    - **Viewport Emulation**: Seamlessly toggle between Mobile (375px), Tablet (768px), and Desktop (1280px).
+    - **Live Interaction Testing**: Click buttons, focus inputs, test virtual keyboard simulation, and inspect touch target hitboxes.
+    - **Exportable Client/Executive Presentation Artifact**: Self-contained, single-file HTML bundle (`citable report export --format preview`) with embedded SVG diffs and zero external CDN dependencies for instant stakeholder approval.
+
+#### Track 3: AI-Search "Query-to-Scent" Dynamic Personalization & Answer Anchoring (`NebulaScentBeacon`)
+
+- **The Problem**: Modern traffic increasingly arrives from AI answer engines (SearchGPT, Perplexity, Gemini, Claude). The AI cites a specific paragraph or feature deep inside the page. When the user clicks the citation, they land at the top of a generic homepage, see no immediate connection to what the AI answered, experience cognitive dissonance, and bounce.
+- **The Nebula Solution**: The `NebulaScentBeacon` architecture:
+  - Parses incoming referral headers and URL text fragment anchors (`#:~:text=...`).
+  - Cross-references query parameters against `claims.yaml` and `pages.yaml`.
+  - Automatically highlights the exact corroborating passage that the AI search cited (satisfying `CRO-019`).
+  - Dynamically docks a contextual conversion trigger immediately adjacent to the cited passage: e.g., *"You arrived looking for [Feature X cited by SearchGPT]. Test the live sandbox below."*
+  - 100% static HTML crawlability, zero latency impact, zero cloaking, and full SEO/AEO indexability.
+
+#### Track 4: Privacy-First Algorithmic Attention & Visual Saliency Modeling (Zero-Tracker Heatmaps)
+
+- **The Problem**: Traditional session recorders and heatmap scripts (Hotjar, CrazyEgg, FullStory) add 150KB–300KB of heavy JavaScript, degrade Core Web Vitals (INP/LCP), and require intrusive GDPR/CCPA cookie consent banners that reduce initial page conversion.
+- **The Nebula Solution**: Pure DOM & Computer Vision Saliency Engine:
+  - Uses deterministic luminance-contrast algorithms, visual edge detection, typography weight distribution, and whitespace ratios directly from the headless Chromium DOM snapshot.
+  - Instant output: Within 500ms of running `citable audit --scope cro`, outputs an algorithmic visual attention heatmap overlay.
+  - **Saliency Metrics**:
+    - **Primary CTA Conspicuity Index (PCI)**: Mathematical ratio of CTA visual salience relative to surrounding hero elements.
+    - **Visual Clutter & Cognitive Load Index**: Quantification of competing high-contrast elements in the initial 1000px viewport.
+    - **Gaze Vector Probability**: Predicts the first three fixations of a first-time visitor.
+
+#### Track 5: Form Friction Micro-Diagnostics & Biometric/One-Tap Checkout Readiness
+
+- **The Problem**: Over 70% of conversion drop-off occurs inside form and checkout steps, yet standard audits merely advise "shorten the form" without analyzing input mechanics.
+- **The Nebula Solution**: Granular form ergonomics diagnostics:
+  - **Keystroke Effort Index (KEI)**: Calculates total taps, keyboard switches (alpha to numeric), and shift-key presses required to complete the form on mobile. Compares raw manual entry vs autofill-enabled entry.
+  - **Password Manager & Browser Autofill Compatibility Score**: Simulates autofill event dispatch across Chrome, Safari, 1Password, Bitwarden, and Apple Keychain. Identifies silent autofill failures caused by custom divs or detached inputs.
+  - **Inline Validation Ergonomics**: Analyzes input validation event listeners. Flags hostile "validate on keydown" patterns that flash red errors while the user is still typing, replacing them with standard "validate on blur" patterns.
+  - **Biometric & Express Checkout Detector** (`CRO-021` proposed): Verifies presence of Apple Pay, Google Pay, and WebAuthn Passkey triggers on high-intent conversion steps.
+
+#### Track 6: Zero-Flicker Edge Remediation & CDN Middleware Adapters
+
+- **The Problem**: In mid-market and enterprise organizations, deploying code changes through traditional engineering sprints can take 6–12 weeks due to frozen release windows or legacy CMS constraints.
+- **The Nebula Solution**: Turnkey CDN Edge Adapters (`citable export edge --remediation cro`):
+  - **Cloudflare Workers**: High-performance streaming `HTMLRewriter` scripts that inject missing `autocomplete` attributes, adjust touch target classes, insert sticky mobile CTA docks, and modify microcopy at the edge. No latency figure is claimed anywhere: edge overhead must be measured per deployment under a documented methodology before it may be stated.
+  - **Vercel Edge Middleware**: Edge functions for Next.js deployments that rewrite responses on the fly.
+  - **Shopify App Embed & Liquid Bridges**: Pre-packaged liquid snippets and Web Pixel extensions to resolve checkout and cart friction.
+  - **Fastly Compute & AWS CloudFront Functions**: VCL and Rust edge transforms.
+  - **Synthetic Edge Verification (`citable test edge`)**: Simulates edge request pass-through and verifies that the output DOM satisfies all CRO detector criteria without regressions.
+
+#### Track 7: Turnkey Deterministic A/B Experimentation Engine
+
+- **The Problem**: Setting up third-party A/B testing platforms (Optimizely, VWO) costs tens of thousands of dollars annually, introduces severe layout shift (CLS) through anti-flicker snippets, and often results in inconclusive tests due to underpowered sample sizes.
+- **The Nebula Solution**: Native Experiment Blueprinting (`experiments.yaml` + `citable plan experiment`):
+  - Automatically translates an audit finding into an empirical A/B experiment spec.
+  - Calculates two-tailed binomial sample size, minimum detectable effect (MDE), and required runtime duration to prevent premature termination (`CRO-020`).
+  - Generates ready-to-run code for Variant A (control) and Variant B (Nebula remediated).
+  - **Zero-Flicker Edge Variant Routing**: CDN-level hash-based traffic splitting (`murmurhash3(visitor_id + experiment_id) % 100`) without layout shift (CLS) or client-side flicker tags.
+  - **Telemetry & Conversion Schema Binding**: Enforces schema-validated conversion event dispatching (`schemas/observation.schema.json` envelopes) to prevent corrupted analytics data.
+
+#### Track 8: Shift-Left CI/CD Funnel Sentinel & Continuous Drift Guard
+
+- **The Problem**: Development teams frequently deploy pull requests that unintentionally break conversion funnels—accidentally stripping form labels, shrinking button hit areas, or dropping campaign tracking parameters.
+- **The Nebula Solution**: GitHub Actions / Pre-Commit Hook Integration (`citable audit --scope cro --strict`):
+  - Blocks pull requests that introduce:
+    - Mobile touch target regressions under 44px (`CRO-015`, `COMP-001`).
+    - Form field additions lacking `id`, `<label>`, or `autocomplete` (`CRO-007`, `COMP-005`).
+    - Funnel link breakages or parameter stripping (`CRO-017`, `CRO-018`).
+    - Non-descriptive CTA buttons ("Submit", "Click Here") (`CRO-012`, `COMP-003`).
+  - **Automated PR Review Bot**: Comments directly on the offending pull request diff with the exact GitHub suggestion block containing the fixed Nebula Component markup.
+
+#### Track 9: Executive "Friction Surface Area" & Defensible ROI Sizing Matrix
+
+- **The Problem**: Conversion optimization reports frequently make exaggerated, untestable revenue claims ("this will lift conversion by 34%") that destroy credibility with engineering and finance leaders.
+- **The Nebula Solution**: Grounded in Citable Premise 1 (*No guarantees*):
+  - Replaces speculative revenue claims with the **Deterministic Friction Surface Area (FSA)** index:
+    $$\text{FSA} = \sum (\text{Mechanical Defects} \times \text{Funnel Step Weight} \times \text{Device Traffic Share})$$
+  - Classifies every issue into:
+    - **Deterministic Blocker**: Broken steps, unclickable CTAs, missing mobile input types.
+    - **Empirically Measurable Friction**: Unlabelled fields, choice overload, low contrast.
+    - **Strategic Hypothesis**: Alternative value propositions, social proof density.
+  - **Executive Export (`citable report export --scope cro`)**: Generates crisp, presentation-ready briefing decks for founders, CMOs, and engineering leaders, demonstrating exact engineering effort vs friction eliminated.
+
+#### Track 10: Multi-Platform Design System Component Library (`@nebulacomponents/core`)
+
+- Accessible, high-converting component implementations across modern web frameworks:
+  - React / Next.js (`@nebulacomponents/react`)
+  - Vue / Nuxt (`@nebulacomponents/vue`)
+  - Svelte / SvelteKit (`@nebulacomponents/svelte`)
+  - Web Components / Vanilla HTML (`@nebulacomponents/web`)
+- **Core Conversion Primitives**:
+  - `NebulaHeroCTA`: Ergonomic primary conversion block with choice-minimizing hierarchy.
+  - `NebulaFrictionlessForm`: Multi-step form with inline validation, keyboard switching, and 100% autofill coverage.
+  - `NebulaStickyMobileDock`: Fixed-bottom mobile CTA with scroll-aware disclosure.
+  - `NebulaSocialProofStrip`: Accessible, non-distracting social proof with verified review markup.
+  - `NebulaExitIntentModal`: Accessible dialog triggered on mouseout/tab-switch with keyboard trap and focus restoration.
+  - `NebulaPricingTable`: Choice-governed pricing matrix with annual/monthly billing toggle and recommended tier emphasis.
+  - `NebulaScentBeacon`: AI-search query/passage highlighting and context-aligned conversion banner.
 
 ## Release Policy
 

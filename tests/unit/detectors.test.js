@@ -2218,6 +2218,64 @@ test('CRO-020: detects underpowered experiment with observation window < 7 days 
   assert.ok(!findingsClean.some((f) => f.detector_id === 'CRO-020'), 'CRO-020 must not fire on experiment with >= 7d window');
 });
 
+test('CRO-021: detects checkout page lacking express payment triggers and spares compliant checkout', () => {
+  const good = ctxFor('site-clean', 'registries-good', 'https://example.test');
+
+  // Broken: checkout page with only credit card form, no express/one-tap payment
+  const brokenPage = {
+    url: 'https://example.test/checkout',
+    status: 200,
+    ctas: [{ text: 'Place Order', tag: 'button' }],
+    forms: [{ inputs: [{ name: 'card_number', type: 'text' }], hasSubmit: true }],
+  };
+  const ctxBroken = {
+    ...good,
+    site: { ...good.site, pages: [...good.site.pages, brokenPage] },
+  };
+  const findingsBroken = runDetectors(selectDetectors({ namespaces: ['CRO'] }), ctxBroken).findings;
+  assert.ok(findingsBroken.some((f) => f.detector_id === 'CRO-021'), 'CRO-021 must fire on checkout page lacking express payment');
+
+  // Clean: checkout page with Apple Pay express checkout button
+  const cleanPage = {
+    url: 'https://example.test/checkout',
+    status: 200,
+    ctas: [
+      { text: 'Pay with Apple Pay', tag: 'button' },
+      { text: 'Place Order', tag: 'button' },
+    ],
+    forms: [{ inputs: [{ name: 'card_number', type: 'text' }], hasSubmit: true }],
+  };
+  const ctxClean = {
+    ...good,
+    site: { ...good.site, pages: [...good.site.pages, cleanPage] },
+  };
+  const findingsClean = runDetectors(selectDetectors({ namespaces: ['CRO'] }), ctxClean).findings;
+  assert.ok(!findingsClean.some((f) => f.detector_id === 'CRO-021'), 'CRO-021 must not fire when express payment option exists');
+});
+
+test('CRO-021 v2 separates payment wallets from passkey authentication: a passkey-only checkout still lacks wallet readiness', () => {
+  const good = ctxFor('site-clean', 'registries-good', 'https://example.test');
+
+  // Passkey-only checkout: WebAuthn authentication is NOT a payment wallet.
+  const passkeyOnly = {
+    url: 'https://example.test/checkout',
+    status: 200,
+    ctas: [
+      { text: 'Sign in with Passkey', tag: 'button' },
+      { text: 'Place Order', tag: 'button' },
+    ],
+    forms: [{ inputs: [{ name: 'card_number', type: 'text' }], hasSubmit: true }],
+    rawHtml: '<button class="webauthn">Passkey</button>',
+  };
+  const ctxPasskey = { ...good, site: { ...good.site, pages: [passkeyOnly] } };
+  const findingsPasskey = runDetectors(selectDetectors({ namespaces: ['CRO'] }), ctxPasskey).findings;
+  const hit = findingsPasskey.find((f) => f.detector_id === 'CRO-021');
+  assert.ok(hit, 'passkey-only checkout must still be flagged: authentication != payment wallet');
+  assert.match(hit.detector_name, /payment wallet/i);
+  assert.match(hit.observation.evidence.join(' '), /distinct from WebAuthn passkey authentication/);
+  assert.equal(hit.provenance.detector_version, 2);
+});
+
 test('GEO-013: detects AI engine assertion contradicting verified claim and spares corroborating assertions', () => {
   const good = ctxFor('site-clean', 'registries-good', 'https://example.test');
 
@@ -2275,3 +2333,47 @@ test('GEO-013: detects AI engine assertion contradicting verified claim and spar
 
 
 
+
+test('every finding carries a provenance envelope (detector version, evidence source, methodology, revalidation)', () => {
+  const good = ctxFor('site-broken', 'registries-good', 'https://broken.test');
+  const { findings } = runDetectors(selectDetectors({ namespaces: ['CRO', 'TECH'] }), good);
+  assert.ok(findings.length >= 1, 'expected at least one finding from fixtures');
+  for (const f of findings) {
+    assert.ok(f.provenance, `finding ${f.finding_id} missing provenance`);
+    assert.ok(Number.isInteger(f.provenance.detector_version) && f.provenance.detector_version >= 1);
+    assert.match(f.provenance.tool_version, /^\d+\.\d+\.\d+/);
+    assert.ok(['dom_parse', 'registry', 'registry+dom_parse', 'controlled_observation', 'configuration'].includes(f.provenance.evidence_source));
+    assert.ok(f.provenance.methodology.length > 10);
+    assert.ok(['on_next_audit', 'human_review_before_action'].includes(f.provenance.revalidation_required));
+    // no viewport captured in this context: must be null WITH an explanatory note, never invented
+    assert.equal(f.provenance.viewport, null);
+    assert.match(f.provenance.viewport_note, /viewport not captured/);
+  }
+  const deterministic = findings.find((f) => f.classification.deterministic);
+  const heuristic = findings.find((f) => !f.classification.deterministic);
+  if (deterministic) {
+    assert.match(deterministic.provenance.methodology, /deterministic/);
+    assert.equal(deterministic.provenance.revalidation_required, 'on_next_audit');
+  }
+  if (heuristic) {
+    assert.match(heuristic.provenance.methodology, /heuristic/);
+    assert.equal(heuristic.provenance.revalidation_required, 'human_review_before_action');
+  }
+});
+
+test('provenance records an explicitly supplied viewport instead of inventing one', () => {
+  const good = ctxFor('site-clean', 'registries-good', 'https://example.test');
+  const ctx = { ...good, viewport: '375x812 mobile' };
+  const { findings } = runDetectors(selectDetectors({ namespaces: ['CRO'] }), ctx);
+  for (const f of findings) {
+    assert.equal(f.provenance.viewport, '375x812 mobile');
+    assert.equal(f.provenance.viewport_note, null);
+  }
+});
+
+test('detector definitions expose a version that defaults to 1', () => {
+  assert.ok(ALL_DETECTORS.length >= 100);
+  for (const d of ALL_DETECTORS) {
+    assert.ok(Number.isInteger(d.version) && d.version >= 1, `${d.id} must declare integer version`);
+  }
+});

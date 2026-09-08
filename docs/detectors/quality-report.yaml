@@ -1,4 +1,4 @@
-generated_at: '2026-09-08T08:42:42.642Z'
+generated_at: '2026-09-08T11:21:07.986Z'
 corpus:
   positive_fixtures:
     - tests/fixtures/site-broken
@@ -2191,6 +2191,18 @@ detectors:
     recall: null
     known_blind_spots: []
   - detector_id: CRO-020
+    deterministic: true
+    fixtures_positive: 0
+    fixtures_negative: 0
+    exercised_by_fixtures: false
+    production_pages_evaluated: 0
+    true_positives: null
+    false_positives: null
+    false_negatives: null
+    precision: null
+    recall: null
+    known_blind_spots: []
+  - detector_id: CRO-021
     deterministic: true
     fixtures_positive: 0
     fixtures_negative: 0

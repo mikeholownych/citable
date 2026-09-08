@@ -5,7 +5,7 @@ import { loadRegistries } from '../registries/index.js';
 import { buildSiteFromDir, buildSiteFromUrl } from '../extractor/site.js';
 
 /** Assemble the shared execution context used by audit-family commands. */
-export async function buildContext(root, { target, baseUrl, refDate } = {}) {
+export async function buildContext(root, { target, baseUrl, refDate, viewport = null } = {}) {
   const warnings = [];
   const configFile = path.join(root, '.citable', 'config.yaml');
   const config = fs.existsSync(configFile) ? readYaml(configFile) : { version: 1 };
@@ -71,6 +71,7 @@ export async function buildContext(root, { target, baseUrl, refDate } = {}) {
     observations: observations.length ? observations : null,
     snapshots,
     refDate: parseRefDate(refDate),
+    viewport,
     hashPage: (p) => sha256(p.text),
     warnings,
   };

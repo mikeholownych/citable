@@ -2,6 +2,7 @@ import { buildContext } from './context.js';
 import { registryPageFor, safePath } from '../detectors/framework.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors } from '../detectors/framework.js';
+import { calculateVisualSaliency } from '../analysis/saliency.js';
 
 /**
  * `citable inspect cro <page>` — evaluate page conversion readiness, CTA visibility, form friction, and trust badges.
@@ -37,6 +38,42 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
   const titleStem = page.title ? page.title.split(/[|—–-]/)[0].trim() : '';
   const h1Text = page.h1s?.[0]?.text || '';
 
+  // Visual attention saliency modeling
+  const saliency = calculateVisualSaliency({
+    ctas: ctas.map((c) => ({ ...c, isPrimary: c.isPrimary })),
+    headings: (page.h1s || []).map((h) => ({ level: 1, text: h.text })),
+    forms: forms.map((f) => ({ fieldCount: f.fieldCount })),
+  });
+
+  // Keystroke Effort Index (KEI) across all forms
+  const totalInputs = forms.reduce((sum, f) => sum + (f.fieldCount || 0), 0);
+  const inputsWithAutocomplete = forms.reduce((sum, f) => sum + f.inputs.filter((inp) => Boolean(inp.autocomplete)).length, 0);
+  const manualKeystrokes = totalInputs * 14; // Average 14 keystrokes + focus taps per field
+  const autofillKeystrokes = totalInputs > 0 && inputsWithAutocomplete > 0
+    ? (totalInputs - inputsWithAutocomplete) * 14 + 1
+    : manualKeystrokes;
+  const keystrokeReductionPct = manualKeystrokes > 0
+    ? Math.round(((manualKeystrokes - autofillKeystrokes) / manualKeystrokes) * 100)
+    : 0;
+
+  // Express checkout readiness: payment wallets and authentication tracked separately.
+  // Apple Pay / Google Pay / PayPal are payment methods; WebAuthn/passkeys are account
+  // authentication. Conflating them produces misleading "biometric readiness" claims.
+  const walletRx = /apple\s*pay|google\s*pay|paypal|one-click/i;
+  const authRx = /passkey|webauthn/i;
+  const walletCtas = ctas.filter((c) => walletRx.test(c.text || ''));
+  const authCtas = ctas.filter((c) => authRx.test(c.text || ''));
+  const walletViaBadgeOrHtml = trustBadges.some((t) => walletRx.test(t.signal || '')) ||
+    Boolean(page.rawHtml && /data-express-payment|apple-pay|google-pay|paypal-button/i.test(page.rawHtml));
+  const authViaHtml = Boolean(page.rawHtml && /passkey|webauthn|publickey-credentials/i.test(page.rawHtml));
+
+  // Friction Surface Area (FSA) — a modeled heuristic index, not a measured
+  // revenue or conversion outcome.
+  const fsaScore = croFindings.reduce((acc, f) => {
+    const w = f.classification.severity === 'critical' ? 15 : f.classification.severity === 'high' ? 10 : f.classification.severity === 'medium' ? 5 : 2;
+    return acc + w;
+  }, 0);
+
   return {
     url: page.url,
     sourceFile: page.sourceFile,
@@ -45,6 +82,8 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
     primary_intent: reg?.primary_intent ?? null,
     page_type: reg?.page_type ?? null,
     conversion_status: status,
+    friction_surface_area: fsaScore,
+    friction_surface_area_note: 'modeled heuristic index (severity-weighted mechanical defect count); not a measured conversion or revenue outcome',
     title_to_h1_alignment: {
       titleStem,
       h1Text,
@@ -55,6 +94,27 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
     analytics_installed: (page.analyticsTags || []).length > 0,
     analytics_tags: page.analyticsTags || [],
     nav_links_count: page.navLinksCount || 0,
+    saliency,
+    keystroke_effort: {
+      total_inputs: totalInputs,
+      inputs_with_autocomplete: inputsWithAutocomplete,
+      autofill_coverage_pct: totalInputs > 0 ? Math.round((inputsWithAutocomplete / totalInputs) * 100) : 100,
+      manual_keystrokes_required: manualKeystrokes,
+      autofill_keystrokes_required: autofillKeystrokes,
+      keystroke_reduction_pct: keystrokeReductionPct,
+    },
+    express_checkout_readiness: {
+      payment_wallet_readiness: {
+        supported: walletCtas.length > 0 || walletViaBadgeOrHtml,
+        detected_triggers: walletCtas.map((c) => c.text),
+        note: 'payment wallets are payment methods (Apple Pay, Google Pay, PayPal)',
+      },
+      authentication_readiness: {
+        supported: authCtas.length > 0 || authViaHtml,
+        detected_triggers: authCtas.map((c) => c.text),
+        note: 'WebAuthn/passkeys are account authentication, not a payment method; this is an informational readiness index, not observed usage',
+      },
+    },
     ctas: ctas.map((c) => ({
       text: c.text,
       tag: c.tag,

@@ -77,9 +77,10 @@ test('cli connect indexnow dry-run and json modes', async () => {
     ]);
 
     const parsedJson = JSON.parse(stdout);
-    assert.equal(parsedJson.connector, 'indexnow');
-    assert.equal(parsedJson.dry_run, true);
-    assert.equal(parsedJson.url_count, 1);
+    assert.equal(parsedJson.citable_output_schema, '1.0', 'CLI --json output must use the stable envelope');
+    assert.equal(parsedJson.result.connector, 'indexnow');
+    assert.equal(parsedJson.result.dry_run, true);
+    assert.equal(parsedJson.result.url_count, 1);
   } finally {
     process.chdir(originalCwd);
     console.log = originalLog;
@@ -113,7 +114,7 @@ test('cli connect indexnow discovers urls from sitemap file', async () => {
       '--json',
     ]);
 
-    const parsed = JSON.parse(stdout);
+    const parsed = JSON.parse(stdout).result;
     assert.equal(parsed.connector, 'indexnow');
     assert.equal(parsed.url_count, 2);
     assert.equal(parsed.host, 'example.com');

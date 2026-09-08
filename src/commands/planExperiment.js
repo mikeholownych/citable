@@ -52,7 +52,56 @@ export async function planExperiment(root, options = {}) {
     recommendations.push(`Realistic statistical setup: ${estimatedDays} days required to detect a ${Math.round(mde * 100)}% lift with 80% power at 95% confidence.`);
   }
 
+  const experimentId = options.id || options.experimentId || 'EXP-CRO-AUTO';
+  const targetPage = options.page || options.targetPage || '/pricing';
+  const primaryMetric = options.metric || 'conversion_rate';
+
+  const blueprint = {
+    experiment_id: experimentId,
+    discipline: 'cro',
+    target_page: targetPage,
+    status: 'planned',
+    hypothesis: options.hypothesis || 'Replacing high-friction hero with NebulaHeroCTA increases primary CTA conversion.',
+    primary_metric: primaryMetric,
+    evaluation_window: `${Math.max(estimatedDays, 7)} days`,
+    sample_size_per_variant: nPerVariant,
+    variants: [
+      { id: 'control', name: 'Original Page (Baseline)', traffic_pct: 50 },
+      { id: 'variant_nebula', name: 'Nebula Remediated Component', traffic_pct: 50 },
+    ],
+  };
+
+  const edgeVariantRouterCode = `// Zero-Flicker Edge A/B Variant Router (MurmurHash3 / FNV-1a)
+export function routeExperiment(request) {
+  const visitorId = request.headers.get('cf-connecting-ip') || 'anon';
+  let hash = 2166136261;
+  const str = visitorId + ':${experimentId}';
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const bucket = Math.abs(hash % 100);
+  return bucket < 50 ? 'control' : 'variant_nebula';
+}`;
+
+  const telemetryCode = `// Schema-Valid Conversion Event Telemetry Envelope
+export function trackConversion(experimentId, variantId, actionName) {
+  const payload = {
+    kind: 'cro_conversion_event',
+    experiment_id: experimentId,
+    variant_id: variantId,
+    action: actionName,
+    timestamp: new Date().toISOString(),
+  };
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/citable/events', JSON.stringify(payload));
+  } else {
+    fetch('/api/citable/events', { method: 'POST', body: JSON.stringify(payload), keepalive: true });
+  }
+}`;
+
   return {
+    experiment_id: experimentId,
     baseline_conversion_rate: p1,
     target_conversion_rate: Number(p2.toFixed(4)),
     minimum_detectable_effect_relative: mde,
@@ -63,6 +112,9 @@ export async function planExperiment(root, options = {}) {
     total_sample_size: totalSample,
     estimated_duration_days: estimatedDays,
     risk_level: riskLevel,
+    blueprint,
+    edge_variant_router_code: edgeVariantRouterCode,
+    telemetry_code: telemetryCode,
     recommendations,
   };
 }

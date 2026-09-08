@@ -108,7 +108,7 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Evidence package layout (§13) | src/evidence/run.js; T: integration test asserts manifest/findings/report/checksums/robots |
 | Severity ≠ confidence (§11) | Finding schema separate enums; framework defaults |
 | 6-way finding classification (§3.2) | finding_type enum; deterministic flag per detector |
-| ≥60 meaningful detectors (§9) | 180 detectors / 19 namespaces; T: count + per-namespace assertions |
+| ≥60 meaningful detectors (§9) | 181 detectors / 19 namespaces; T: count + per-namespace assertions |
 | Positive and negative fixtures (§17) | tests/fixtures/site-clean vs site-broken, registries-good vs registries-bad |
 | Detector that flags everything is defective (§17) | T: "flags every page" sanity test on clean fixture |
 | Repeated runs stable (§21.21) | T: deterministic rerun test (identical finding IDs) |

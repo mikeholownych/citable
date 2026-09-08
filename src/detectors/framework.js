@@ -1,4 +1,8 @@
 import { sha256 } from '../shared/io.js';
+import { fileURLToPath } from 'node:url';
+import { readJson } from '../shared/io.js';
+
+const TOOL_VERSION = readJson(new URL('../../package.json', import.meta.url)).version;
 
 const REQUIRED = ['id', 'name', 'namespace', 'description', 'discipline', 'severity', 'deterministic', 'remediation', 'verification', 'check'];
 // RENDER (browser-rendered truth / source-render divergence) is reserved for the
@@ -7,8 +11,10 @@ const NAMESPACES = ['TECH', 'CRAWL', 'ARCH', 'PAGE', 'ANS', 'ENTITY', 'CLAIM', '
 
 /**
  * Detector definition contract. `check(ctx)` returns raw hits:
- *   { subject: {type, identifier, url?, source_file?, source_location?}, summary, evidence: [..],
+ *   { subject: {type, identifier, url?, source_file?, source_location?, rendered_selector?}, summary, evidence: [..],
  *     captured?, expected?, severity?, confidence? }
+ * Bump `version` whenever detector logic, thresholds, or output semantics
+ * change; findings record it in provenance.detector_version.
  */
 export function defineDetector(def) {
   for (const k of REQUIRED) {
@@ -17,6 +23,7 @@ export function defineDetector(def) {
   if (!NAMESPACES.includes(def.namespace)) throw new Error(`detector ${def.id}: unknown namespace ${def.namespace}`);
   if (!def.id.startsWith(def.namespace + '-')) throw new Error(`detector id ${def.id} must be prefixed with namespace`);
   return {
+    version: 1,
     confidence_model: def.deterministic ? 'binary condition; confirmed when observed' : 'heuristic; confidence reported per finding',
     confidence: def.deterministic ? 'confirmed' : 'medium',
     finding_type: def.deterministic ? 'deterministic_observation' : 'probabilistic_inference',
@@ -26,6 +33,14 @@ export function defineDetector(def) {
     applicable_requirement: '',
     ...def,
   };
+}
+
+function evidenceSourceFor(detector, ctx) {
+  if (ctx.observations?.length && detector.requires?.includes('observations')) return 'controlled_observation';
+  if (detector.requires?.includes('registries') && detector.requires?.includes('site')) return 'registry+dom_parse';
+  if (detector.requires?.includes('registries')) return 'registry';
+  if (detector.requires?.includes('site')) return 'dom_parse';
+  return 'configuration';
 }
 
 /** Run detectors over a context; returns { findings, detectorsRun, detectorsSkipped, errors }. */
@@ -53,6 +68,7 @@ export function runDetectors(detectors, ctx) {
       findings.push({
         finding_id: `F-${sha256(idSeed).slice(0, 12)}`,
         detector_id: d.id,
+        detector_name: d.name,
         run_id: ctx.runId ?? 'adhoc',
         timestamp: ts,
         discipline: d.discipline,
@@ -87,6 +103,20 @@ export function runDetectors(detectors, ctx) {
           method: d.verification,
           expected_result: 'detector no longer reports this subject',
           detector_to_rerun: d.id,
+        },
+        provenance: {
+          detector_version: d.version ?? 1,
+          tool_version: TOOL_VERSION,
+          source_url: hit.subject?.url ?? hit.subject?.identifier ?? null,
+          source_file: hit.subject?.source_file ?? null,
+          evidence_selector: hit.subject?.rendered_selector ?? hit.subject?.source_location ?? null,
+          evidence_source: evidenceSourceFor(d, ctx),
+          viewport: ctx.viewport ?? null,
+          viewport_note: ctx.viewport ? null : 'viewport not captured for this collection method; static source/built-output check',
+          methodology: d.deterministic
+            ? 'deterministic condition check over captured evidence'
+            : 'heuristic judgment; human semantic review required before acting',
+          revalidation_required: d.deterministic ? 'on_next_audit' : 'human_review_before_action',
         },
         status: { state: 'open', first_seen: ts, last_seen: ts, resolved_at: null },
       });

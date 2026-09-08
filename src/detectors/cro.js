@@ -774,4 +774,52 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'CRO-021', name: 'High-intent conversion step lacks express payment wallet options', namespace: 'CRO',
+  version: 2,
+  description: 'A high-intent conversion step (checkout, pricing, cart, subscription) contains traditional payment forms or checkout actions but provides no express payment wallet buttons (Apple Pay, Google Pay, PayPal Express). Payment wallets and WebAuthn passkey authentication are distinct capabilities: this detector reports payment-wallet readiness only; passkey/WebAuthn authentication readiness is reported separately by inspect cro as an informational index.',
+  discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { conversion: 'high' },
+  applicable_requirement: 'CRO §21 express checkout ergonomics; mobile checkout friction reduction (payment wallets; authentication readiness tracked separately)',
+  remediation: 'Add express payment wallet triggers (Apple Pay, Google Pay, PayPal Express) on high-intent conversion steps. Passkey/WebAuthn authentication is an account-authentication capability and does not substitute for a payment wallet.',
+  verification: 'Confirm high-intent conversion pages provide at least one express payment wallet mechanism.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      const reg = registryPageFor(ctx, p);
+      const pageType = (reg?.page_type || '').toLowerCase();
+      const urlLower = (p.url || '').toLowerCase();
+      const isCheckout = ['checkout', 'cart'].includes(pageType) ||
+        urlLower.includes('/checkout') || urlLower.includes('/cart') ||
+        (p.forms || []).some((f) => f.inputs && f.inputs.some((inp) => /card|cvv|exp|payment/i.test(inp.name || inp.type || '')));
+      if (!isCheckout) continue;
+
+      const ctas = p.ctas || [];
+      const forms = p.forms || [];
+      const hasCheckoutAction = ctas.some((c) => /checkout|pay|purchase|subscribe|order/i.test(c.text || '')) || forms.length > 0;
+      if (!hasCheckoutAction) continue;
+
+      const walletSignals = ctas.filter((c) => /apple\s*pay|google\s*pay|paypal|one-click/i.test(c.text || ''));
+      const hasExpressPayment = walletSignals.length > 0 ||
+        (p.trustBadges || []).some((t) => /apple\s*pay|google\s*pay|paypal/i.test(t.signal || '')) ||
+        (p.rawHtml && /data-express-payment|apple-pay|google-pay|paypal-button/i.test(p.rawHtml));
+
+      if (!hasExpressPayment) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `High-intent conversion page "${p.url}" lacks express payment wallet options (Apple Pay, Google Pay, PayPal Express)`,
+          evidence: [
+            `page type: "${pageType || 'inferred checkout'}"`,
+            `detected CTAs: ${ctas.map((c) => c.text).join(', ') || 'none'}`,
+            'payment wallets (Apple Pay, Google Pay, PayPal Express) are distinct from WebAuthn passkey authentication; mobile visitors abandon multi-step checkout forms without express wallet options',
+          ],
+          captured: { has_express_payment_wallet: false, ctaCount: ctas.length },
+          expected: '>= 1 express payment wallet trigger (Apple Pay, Google Pay, PayPal Express)',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
 export default D;
