@@ -1,4 +1,4 @@
-import { defineDetector, pageSubject } from './framework.js';
+import { defineDetector, indexTargets, pageSubject } from './framework.js';
 
 const D = [];
 
@@ -118,4 +118,115 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'LINK-005', name: 'Internal redirect hop chain or circular redirect loop', namespace: 'LINK',
+  description: 'An internal link targets a URL that initiates a multi-hop redirect chain (>=2 hops) or a circular redirect loop, dissipating link equity and wasting crawler budget.',
+  discipline: ['seo', 'tech'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'medium', ranking: 'low' },
+  applicable_requirement: 'SEO §3 eliminate multi-hop internal redirects; prevent crawler trap redirect loops',
+  remediation: 'Update internal links to point directly to the terminal 200 destination URL, bypassing redirect hops.',
+  verification: 'Verify all internal links resolve to terminal 200 destinations in 0 redirect hops.',
+  check(ctx) {
+    const hits = [];
+    for (const p of ctx.site.pages) {
+      const seenLinks = new Set();
+      for (const e of ctx.site.outbound.get(ctx.site.normalize(p.url)) || []) {
+        if (!e.to || seenLinks.has(e.to)) continue;
+        seenLinks.add(e.to);
+
+        let curr = ctx.site.byUrl.get(e.to);
+        if (!curr || curr.status < 300 || curr.status >= 400) continue;
+
+        let hops = 0;
+        const visited = [e.to];
+        const visitedSet = new Set([e.to]);
+        let loopDetected = false;
+
+        while (curr && curr.status >= 300 && curr.status < 400 && hops < 10) {
+          hops++;
+          const loc = curr.headers?.location || curr.headers?.Location || curr.redirectLocation;
+          if (!loc) break;
+          const nextUrl = ctx.site.normalize ? ctx.site.normalize(loc) : loc;
+          if (visitedSet.has(nextUrl)) {
+            loopDetected = true;
+            visited.push(nextUrl);
+            break;
+          }
+          visitedSet.add(nextUrl);
+          visited.push(nextUrl);
+          curr = ctx.site.byUrl.get(nextUrl);
+        }
+
+        if (loopDetected) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Internal link "${e.text || e.href}" targets circular redirect loop (${visited.join(' → ')})`,
+            evidence: [
+              `link: "${e.text || e.href}"`,
+              `redirect loop: ${visited.join(' → ')}`,
+            ],
+          });
+        } else if (hops >= 2) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Internal link "${e.text || e.href}" targets multi-hop redirect chain (${hops} hops: ${visited.join(' → ')})`,
+            evidence: [
+              `link: "${e.text || e.href}"`,
+              `redirect chain: ${visited.join(' → ')}`,
+              `hops: ${hops}`,
+            ],
+            captured: hops,
+            expected: 0,
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'LINK-006', name: 'Excessive naked URL or uninformative internal anchor text ratio', namespace: 'LINK',
+  description: 'Over 25% of internal links on a page use naked URLs or uninformative anchors, diluting semantic topic graph signals for search engines and generative models.',
+  discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
+  impact: { ranking: 'medium', representation: 'low' },
+  applicable_requirement: 'SEO §3 descriptive anchor text; AEO §2 semantic entity linking; premise 3.3 topic graph integrity',
+  remediation: 'Replace naked URLs and symbol-only anchors with descriptive, keyword-aligned topic text.',
+  verification: 'Confirm less than 25% of internal anchors on any page are naked URLs or non-descriptive tokens.',
+  check(ctx) {
+    const hits = [];
+    const UNINFORMATIVE_RX = /^(\s*|https?:\/\/.*|\/.*|[0-9]+|[•→>»*#\-_|~]+|click\s+here|read\s+more|learn\s+more|view\s+more|here|link|more|details|page)$/i;
+
+    for (const p of indexTargets(ctx)) {
+      const outbound = ctx.site.outbound.get(ctx.site.normalize(p.url)) || [];
+      if (outbound.length < 4) continue;
+
+      let uninformativeCount = 0;
+      for (const e of outbound) {
+        const text = (e.text || '').trim();
+        if (!text || UNINFORMATIVE_RX.test(text) || text === e.href || text === e.to) {
+          uninformativeCount++;
+        }
+      }
+
+      const ratio = uninformativeCount / outbound.length;
+      if (ratio > 0.25) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Page has ${Math.round(ratio * 100)}% uninformative internal anchors (${uninformativeCount}/${outbound.length})`,
+          evidence: [
+            `uninformative anchors: ${uninformativeCount}`,
+            `total internal links: ${outbound.length}`,
+            `ratio: ${(ratio * 100).toFixed(1)}%`,
+          ],
+          captured: `${Math.round(ratio * 100)}%`,
+          expected: '<= 25%',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
 export default D;
+

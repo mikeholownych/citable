@@ -33,6 +33,10 @@ export const REGISTRY_SPECS = [
   { file: 'assumptions.yaml',  kind: 'assumptions', schema: 'assumption.schema.json', idField: 'assumption_id' },
   { file: 'scenarios.yaml',    kind: 'scenarios',   schema: 'scenario.schema.json',   idField: 'scenario_id' },
   { file: 'initiatives.yaml',  kind: 'initiatives', schema: 'initiative.schema.json', idField: 'initiative_id' },
+  // Conversion Rate Optimization suite — funnels
+  { file: 'funnels.yaml',      kind: 'funnels',     schema: 'funnel.schema.json',     idField: 'funnel_id' },
+  // Multi-property fleet governance
+  { file: 'fleet.yaml',        kind: 'fleet',       schema: 'fleet.schema.json',      idField: 'property_id' },
 ];
 
 export function contextDir(root) {
@@ -229,6 +233,16 @@ export function checkReferentialIntegrity(registries) {
         problems.push(`${prefix}: variable "${ref}" references unknown kpi`);
       if (ref.startsWith('RISK-') && !riskIds.has(ref))
         problems.push(`${prefix}: variable "${ref}" references unknown risk`);
+    }
+  }
+
+  // funnels: step.page_id should reference known pages
+  for (const fn of registries.funnels?.entries || []) {
+    const prefix = `funnels/${fn.funnel_id}`;
+    for (const step of fn.steps || []) {
+      if (step.page_id && !ids.pages?.has(step.page_id)) {
+        problems.push(`${prefix}: step "${step.step_id}" references unknown page id "${step.page_id}"`);
+      }
     }
   }
 

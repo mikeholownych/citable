@@ -4,15 +4,15 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.15.1)
+## Current State (v1.16.0)
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 124 across 18 namespaces |
+| Detectors | 180 across 19 namespaces |
 | Tests | 302 pass on Node 24 |
-| Registries | 27 schema-validated |
+| Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 96 packaged files per provider; 2 managed Claude profiles |
+| Distribution | 99 packaged files per provider; 2 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,7 +20,7 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 96 packaged skill files per provider
+The current development branch builds 99 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
 manifested two-profile discovery payload.
@@ -63,6 +63,16 @@ manifested two-profile discovery payload.
   validity, residual risk, expiry, renewal, and invalidation evidence.
 - Version-pinned canonical audit schedules, hash-bound GitHub projections, and
   differential comparability dimensions without causal attribution.
+- Direct IndexNow submission connector with fail-closed key verification, batch chunking, dry-run safety, and immutable delivery receipts.
+- Canonical discovery consensus matrix synthesizing publisher headers, tags, sitemaps, and search engines (`citable report consensus` + detector `TECH-019`).
+- Allowlisted read-only MCP evidence transport adapter with strict payload limits, private IP blocking, and schema validation (`citable connect mcp`).
+- Citation attribution and claim entailment verification with distortion detection (`observe attribution` + detector `GEO-008`).
+- Governed exception lifecycle management supporting expiry audits, authority-checked renewals, and audit-logged revocations (`citable exceptions <list|renew|invalidate>`).
+- Hreflang & Internationalization Signal Consensus detectors (`TECH-020`, `TECH-021`, `TECH-022`).
+- Structured data entity-to-text entailment and graph reference integrity (`SCHEMA-009`, `SCHEMA-010`).
+- Citation volatility and temporal stability tracking (`GEO-009`).
+- MCP transport diagnostic suite for stdio execution, HTTP guards, schema validation, and registry bindings (`citable doctor --mcp`).
+- Continuous longitudinal monitoring webhook delivery with HMAC-SHA256 request signing and dispatch receipts (`citable monitor --webhook`).
 
 ## v1.13 Validation Gates In Progress
 
@@ -108,21 +118,22 @@ or evidence that hosted collectors exist.
 
 ### MCP Evidence Transport
 
-**Current status:** contract documented; runtime transport not implemented.
+**Current status:** contract and read-only pilot implemented (`citable connect mcp`).
 MCP Server Card discovery findings in site audits do not mean Citable can
-connect to or collect evidence from an MCP server.
+connect to or collect evidence from an arbitrary MCP server.
 
-MCP is planned only as a transport into the existing immutable observation
-model. It will not confer provider authority, authenticity,
+MCP operates strictly as a transport into the existing immutable observation
+model. It does not confer provider authority, authenticity,
 representativeness, completeness, or semantic validity on a tool response.
 
-1. **Transport envelope and threat model:** define server identity, pinned
-   version or verified endpoint, protocol and tool schema, request/response
-   hashes, authorization scopes, raw retention, incomplete states, and
-   normalization provenance.
-2. **Read-only provider pilot:** implement one provider-supported, allowlisted
-   server and tool with least-privilege authorization, bounded pagination,
-   positive/negative fixtures, and explicit unsupported states.
+1. **Transport envelope and threat model:** (Completed) defined server identity,
+   pinned version or verified HTTPS endpoint, protocol and tool schema,
+   request/response hashes, authorization scopes, raw retention, and
+   normalization provenance (`schemas/mcp-transport-envelope.schema.json`).
+2. **Read-only provider pilot:** (Completed) implemented allowlisted server
+   (`citable-evidence-pilot`) and read-only tools (`inspect_target`, `get_canonical_evidence`,
+   `query_search_index`) across stdio and HTTP transports with bounded timeouts,
+   payload limits, loopback/private IP blocking, and positive/negative fixtures.
 3. **Runtime diagnosis:** extend capability reporting to distinguish package or
    endpoint presence, protocol negotiation, authorization, tool availability,
    property access, collection, and normalization.

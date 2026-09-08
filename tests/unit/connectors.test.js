@@ -60,15 +60,19 @@ test('GA4 adapter paginates properties and restricts metric sync to Organic Sear
   assert.equal(bodies[0].dimensionFilter.filter.stringFilter.value, 'Organic Search');
 });
 
-test('listConnectors includes gsc, ga4, wordpress, and webflow providers', () => {
+test('listConnectors includes gsc, ga4, wordpress, webflow, indexnow, and mcp providers', () => {
   const list = listConnectors();
   const providers = new Set(list.map((c) => c.provider));
   assert.ok(providers.has('gsc'));
   assert.ok(providers.has('ga4'));
   assert.ok(providers.has('wordpress'));
   assert.ok(providers.has('webflow'));
+  assert.ok(providers.has('indexnow'));
+  assert.ok(providers.has('mcp'));
   assert.equal(getConnector('wordpress').provider, 'wordpress');
   assert.equal(getConnector('webflow').provider, 'webflow');
+  assert.equal(getConnector('indexnow').provider, 'indexnow');
+  assert.equal(getConnector('mcp').provider, 'mcp');
 });
 
 test('WordPress connector discovers properties, validates credentials, reads content, and applies hash-locked remediation', async () => {

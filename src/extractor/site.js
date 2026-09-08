@@ -45,6 +45,11 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
   const robotsPath = path.join(dir, 'robots.txt');
   const robotsText = fs.existsSync(robotsPath) ? fs.readFileSync(robotsPath, 'utf8') : null;
 
+  const llmsPath = path.join(dir, 'llms.txt');
+  const llmsText = fs.existsSync(llmsPath) ? fs.readFileSync(llmsPath, 'utf8') : null;
+  const llmsFullPath = path.join(dir, 'llms-full.txt');
+  const llmsFullText = fs.existsSync(llmsFullPath) ? fs.readFileSync(llmsFullPath, 'utf8') : null;
+
   const sitemaps = [];
   for (const f of fs.readdirSync(dir)) {
     if (/sitemap.*\.xml$/i.test(f)) {
@@ -52,7 +57,7 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
     }
   }
 
-  return assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode: 'built_output', location: dir });
+  return assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode: 'built_output', location: dir, llmsText, llmsFullText });
 }
 
 /** Build a SiteModel by fetching a deployed URL set (target URL + same-origin discovery, bounded). */
@@ -122,7 +127,7 @@ export async function buildSiteFromUrl(startUrl, {
   return site;
 }
 
-function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, location, crawl = null }) {
+function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, location, crawl = null, llmsText = null, llmsFullText = null }) {
   const byUrl = new Map();
   for (const p of pages) byUrl.set(normalize(p.url), p);
 
@@ -179,6 +184,8 @@ function assembleSite({ baseUrl, pages, robotsText, sitemaps, transport, mode, l
     depth,
     normalize,
     crawl,
+    llmsTxt: llmsText != null ? { raw: llmsText, found: true, path: '/llms.txt' } : null,
+    llmsFullTxt: llmsFullText != null ? { raw: llmsFullText, found: true, path: '/llms-full.txt' } : null,
   };
 }
 

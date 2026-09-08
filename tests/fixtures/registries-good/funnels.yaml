@@ -1,0 +1,23 @@
+version: 1
+kind: funnels
+entries:
+  - funnel_id: FUNNEL-PRIMARY-DEMO
+    name: Primary Product Demo Funnel
+    description: Core evaluation journey from product overview to pricing and demo booking
+    primary_goal: request demo
+    target_audience: Platform engineering teams
+    owner: Growth Team
+    steps:
+      - step_id: STEP-LANDING
+        name: Gatekeeper Product Overview
+        url_pattern: /products/gatekeeper/
+        page_id: PAGE-GATEKEEPER
+        role: entry
+        expected_cta: Request a demo
+      - step_id: STEP-PRICING
+        name: Pricing and Licensing
+        url_pattern: /pricing/
+        page_id: PAGE-PRICING
+        role: consideration
+        expected_cta: Contact sales
+    status: active

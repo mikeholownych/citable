@@ -1,4 +1,5 @@
 import { defineDetector, htmlIndexTargets, pageSubject } from './framework.js';
+import { parse } from 'node-html-parser';
 
 const D = [];
 
@@ -193,6 +194,106 @@ D.push(defineDetector({
           evidence: [`density ${(100 * top[1] / words.length).toFixed(1)}% exceeds 8% threshold`],
           confidence: 'medium',
         });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'PAGE-010', name: 'High boilerplate-to-content ratio in extracted answer passages', namespace: 'PAGE',
+  description: 'An index-target page has a high ratio of boilerplate (navigation, header, footer, chrome) relative to substantive primary content, diluting extracted answer passages.',
+  discipline: ['aeo', 'seo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { ranking: 'low', citation: 'medium' },
+  applicable_requirement: 'SEO §5 main content extraction; AEO §4 concise and focused answer passages',
+  false_positive_conditions: ['minimal navigation shells intentionally designed as search gateways'],
+  remediation: 'Reduce header/footer/chrome weight or enrich main body content so substantive answer passages dominate the document.',
+  verification: 'Confirm boilerplate-to-content ratio is below the defined threshold.',
+  check(ctx) {
+    const threshold = ctx.config?.audit?.max_boilerplate_ratio ?? 0.70;
+    const hits = [];
+    for (const p of htmlIndexTargets(ctx)) {
+      if (p.status !== 200) continue;
+      const boilerplateWords = (p.structuralRegions || []).reduce((sum, r) => sum + (r.token_count || 0), 0);
+      const mainWords = p.wordCount || 0;
+      const total = boilerplateWords + mainWords;
+      if (boilerplateWords > 0 && mainWords > 0 && total >= 50) {
+        const ratio = boilerplateWords / total;
+        if (ratio >= threshold) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `High boilerplate-to-content ratio: ${(100 * ratio).toFixed(1)}% of visible text is chrome/navigation/footer (threshold ${(100 * threshold).toFixed(0)}%)`,
+            evidence: [`boilerplate tokens: ${boilerplateWords}`, `main content tokens: ${mainWords}`, `ratio: ${(100 * ratio).toFixed(1)}%`],
+            captured: Number(ratio.toFixed(4)),
+            threshold,
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'PAGE-011', name: 'Critical entity claims rendered inside transient/collapsible UI containers without fallback', namespace: 'PAGE',
+  description: 'Registered claim or critical entity statement is rendered exclusively inside a collapsible or transient UI container (<details>, accordion, hidden tab) without an uncollapsed fallback or crawlable representation.',
+  discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
+  impact: { citation: 'medium', representation: 'medium' },
+  applicable_requirement: 'AEO §2 crawlable and indexable answer surfaces; premise 3.5: claims must be verified and crawlable',
+  false_positive_conditions: ['supplemental FAQs where claims are also summarized in main prose'],
+  remediation: 'Expose key entity statements and primary claim assertions directly in main crawlable prose or provide server-rendered uncollapsed fallbacks.',
+  verification: 'Confirm registered claims are accessible outside closed collapsible containers.',
+  check(ctx) {
+    const claims = (ctx.registries?.claims?.entries || []).filter((c) => !['retired', 'expired', 'prohibited'].includes(c.status));
+    if (claims.length === 0) return [];
+    const hits = [];
+
+    for (const p of htmlIndexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const doc = parse(p.rawHtml);
+
+      // Identify transient/collapsible containers
+      const collapsibleContainers = doc.querySelectorAll('details:not([open]), [aria-expanded="false"], .collapse:not(.show), [data-state="closed"]');
+      if (collapsibleContainers.length === 0) continue;
+
+      const containerTexts = collapsibleContainers.map((el) => ({
+        tag: el.tagName ? el.tagName.toLowerCase() : 'container',
+        text: el.text.toLowerCase().replace(/\s+/g, ' ').trim(),
+      })).filter((c) => c.text.length > 0);
+
+      if (containerTexts.length === 0) continue;
+
+      // Compute document text outside collapsible containers
+      const docClone = parse(p.rawHtml);
+      for (const el of docClone.querySelectorAll('details:not([open]), [aria-expanded="false"], .collapse:not(.show), [data-state="closed"]')) {
+        el.remove();
+      }
+      const exteriorText = docClone.text.toLowerCase().replace(/\s+/g, ' ').trim();
+
+      for (const c of claims) {
+        const keywords = (c.claim.toLowerCase().match(/[a-z0-9][a-z0-9-]{3,}/g) || []).slice(0, 8);
+        if (keywords.length < 2) continue;
+
+        for (const container of containerTexts) {
+          const matchedInContainer = keywords.filter((k) => container.text.includes(k)).length;
+          if (matchedInContainer / keywords.length >= 0.7) {
+            const matchedInExterior = keywords.filter((k) => exteriorText.includes(k)).length;
+            if (matchedInExterior / keywords.length < 0.4) {
+              hits.push({
+                subject: pageSubject(p),
+                summary: `Claim "${c.claim_id}" rendered inside collapsible <${container.tag}> container without uncollapsed fallback`,
+                evidence: [
+                  `claim_id: ${c.claim_id}`,
+                  `claim: "${c.claim}"`,
+                  `container: <${container.tag}>`,
+                  `keywords matched in container: ${matchedInContainer}/${keywords.length}`,
+                  `keywords outside container: ${matchedInExterior}/${keywords.length}`,
+                ],
+              });
+              break;
+            }
+          }
+        }
       }
     }
     return hits;

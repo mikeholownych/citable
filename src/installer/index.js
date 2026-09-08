@@ -15,6 +15,7 @@ import {
 } from './providers.js';
 
 export { PROVIDERS, PROVIDER_IDS, parseProviderList, normalizeProviderId } from './providers.js';
+import { diagnoseMcpTransports } from '../connectors/mcp/diagnostics.js';
 
 export const EXIT_CODES = Object.freeze({
   success: 0,
@@ -106,6 +107,7 @@ export function parseInstallerArgs(argv) {
     help: false,
     version: false,
     failOnUpdate: false,
+    mcp: false,
     installMode: 'copy',
     skillSelection: null,
     _: [],
@@ -121,6 +123,7 @@ export function parseInstallerArgs(argv) {
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--force') args.force = true;
     else if (arg === '--json') args.json = true;
+    else if (arg === '--mcp') args.mcp = true;
     else if (arg === '--all') { args.all = true; args.yes = true; }
     else if (arg === '--help' || arg === '-h') args.help = true;
     else if (arg === '--version' || arg === '-v') args.version = true;
@@ -1039,7 +1042,8 @@ function combineInstalledState(skillState, profileState) {
 export async function doctorCommand(args, options = {}) {
   const context = resolveTargets('doctor', args, options);
   const packageInfo = loadPackageInfo(context.roots.packageRoot);
-  const capabilities = await runtimeCapabilities(options);
+  const isMcp = Boolean(args?.mcp || options?.mcp);
+  const capabilities = await runtimeCapabilities({ ...options, mcp: isMcp, packageRoot: context.roots.packageRoot });
   const checks = [];
   const nodeMajor = Number.parseInt(process.versions.node.split('.')[0], 10);
   checks.push({ level: nodeMajor >= 20 ? 'PASS' : 'FAIL', message: `Node.js ${process.versions.node}` });
@@ -1073,8 +1077,21 @@ export async function doctorCommand(args, options = {}) {
     }
   }
 
+  let mcpSummary = null;
+  if (isMcp) {
+    const mcpDiag = await diagnoseMcpTransports({
+      packageRoot: context.roots.packageRoot,
+      projectRoot: context.roots.projectRoot,
+      ...options,
+    });
+    checks.push(...mcpDiag.checks);
+    mcpSummary = mcpDiag.summary;
+  }
+
   const hasFail = checks.some((check) => check.level === 'FAIL');
-  return { ok: !hasFail, command: 'doctor', checks, capabilities, exitCode: hasFail ? EXIT_CODES.integrityFailure : EXIT_CODES.success };
+  const result = { ok: !hasFail, command: 'doctor', checks, capabilities, exitCode: hasFail ? EXIT_CODES.integrityFailure : EXIT_CODES.success };
+  if (mcpSummary) result.mcp = mcpSummary;
+  return result;
 }
 
 async function optionalDependencyAvailable(name, options = {}) {
@@ -1148,6 +1165,24 @@ export async function runtimeCapabilities(options = {}) {
       limitations: [configured ? definition.readyLimitation : `${definition.credential} is not configured`],
     });
   }
+
+  if (options.mcp) {
+    const pkgRoot = options.packageRoot || packageRoot();
+    const pilotPath = path.resolve(pkgRoot, 'src/connectors/mcp/pilotServer.js');
+    const pilotAvailable = exists(pilotPath);
+    capabilities.push({
+      id: 'mcp_transport',
+      state: pilotAvailable ? 'ready' : 'missing_dependency',
+      requirements: ['node:child_process', 'node:readline', 'pilotServer.js'],
+      limitations: pilotAvailable
+        ? [
+            'MCP transport is read-only and restricted to explicit allowlisted servers and tools',
+            'remote endpoints require HTTPS and must not resolve to private or loopback ranges',
+          ]
+        : ['MCP stdio pilotServer.js script was not found'],
+    });
+  }
+
   return capabilities;
 }
 
@@ -1350,6 +1385,13 @@ function renderList(result) {
 
 function renderDoctor(result) {
   const lines = ['Citable doctor', '', ...result.checks.map((check) => `${check.level.padEnd(5)} ${check.message}`)];
+  if (result.mcp) {
+    lines.push('', 'MCP transport diagnostic');
+    lines.push(`  allowlist:          ${result.mcp.servers_count} server(s), ${result.mcp.tools_count} read-only tool(s)`);
+    lines.push(`  stdio execution:    ${result.mcp.stdio_ready ? 'ready' : 'failed'}`);
+    lines.push(`  http guards:        ${result.mcp.http_guards_active ? 'active' : 'failed'}`);
+    lines.push(`  registry bindings:  ${result.mcp.connections_found} configured connection(s)`);
+  }
   if (result.capabilities?.length) {
     lines.push('', 'Runtime capabilities');
     for (const capability of result.capabilities) {
@@ -1391,6 +1433,7 @@ Options
   --project, --local, -p    Install/check project-local skill locations
   --global, --user, -g      Install/check user-global skill locations
   --scope=<project|global>  Scope equivalent
+  --mcp                     Run MCP transport diagnostics (stdio, HTTP guards, allowlist, connections)
   --yes, -y                 Confirm non-interactively
   --dry-run                 Preview filesystem changes without mutation
   --force                   Replace locally modified or unmanaged citable directory

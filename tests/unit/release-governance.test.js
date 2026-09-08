@@ -48,7 +48,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
   const second = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
-  assert.equal(first.manifest.facts.detectors, 124);
+  assert.equal(first.manifest.facts.detectors, 180);
   assert.equal(first.manifest.facts.distribution_files_per_provider, packagedSkillFileCount());
   assert.ok(first.manifest.projections.some((item) => item.projection_id === 'llms-txt'));
   assert.match(first.generated['release/llms.txt'], /Release commit: a{40}/);
@@ -56,7 +56,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
 
 test('release validation fails closed on projection tampering and documentation fact drift', () => {
   const root = releaseFixtureRoot();
-  fs.writeFileSync(path.join(root, 'docs', 'ROADMAP.md'), fs.readFileSync(path.join(root, 'docs', 'ROADMAP.md'), 'utf8').replace('| Registries | 27 schema-validated |', '| Registries | 19 schema-validated |'));
+  fs.writeFileSync(path.join(root, 'docs', 'ROADMAP.md'), fs.readFileSync(path.join(root, 'docs', 'ROADMAP.md'), 'utf8').replace('| Registries | 29 schema-validated |', '| Registries | 19 schema-validated |'));
   const generated = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.equal(validateReleaseManifest(root, generated.manifest).ok, false, 'roadmap registry count drift must be exposed');
   fs.writeFileSync(path.join(root, 'docs', 'ROADMAP.md'), fs.readFileSync(path.join(root, 'docs', 'ROADMAP.md'), 'utf8').replace('| Registries | 19 schema-validated |', `| Registries | ${generated.manifest.facts.registries} schema-validated |`));
