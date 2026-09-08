@@ -49,7 +49,7 @@ const RULES = [
       if (htmlTemplateLiteral) problems.push('template literal interpolated into HTML markup');
       // Liquid object output without escape filter inside script blocks (script context never auto-escapes)
       if (format === 'shopify-snippet') {
-        const scripts = content.match(/<script[\s\S]*?<\/script>/gi) || [];
+        const scripts = content.match(/<script\b[^>]*>[\s\S]*?<\/script[^>]*>/gi) || [];
         for (const block of scripts) {
           for (const m of block.matchAll(/\{\{[^}]*\}\}/g)) {
             if (!/\|\s*escape|json/.test(m[0])) problems.push(`Liquid output ${m[0]} inside <script> without escape filter`);

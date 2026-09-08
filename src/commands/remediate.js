@@ -173,7 +173,12 @@ const TAG_RX = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:"[^"]*"|'[^']*'|[^"'>])*?)(\/?)
 function tagBalanceReport(src) {
   const stack = [];
   let error = null;
-  const cleaned = src.replace(/<!--[\s\S]*?-->/g, '');
+  let previous;
+  let cleaned = src;
+  do {
+    previous = cleaned;
+    cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, '');
+  } while (cleaned !== previous);
   let m;
   TAG_RX.lastIndex = 0;
   while ((m = TAG_RX.exec(cleaned)) !== null) {
