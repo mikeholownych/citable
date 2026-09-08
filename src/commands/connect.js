@@ -117,3 +117,6 @@ export async function applyCmsRemediation(root, { connectionId, input, write = f
   return { connection_id: connectionId, provider: connector.provider, ...result };
 }
 
+export { submitIndexNow, verifyHostKey, buildIndexNowPayload, normalizeHost, parseUrlsInput } from '../connectors/indexnow.js';
+export { collectMcpEvidence } from '../connectors/mcp/pilot.js';
+

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { loadRegistries, saveRegistry } from '../../src/registries/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -17,13 +18,19 @@ test('top-level help exposes audit-to-action commands', () => {
   assert.match(output, /monitor \[runA runB\]/);
   assert.match(output, /report dashboard \[--last N\] \[--since <run-id>\]/);
   assert.match(output, /report share-of-voice \[--last N\]/);
+  assert.match(output, /report consensus/);
   assert.match(output, /metrics import/);
   assert.match(output, /objectives init/);
   assert.match(output, /evaluate \[objective-id\]/);
   assert.match(output, /connect status/);
   assert.match(output, /connect read/);
   assert.match(output, /connect apply/);
+  assert.match(output, /connect indexnow/);
+  assert.match(output, /connect mcp/);
   assert.match(output, /governance validate/);
+  assert.match(output, /exceptions list/);
+  assert.match(output, /exceptions renew/);
+  assert.match(output, /exceptions invalidate/);
   assert.match(output, /reviews queue/);
   assert.match(output, /schedules run/);
   assert.match(output, /project github/);
@@ -113,5 +120,96 @@ test('report share-of-voice runs via CLI against observation runs', () => {
   assert.ok(fs.existsSync(path.join(dir, '.citable', 'reports', 'share-of-voice.html')));
 });
 
+test('exceptions CLI handles list, renew, and invalidate', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-cli-exc-'));
+  execFileSync(process.execPath, [path.join(ROOT, 'cli/bin/citable.js'), 'init'], { cwd: dir, encoding: 'utf8' });
 
+  // Add reviewer, policy, and exception
+  const { registries } = loadRegistries(dir);
+  registries.reviewers.entries = [
+    { reviewer_id: 'REVIEWER-TECH', name: 'Technical reviewer', status: 'active', roles: ['technical_reviewer'], authorized_scopes: ['*'], conflicts: [] },
+    { reviewer_id: 'REVIEWER-APPROVER', name: 'Approver', status: 'active', roles: ['approver'], authorized_scopes: ['*'], conflicts: [] },
+  ];
+  registries.review_policies.entries = [
+    {
+      policy_id: 'POLICY-DEFAULT',
+      name: 'Default exception policy',
+      status: 'active',
+      required_roles: ['technical_reviewer', 'approver'],
+      separation_rules: ['author_cannot_verify_own_claim'],
+      max_exception_days: 90,
+      max_renewals: 2,
+    },
+  ];
+  registries.exceptions.entries = [
+    {
+      exception_id: 'EXCEPTION-CLI-1',
+      policy_id: 'POLICY-DEFAULT',
+      policy_hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      status: 'approved',
+      source_run_id: 'RUN-1',
+      finding_ids: ['F-1'],
+      finding_hashes: {
+        'F-1': '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      },
+      reason: 'Staged migration.',
+      risk_statement: 'Crawler cannot reach path.',
+      residual_risk: 'documented',
+      compensating_controls: ['Monitor traffic.'],
+      evidence_ids: [],
+      evidence_hashes: {},
+      owner_reviewer_id: 'REVIEWER-TECH',
+      reviewer_assignments: [
+        { reviewer_id: 'REVIEWER-TECH', role: 'technical_reviewer' },
+        { reviewer_id: 'REVIEWER-APPROVER', role: 'approver' },
+      ],
+      reviewer_independence: 'established',
+      created_at: '2026-07-01T00:00:00.000Z',
+      expires_at: '2026-08-01T00:00:00.000Z',
+      renewal_count: 0,
+      renewal_limit: 2,
+      invalidation_conditions: ['finding_changed'],
+      related_intervention_id: null,
+      supersedes_exception_id: null,
+      superseded_by_exception_id: null,
+      audit_history: [
+        {
+          timestamp: '2026-07-01T00:00:00.000Z',
+          actor_reviewer_id: 'REVIEWER-APPROVER',
+          action: 'approved',
+          note: 'Approved',
+        },
+      ],
+    },
+  ];
+  for (const kind of ['reviewers', 'review_policies', 'exceptions']) saveRegistry(dir, kind, registries[kind]);
 
+  // CLI list
+  const listOut = execFileSync(process.execPath, [
+    path.join(ROOT, 'cli/bin/citable.js'), 'exceptions', 'list', '--ref-date', '2026-07-25',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.match(listOut, /exceptions list: 1 exception\(s\)/);
+  assert.match(listOut, /EXCEPTION-CLI-1 \[expiring_soon\]/);
+
+  // CLI renew
+  const renewOut = execFileSync(process.execPath, [
+    path.join(ROOT, 'cli/bin/citable.js'), 'exceptions', 'renew',
+    '--id', 'EXCEPTION-CLI-1',
+    '--until', '2026-08-15',
+    '--reviewer', 'REVIEWER-APPROVER',
+    '--ref-date', '2026-07-25',
+    '--write',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.match(renewOut, /exceptions renew: EXCEPTION-CLI-1 extended to 2026-08-15/);
+  assert.match(renewOut, /written/);
+
+  // CLI invalidate
+  const invalidateOut = execFileSync(process.execPath, [
+    path.join(ROOT, 'cli/bin/citable.js'), 'exceptions', 'invalidate',
+    '--id', 'EXCEPTION-CLI-1',
+    '--reason', 'Migration completed ahead of time',
+    '--reviewer', 'REVIEWER-APPROVER',
+    '--write',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.match(invalidateOut, /exceptions invalidate: EXCEPTION-CLI-1 marked revoked written/);
+});

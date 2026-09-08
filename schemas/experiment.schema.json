@@ -15,7 +15,7 @@
       "properties": {
         "experiment_id": { "$ref": "citable://schemas/common.defs.json#/definitions/id" },
         "hypothesis": { "type": "string", "minLength": 10 },
-        "discipline": { "type": "array", "items": { "type": "string", "enum": ["seo", "aeo", "geo"] } },
+        "discipline": { "type": "array", "items": { "type": "string", "enum": ["seo", "aeo", "geo", "cro"] } },
         "primary_metric": { "type": "string" },
         "secondary_metrics": { "type": "array", "items": { "type": "string" } },
         "prompt_cohort": { "type": "array", "items": { "type": "string" } },

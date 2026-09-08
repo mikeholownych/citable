@@ -19,7 +19,8 @@ can establish.
 | Canonical selections | Strict engine-observation import | Implemented | Imported selections retain collection authority and authenticity |
 | External corroboration | Strict owner/third-party import | Implemented | A mention does not establish support, independence, or authority |
 | Regional network probes | Strict runner export | Implemented import | Citable does not operate a managed multi-region runner |
-| MCP evidence transport | None | Roadmap; not implemented | MCP discovery detection is not an MCP client or connector |
+| IndexNow URL submission | Direct API connector (`citable connect indexnow`) | Implemented | Successful submission or HTTP 200/202 delivery receipt proves engine receipt only, not crawling, indexing, or ranking |
+| MCP evidence transport | Allowlisted stdio / HTTP adapter (`citable connect mcp`) | Pilot implemented | Transport only; does not confer evidence authority, completeness, or ranking impact |
 
 ## Credential handling
 
@@ -80,10 +81,11 @@ Any future implementation is gated on:
 - provider-specific normalization rather than generic arbitrary-server
   passthrough.
 
-Citable does not currently recommend MCP install commands or server packages.
-A server appearing in another project's documentation is not evidence that its
-identity, version, scopes, output contract, or provider authorization has been
-verified for Citable.
+Citable implements a strict pilot adapter (`citable connect mcp`) conforming to
+`schemas/mcp-transport-envelope.schema.json`. Only explicitly allowlisted servers
+(such as `citable-evidence-pilot`) and read-only tools are callable. Untrusted servers,
+state-changing tools, unverified remote endpoints, and private/loopback destinations
+fail closed.
 
 ## Adding an integration
 

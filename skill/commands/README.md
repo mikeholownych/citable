@@ -23,14 +23,16 @@ intent, not executability, so statuses are strict:
 | /citable action-plan | implemented — writes ordered, source-run-bound action artifacts outside immutable evidence packages |
 | /citable observe | implemented — render, index, citation, crawler-log, passage, consensus, performance, corroboration, and stance evidence |
 | /citable apply | implemented — reviewed, hash-locked source replacements; dry run by default |
-| /citable connect status / configure / discover / validate / sync / read / apply / disconnect | implemented — GA4, GSC, WordPress, and Webflow adapters with hash-locked CMS remediation |
+| /citable connect status / configure / discover / validate / sync / read / apply / disconnect / indexnow / mcp | implemented — GA4, GSC, WordPress, Webflow, IndexNow, and allowlisted read-only MCP transport adapters |
 | /citable monitor | implemented — compares immutable observation runs and emits evidence-linked alerts |
 | /citable report dashboard | implemented — folds each run's recorded summary into a cross-run Markdown/HTML trend; derives no new findings and no combined score |
 | /citable report share-of-voice | implemented — joins competitor registry against recorded citation observations to compute verified share-of-citation |
+| /citable report consensus | implemented — synthesizes observed canonical signals across publisher headers, tags, sitemaps, and search engines |
 | /citable metrics import | implemented — validates declared CSV/JSON metrics and writes immutable observations |
 | /citable objectives init / validate | implemented — user-owned metric selection, cohorts, windows, and guardrails |
 | /citable evaluate | implemented — independent baseline/evaluation comparisons with inconclusive handling |
 | /citable governance validate / evaluate | implemented — validates reviewer and exception authority and emits immutable dispositions without changing failed findings |
+| /citable exceptions list / renew / invalidate | implemented — governed exception lifecycle, renewal limits, authority validation, and audit logging |
 | /citable reviews queue / prioritize / plan / sample / evaluate | implemented — materiality queues, reproducible sampling, stale-decision checks, and independent disagreement adjudication |
 | /citable schedules run / project github | implemented — canonical scheduled audits and hash-bound non-authoritative GitHub projections |
 | /citable observe media | implemented — bounded PDF, transcript, image-context, optional OCR, and declared claim-link evidence |

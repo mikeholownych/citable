@@ -1,5 +1,6 @@
 import { defineDetector, indexTargets, registryPageFor, sitePageFor, pageSubject, entrySubject } from './framework.js';
 import { classifyAnswerStance } from '../observations/stance.js';
+import { evaluateAnswerAttribution } from '../observations/attribution.js';
 
 const D = [];
 
@@ -321,6 +322,413 @@ D.push(defineDetector({
       seen.add(k);
       return true;
     });
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-008', name: 'Generative citation attributes unverified or distorted claim to brand', namespace: 'GEO',
+  description: 'Recorded generative engine answers attribute contradicted, distorted, or unverified factual claims to a registered entity or brand.',
+  discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
+  finding_type: 'evidence_backed_semantic_finding',
+  impact: { representation: 'high', reputational: 'high', conversion: 'medium' },
+  applicable_requirement: 'GEO §6: accurate synthesis and entity representation; Rubric: narrative accuracy (§4 & §5) and claim boundedness (§1)',
+  false_positive_conditions: ['Answer accurately reflects a verified change in product capability not yet updated in registries'],
+  remediation: 'Review the generative engine answer against the narrative-accuracy and claim-boundedness rubrics, identify the distorted or unverified claim attribution, and update public corroborating evidence or submit engine correction requests.',
+  unsafe_shortcuts: ['deleting legitimate claim records to hide discrepancies', 'crawler prompt injection (GEO-001)'],
+  verification: 'Follow-up generative engine observations demonstrate accurate claim attribution without distorted or hallucinated assertions.',
+  review_required: true,
+  check(ctx) {
+    const entities = (ctx.registries?.entities?.entries || []).filter((e) => e.status !== 'retired');
+    if (!entities.length) return [];
+    const claims = (ctx.registries?.claims?.entries || []).filter((c) => c.status !== 'retired');
+    const hits = [];
+
+    // 1. Check observations (attribution or citation)
+    for (const obs of ctx.observations || []) {
+      if (obs.kind === 'attribution' && obs.data?.has_distorted_claims) {
+        for (const evalItem of obs.data.evaluations || []) {
+          if (evalItem.attribution_status === 'distorted') {
+            hits.push({
+              subject: entrySubject('claims', evalItem.claim_id),
+              summary: `Generative engine ${obs.data.engine || 'unknown'} attributes distorted claim "${evalItem.claim_id}" to entity "${obs.data.canonical_name}"`,
+              evidence: [
+                `engine: ${obs.data.engine || 'unknown'}`,
+                `prompt: ${obs.data.prompt_text || obs.data.prompt_id || 'unknown'}`,
+                `claim_id: ${evalItem.claim_id}`,
+                `claim_text: "${evalItem.claim_text}"`,
+                `assertion_excerpt: "${evalItem.assertion_excerpt}"`,
+                `reasons: ${(evalItem.reasons || []).join('; ')}`,
+                `reviewer: ${obs.data.reviewer || 'unreviewed (semantic review required)'}`,
+              ],
+              confidence: obs.data.reviewer ? 'confirmed' : 'medium',
+              finding_type: 'evidence_backed_semantic_finding',
+            });
+          }
+        }
+      } else if (obs.kind === 'citation' && obs.data?.answer_text) {
+        for (const e of entities) {
+          const evalRes = evaluateAnswerAttribution(obs.data.answer_text, e, { claims });
+          if (evalRes.mentioned && evalRes.has_distorted_claims) {
+            for (const evalItem of evalRes.evaluations) {
+              if (evalItem.attribution_status === 'distorted') {
+                hits.push({
+                  subject: entrySubject('claims', evalItem.claim_id),
+                  summary: `Generative engine ${obs.data.provider || 'unknown'} attributes distorted claim "${evalItem.claim_id}" to entity "${e.canonical_name}"`,
+                  evidence: [
+                    `engine: ${obs.data.provider || 'unknown'}`,
+                    `prompt: ${obs.data.prompt_text || obs.data.prompt_id || 'unknown'}`,
+                    `claim_id: ${evalItem.claim_id}`,
+                    `assertion_excerpt: "${evalItem.assertion_excerpt}"`,
+                    `reasons: ${(evalItem.reasons || []).join('; ')}`,
+                  ],
+                  confidence: 'medium',
+                  finding_type: 'evidence_backed_semantic_finding',
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Check promptResults
+    for (const pr of ctx.promptResults || []) {
+      if (!pr.answer_text) continue;
+      for (const e of entities) {
+        const evalRes = evaluateAnswerAttribution(pr.answer_text, e, { claims, reviewer: pr.evaluator });
+        if (evalRes.mentioned && evalRes.has_distorted_claims) {
+          for (const evalItem of evalRes.evaluations) {
+            if (evalItem.attribution_status === 'distorted') {
+              hits.push({
+                subject: entrySubject('claims', evalItem.claim_id),
+                summary: `Generative engine ${pr.engine || 'unknown'} attributes distorted claim "${evalItem.claim_id}" to entity "${e.canonical_name}"`,
+                evidence: [
+                  `engine: ${pr.engine || 'unknown'}`,
+                  `prompt: ${pr.prompt_text || pr.prompt_id || 'unknown'}`,
+                  `claim_id: ${evalItem.claim_id}`,
+                  `assertion_excerpt: "${evalItem.assertion_excerpt}"`,
+                  `reasons: ${(evalItem.reasons || []).join('; ')}`,
+                  `reviewer: ${pr.evaluator || 'unreviewed (semantic review required)'}`,
+                ],
+                confidence: pr.evaluator ? 'confirmed' : 'medium',
+                finding_type: 'evidence_backed_semantic_finding',
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const seen = new Set();
+    return hits.filter((h) => {
+      const k = `${h.subject.identifier}|${h.summary}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-009', name: 'Unstable citation presence across repeated probes', namespace: 'GEO',
+  description: 'Brand citation status exhibits high volatility or flapping (alternating between cited and unmentioned) across repeated probe runs for the same prompt and engine.',
+  discipline: ['geo', 'aeo'], severity: 'medium', deterministic: false, requires: ['registries'],
+  finding_type: 'evidence_backed_semantic_finding',
+  impact: { representation: 'high', citation: 'high' },
+  applicable_requirement: 'GEO §6 generative retrieval stability; longitudinal observation controls; answer-engine variance tracking',
+  false_positive_conditions: ['Deliberate query variation or divergent test prompts'],
+  remediation: 'Strengthen entity salience and disambiguation in target content, improve passage answer density, and establish consistent external corroboration for core claims.',
+  unsafe_shortcuts: ['over-optimizing phrasing to trigger keyword matching in a single model version'],
+  verification: 'Subsequent repeated probe runs demonstrate stable citation presence (presence rate >= 80% with low flapping).',
+  check(ctx) {
+    const hits = [];
+    const groups = new Map();
+
+    // 1. Group citation observations by prompt + provider
+    for (const obs of ctx.observations || []) {
+      if (obs.kind !== 'citation' || !obs.data) continue;
+      const promptKey = obs.data.prompt_id || obs.data.prompt_text;
+      if (!promptKey) continue;
+      const provider = obs.data.provider || 'unknown';
+      const key = `${promptKey}|${provider}`;
+      if (!groups.has(key)) groups.set(key, { prompt: promptKey, provider, samples: [] });
+      groups.get(key).samples.push(Boolean(obs.data.property_cited));
+    }
+
+    // 2. Also group promptResults if present
+    for (const pr of ctx.promptResults || []) {
+      const promptKey = pr.prompt_id || pr.prompt_text;
+      if (!promptKey) continue;
+      const provider = pr.engine || 'unknown';
+      const key = `${promptKey}|${provider}`;
+      if (!groups.has(key)) groups.set(key, { prompt: promptKey, provider, samples: [] });
+      const cited = pr.cited !== undefined ? Boolean(pr.cited) : (pr.citations && pr.citations.length > 0);
+      groups.get(key).samples.push(Boolean(cited));
+    }
+
+    // Evaluate each group with at least 3 samples
+    for (const { prompt, provider, samples } of groups.values()) {
+      if (samples.length < 3) continue;
+      const total = samples.length;
+      const citedCount = samples.filter(Boolean).length;
+      const presenceRate = citedCount / total;
+
+      // Calculate transitions (flapping)
+      let flips = 0;
+      for (let i = 1; i < samples.length; i++) {
+        if (samples[i] !== samples[i - 1]) flips++;
+      }
+      const flappingRate = flips / (total - 1);
+
+      // Flapping threshold: presence rate between 20% and 80% with at least 1 flip, or flapping rate >= 0.4
+      if ((presenceRate >= 0.2 && presenceRate <= 0.8 && flips >= 1) || flappingRate >= 0.4) {
+        const volatility = (1 - Math.abs(presenceRate - 0.5) * 2).toFixed(2);
+        hits.push({
+          subject: entrySubject('prompts', prompt),
+          summary: `High citation volatility for "${prompt}" on ${provider}: cited in ${citedCount}/${total} runs (${Math.round(presenceRate * 100)}% presence rate)`,
+          evidence: [
+            `provider: ${provider}`,
+            `prompt: ${prompt}`,
+            `total_probes: ${total}`,
+            `cited_count: ${citedCount}`,
+            `presence_rate: ${(presenceRate * 100).toFixed(1)}%`,
+            `flapping_rate: ${(flappingRate * 100).toFixed(1)}% (${flips} state flips)`,
+            `volatility_score: ${volatility}`,
+            `sample_sequence: [${samples.map((s) => (s ? 'cited' : 'omitted')).join(', ')}]`,
+          ],
+          confidence: total >= 5 ? 'confirmed' : 'medium',
+          captured: { presenceRate, flappingRate, volatility: Number(volatility), samples: total },
+          expected: 'stable citation presence (presence rate >= 80% with low flapping)',
+        });
+      }
+    }
+
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-010', name: 'Brand erasure in multi-competitor category prompt', namespace: 'GEO',
+  description: 'A generative engine observation for a relevant category or comparison prompt cites multiple registered competitors but completely omits the first-party entity or brand.',
+  discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
+  impact: { representation: 'high', conversion: 'medium' },
+  applicable_requirement: 'GEO §6 entity representation in competitive category synthesis; GEO §1 share of model parity',
+  remediation: 'Publish comparative evidence, authoritative category definitions, and benchmark substantiation to establish entity co-occurrence in generative training and retrieval corpora.',
+  verification: 'Follow-up category engine observations cite the first-party brand alongside peers.',
+  check(ctx) {
+    const competitors = ctx.registries?.competitors?.entries || [];
+    if (competitors.length < 2) return [];
+    const entities = (ctx.registries?.entities?.entries || []).filter((e) => e.status !== 'retired');
+    if (!entities.length) return [];
+
+    const firstPartyNames = [];
+    for (const e of entities) {
+      if (e.canonical_name) firstPartyNames.push(e.canonical_name.toLowerCase());
+      for (const a of e.aliases || []) firstPartyNames.push(a.toLowerCase());
+    }
+
+    const hits = [];
+    for (const obs of ctx.observations || []) {
+      const d = obs.data || {};
+      const answer = d.answer_text || '';
+      const lowerAnswer = answer.toLowerCase();
+
+      // Check if first-party brand is omitted
+      const firstPartyCited = d.property_cited === true || firstPartyNames.some((n) => lowerAnswer.includes(n));
+      if (firstPartyCited) continue;
+
+      let citedCompetitors = [];
+      if (Array.isArray(d.competitors_cited) && d.competitors_cited.length > 0) {
+        citedCompetitors = d.competitors_cited;
+      } else if (answer) {
+        citedCompetitors = competitors.filter((c) => {
+          const cNames = [c.name, ...(c.aliases || [])].filter(Boolean);
+          return cNames.some((cn) => lowerAnswer.includes(cn.toLowerCase()));
+        }).map((c) => c.name);
+      }
+
+      if (citedCompetitors.length >= 2) {
+        const promptLabel = d.prompt_id || d.prompt_text || 'category prompt';
+        const engineLabel = d.provider || d.engine || 'generative engine';
+        hits.push({
+          subject: entrySubject('prompts', promptLabel),
+          summary: `Brand erased in category response by ${engineLabel}: ${citedCompetitors.length} competitors cited (${citedCompetitors.slice(0, 3).join(', ')}), 0 first-party mentions`,
+          evidence: [
+            `engine: ${engineLabel}`,
+            `prompt: ${promptLabel}`,
+            `competitors cited: ${citedCompetitors.join(', ')}`,
+            'first-party mentions: 0',
+          ],
+          confidence: 'high',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-011', name: 'RAG chunk fracture: claim separated from citation across oversized section', namespace: 'GEO',
+  description: 'A section under a single heading exceeds 450 words without structural sub-headings or lists, separating claims from qualifying citations and causing retrieval fracture in RAG chunking pipelines.',
+  discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'medium', representation: 'high' },
+  applicable_requirement: 'GEO §4 RAG semantic chunk boundary preservation; AEO §4 modular evidence proximity',
+  remediation: 'Subdivide sections exceeding 400 words with H3 sub-headings or bullet lists, and anchor citations in the same paragraph as the claim.',
+  verification: 'Re-audit section word counts and ensure paragraphs with factual claims contain adjacent citation anchors.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const paragraphs = p.paragraphs || [];
+      if (paragraphs.length < 4) continue;
+
+      let currentHeading = 'intro';
+      let currentWords = 0;
+      let hasClaimInChunk = false;
+      const CLAIM_RX = /\b(?:\d+%\s*(?:reduction|faster|increase|savings?)|SOC\s*2|GDPR|ISO\s*27001|compliant|verified|guaranteed)\b/i;
+      const CITE_RX = /\[\d+\]|href=|\(source:|\(see\s+|according\s+to|citation/i;
+
+      for (const para of paragraphs) {
+        const words = para.split(/\s+/).length;
+        currentWords += words;
+        if (CLAIM_RX.test(para) && !CITE_RX.test(para)) {
+          hasClaimInChunk = true;
+        }
+
+        if (currentWords > 450 && hasClaimInChunk) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Oversized section under "${currentHeading.slice(0, 50)}" (${currentWords} words) risks RAG chunk fracture for unanchored claims`,
+            evidence: [
+              `section heading: "${currentHeading}"`,
+              `accumulated section words: ${currentWords}`,
+              'generative search RAG pipelines chunk text at 300-500 tokens, severing unanchored claims from qualifying context',
+            ],
+            captured: { section: currentHeading, wordCount: currentWords },
+            expected: '<= 400 words per section before sub-heading',
+          });
+          break;
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-012', name: 'Repetitive phrase stuffing in section headings degrading dense retrieval', namespace: 'GEO',
+  description: 'Multiple headings repeat the identical multi-word phrase or entity prefix, degrading dense vector discriminability and triggering keyword stuffing penalties in neural search rankers.',
+  discipline: ['geo', 'seo'], severity: 'low', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'medium', ranking: 'low' },
+  applicable_requirement: 'GEO §4 semantic vector distinctiveness; SEO §4 heading diversity and keyword stuffing avoidance',
+  remediation: 'Diversify section headings to reflect specific sub-topics, user questions, or tasks rather than repeating the same keyword stem.',
+  verification: 'Ensure no multi-word phrase is repeated across more than 3 headings.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.headings || p.headings.length < 5) continue;
+      const headingTexts = p.headings.map((h) => (h.text || '').toLowerCase().trim()).filter(Boolean);
+
+      const ngramCounts = new Map();
+      for (const text of headingTexts) {
+        const words = text.split(/\s+/).filter((w) => w.length > 2);
+        for (let i = 0; i <= words.length - 2; i++) {
+          const gram2 = words.slice(i, i + 2).join(' ');
+          ngramCounts.set(gram2, (ngramCounts.get(gram2) || 0) + 1);
+          if (i <= words.length - 3) {
+            const gram3 = words.slice(i, i + 3).join(' ');
+            ngramCounts.set(gram3, (ngramCounts.get(gram3) || 0) + 1);
+          }
+        }
+      }
+
+      let repeatedGram = null;
+      let maxCount = 0;
+      for (const [gram, count] of ngramCounts) {
+        if (count >= 4 && count > maxCount) {
+          maxCount = count;
+          repeatedGram = gram;
+        }
+      }
+
+      if (repeatedGram && maxCount >= 4 && (maxCount / headingTexts.length) >= 0.4) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Repetitive phrase "${repeatedGram}" repeated in ${maxCount}/${headingTexts.length} headings`,
+          evidence: [
+            `repeated phrase: "${repeatedGram}"`,
+            `occurrence: ${maxCount} headings (${Math.round((maxCount / headingTexts.length) * 100)}%)`,
+            'dense retrieval and bi-encoder embeddings suffer loss of discriminability from repetitive heading stems',
+          ],
+          captured: { phrase: repeatedGram, count: maxCount, totalHeadings: headingTexts.length },
+          expected: 'repeated phrase in <= 3 headings',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'GEO-013', name: 'AI engine assertion contradicts verified publisher claim registry', namespace: 'GEO',
+  description: 'An external AI search engine or generative model assertion directly contradicts or negates a verified publisher claim registered in claims.yaml.',
+  discipline: ['geo', 'aeo'], severity: 'high', deterministic: true, requires: ['observations', 'registries'],
+  impact: { representation: 'high', citation: 'high' },
+  applicable_requirement: 'GEO §13 AI hallucination and claim contradiction governance; AEO §2 factual integrity',
+  remediation: 'Publish explicit corroborating evidence on high-authority pages and submit model feedback/correction citations addressing the contradicted fact.',
+  verification: 'All generative AI assertions corroborate verified publisher claims without factual contradiction.',
+  check(ctx) {
+    const hits = [];
+    const claims = ctx.registries?.claims?.entries || [];
+    const verifiedClaims = claims.filter((c) => c.status === 'verified');
+    if (verifiedClaims.length === 0) return hits;
+
+    const observations = ctx.observations || [];
+    for (const obs of observations) {
+      if (obs.data?.contradiction_detected) {
+        hits.push({
+          subject: { type: 'registry_entry', identifier: `claims/${obs.data.claim_id || 'unspecified'}` },
+          summary: `AI engine ${obs.data.provider || 'unknown'} assertion contradicts verified claim "${obs.data.claim_id || 'unspecified'}"`,
+          evidence: [
+            `provider: ${obs.data.provider || 'unknown'}`,
+            `prompt: "${obs.data.prompt_text || 'prompt'}"`,
+            `contradicted assertion: "${obs.data.contradicted_assertion || obs.data.raw_response || ''}"`,
+            `claim: "${obs.data.claim_text || ''}"`,
+          ],
+          captured: { provider: obs.data.provider, claim_id: obs.data.claim_id, assertion: obs.data.contradicted_assertion },
+          expected: 'AI answer corroborates verified claim',
+        });
+        continue;
+      }
+
+      if (obs.data?.raw_response || obs.data?.assertion) {
+        const responseText = (obs.data.raw_response || obs.data.assertion || '').toLowerCase();
+        for (const vc of verifiedClaims) {
+          if (!vc.claim) continue;
+          const subjectMatch = vc.claim.match(/(?:supports|provides|features|certified|complies with)\s+([^,\.]+)/i);
+          if (subjectMatch) {
+            const feature = subjectMatch[1].toLowerCase().trim();
+            const negationRegex = new RegExp(`\\b(does not support|doesn't support|lacks|no support for|not certified|unsupported|fails to support)\\s+${feature.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`, 'i');
+            if (negationRegex.test(responseText)) {
+              hits.push({
+                subject: { type: 'registry_entry', identifier: `claims/${vc.claim_id}` },
+                summary: `AI engine ${obs.data.provider || 'unknown'} assertion contradicts verified claim "${vc.claim_id}" (${feature})`,
+                evidence: [
+                  `provider: ${obs.data.provider || 'unknown'}`,
+                  `prompt: "${obs.data.prompt_text || 'prompt'}"`,
+                  `contradictory assertion: "${negationRegex.exec(responseText)?.[0] || 'negated assertion'}"`,
+                  `verified claim: "${vc.claim}"`,
+                ],
+                captured: { provider: obs.data.provider, claim_id: vc.claim_id, feature },
+                expected: `AI answer reflects verified claim: "${vc.claim}"`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return hits;
   },
 }));
 

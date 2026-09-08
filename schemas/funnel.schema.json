@@ -1,0 +1,116 @@
+{
+  "$id": "citable://schemas/funnel.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Conversion Funnel registry",
+  "allOf": [
+    {
+      "$ref": "citable://schemas/common.defs.json#/definitions/registryFile"
+    }
+  ],
+  "properties": {
+    "kind": {
+      "const": "funnels"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/definitions/funnel"
+      }
+    }
+  },
+  "definitions": {
+    "funnelStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "url_pattern",
+        "role"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "citable://schemas/common.defs.json#/definitions/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "url_pattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page_id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "entry",
+            "consideration",
+            "commitment",
+            "completion"
+          ]
+        },
+        "expected_cta": {
+          "type": "string"
+        },
+        "preserve_params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "funnel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "funnel_id",
+        "name",
+        "primary_goal",
+        "steps",
+        "status"
+      ],
+      "properties": {
+        "funnel_id": {
+          "$ref": "citable://schemas/common.defs.json#/definitions/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 3
+        },
+        "description": {
+          "type": "string"
+        },
+        "primary_goal": {
+          "type": "string",
+          "minLength": 2
+        },
+        "target_audience": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/definitions/funnelStep"
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "deprecated",
+            "archived"
+          ]
+        },
+        "provenance": {
+          "$ref": "citable://schemas/common.defs.json#/definitions/provenance"
+        }
+      }
+    }
+  }
+}

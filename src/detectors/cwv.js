@@ -11,7 +11,7 @@
  * - CLS (Cumulative Layout Shift): < 0.1 good, < 0.25 needs improvement
  */
 
-import { defineDetector } from './framework.js';
+import { defineDetector, indexTargets, pageSubject } from './framework.js';
 
 /**
  * CWV-001: LCP element identified and optimized
@@ -164,8 +164,45 @@ export const CWV_003 = defineDetector({
   },
 });
 
+export const CWV_004 = defineDetector({
+  id: 'CWV-004',
+  name: 'Excessive DOM size and depth',
+  namespace: 'CWV',
+  discipline: ['seo'],
+  severity: 'medium',
+  deterministic: true,
+  requires: ['site'],
+  description: 'Page DOM tree exceeds 1,500 nodes or maximum nesting depth exceeds 32 levels, causing mobile crawler execution delays and Interaction to Next Paint (INP) degradation.',
+  remediation: 'Simplify DOM structure, paginate or virtualize repeated elements, and reduce deep nesting of wrapper containers.',
+  verification: 'Re-audit page to verify total DOM node count is <= 1,500 and maximum depth is <= 32.',
+  check: (ctx) => {
+    const hits = [];
+    const targets = ctx.site ? indexTargets(ctx) : ctx.page ? [ctx.page] : [];
+    for (const p of targets) {
+      if (p.status !== 200) continue;
+      const nodeCount = p.domNodeCount || 0;
+      const maxDepth = p.maxDomDepth || 0;
+      if (nodeCount > 1500 || maxDepth > 32) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Excessive DOM complexity (${nodeCount > 1500 ? `${nodeCount} nodes` : ''}${nodeCount > 1500 && maxDepth > 32 ? ', ' : ''}${maxDepth > 32 ? `depth ${maxDepth}` : ''}) risks crawler execution timeout and INP latency`,
+          evidence: [
+            `total DOM nodes: ${nodeCount}`,
+            `maximum DOM depth: ${maxDepth}`,
+            'Google Lighthouse and mobile crawler guidelines recommend <= 1,500 nodes and <= 32 nesting levels',
+          ],
+          captured: { nodeCount, maxDepth },
+          expected: 'nodeCount <= 1500 and maxDepth <= 32',
+        });
+      }
+    }
+    return hits;
+  },
+});
+
 export const cwvDetectors = [
   CWV_001,
   CWV_002,
   CWV_003,
+  CWV_004,
 ];

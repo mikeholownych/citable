@@ -15,6 +15,31 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.16.0 — 2026-09-08
+
+### Added — Nebula Components Enterprise Platform Suite
+
+- Added multi-property fleet governance with schema `schemas/fleet.schema.json`, registry `fleet.yaml` (29th schema-validated registry), and command `citable fleet [summary|audit]` to manage and audit multi-domain portfolios and staging/production environments.
+- Added Cloudflare & Edge Worker adapter in `src/commands/edgeRules.js` (`citable export edge` and `citable test edge`) to generate Cloudflare Pages `_redirects`, custom WAF bot blocking expressions, and `HTMLRewriter` Worker scripts, with synthetic edge pass-through verification.
+- Added automated AI Search Engine probing runner `citable probe <query|prompt_id>` (`src/commands/probe.js`) generating schema-validated observation envelopes (`observation.schema.json`) for Perplexity, SearchGPT, and Gemini.
+- Added component-level static AST linter `citable lint components [dir]` (`src/commands/lintComponents.js`) detecting touch target violations, unlabelled icon buttons, generic CTA microcopy, missing input labels, autocomplete omission, and image dimension defects in React/Next.js/Vue design system components.
+- Added executive presentation and client deliverables exporter `citable report export` (`src/reporting/executiveExport.js`) supporting printable HTML briefing documents and slide decks, alongside Slack, Microsoft Teams, and Discord structured alert formatters in `src/monitoring/alertDelivery.js`.
+- Added causal impact and differential intervention attribution command `citable attribute impact` (`src/commands/attributeImpact.js`) calculating difference-in-differences lift estimates with explicit statistical caveats.
+- Added detector `GEO-013` (*AI engine assertion contradicts verified publisher claim registry*) to catch generative search hallucinations and factual contradictions against `claims.yaml`.
+
+### Added — Comprehensive Conversion Rate Optimization (CRO) Suite
+
+- Added detectors `CRO-007` through `CRO-014` to audit form autocomplete accessibility, disappearing placeholder-only inputs, mobile keyboard input type mismatches, choice overload in hero conversion sections, buried CTAs on long-form commercial pages, low-intent generic CTA microcopy, enclosed checkout distraction leaks, and unprotected confirmation receipt pages lacking `noindex`.
+- Added zero-runtime performance and mobile UX detectors `CRO-015` (touch target dimensions below 44px threshold) and `CRO-016` (diminutive font size on primary conversion CTAs < 12px).
+- Added multi-step funnel modeling with schema `schemas/funnel.schema.json`, registry `funnels.yaml` (28th schema-validated registry), referential integrity verification against `pages.yaml`, and continuity detectors `CRO-017` (missing or erroring funnel steps) and `CRO-018` (funnel progression links stripping declared campaign parameters).
+- Added AI Search claim-to-conversion pathway detector `CRO-019`, validating that landing pages cited by AI answer engines (SearchGPT, Perplexity, Gemini, Bing AI) provide immediate claim corroboration and conversion actions.
+- Added experiment statistical governance detector `CRO-020`, catching underpowered A/B experiments running under 7 days or lacking adequate sample size.
+- Added CLI commands `citable test funnel [id]` for automated synthetic conversion funnel continuity verification and `citable plan experiment` for two-tailed binomial sample size and power calculations.
+- Supported `--scope cro` in `citable audit` for shift-left pre-commit CRO auditing in CI/CD pipelines.
+- Enriched `citable inspect cro <page>` with hero CTA hierarchy, choice overload alerts, form autocomplete/label coverage ratios, and analytics instrumentation detection.
+- Expanded `schemas/experiment.schema.json` discipline enum to include `cro`.
+
+
 ## 1.15.1 — 2026-09-07
 
 ### Changed — Domain Configuration

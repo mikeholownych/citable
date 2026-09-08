@@ -55,3 +55,19 @@ any observed change to a specific intervention.
 4. Outputs are written to `.citable/reports/share-of-voice.md` and
    `.citable/reports/share-of-voice.html`.
 
+# Canonical discovery consensus reporting
+
+1. Run `citable report consensus [--last N] [--since <run-id>]` to evaluate
+   alignment across observed publisher canonical signals (HTML `rel="canonical"`,
+   Open Graph URL, sitemaps, HTTP Link headers) and external engine-observed
+   canonical URLs recorded in `observe consensus` / `canonical_freshness` runs.
+2. The consensus matrix maps target URLs against publisher declarations and
+   engine selections (Google, Bing, Perplexity, etc.) to expose divergences and
+   unresolved canonical conflicts (e.g. `TECH-019`).
+3. Outputs are written to `.citable/reports/consensus.md` and
+   `.citable/reports/consensus.html`.
+4. Refusal boundary: Never guarantee crawling, indexing, or ranking outcomes.
+   Publisher canonical declarations are treated as advisory hints to engines, not
+   authoritative index guarantees. Divergences are reported as factual observations,
+   never fabricated or interpolated.
+

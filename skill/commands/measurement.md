@@ -42,6 +42,13 @@ rows restricted to the `Organic Search` default channel group and inherits the
 property's reporting identity, thresholding, attribution, and consent choices.
 Neither source establishes that an intervention caused an observed change.
 
+`citable connect indexnow` validates and submits discovered or changed URLs directly to
+IndexNow participating engines (Bing, Yandex, Seznam, Naver). It is dry run by default;
+`--write` performs submission. It validates host ownership via pre-flight key verification,
+batches submissions up to 10,000 URLs per protocol chunk, and saves immutable delivery
+receipts under `.citable/monitoring/deliveries/`. An accepted IndexNow submission proves engine
+receipt of the URL list only; it does not prove crawling, indexing, or citation.
+
 # measure seo
 Inputs the operator exports (Search Console/Bing/analytics CSV or JSON).
 Workflow: validate segmentation (brand vs non-brand, intent, page type,
@@ -94,3 +101,16 @@ types in the narrative-accuracy rubric; SEV-map material ones; follow the
 correction runbook (capture → materiality → source lineage → verify internal
 truth → correct owned → escalate external → recrawl request → retest cohort →
 preserve before/after → residual risk).
+
+# MCP evidence transport
+
+1. Run `citable connect mcp --server <id> --tool <name> [--args <json>] [--transport <stdio|http>] [--target <url>]`
+   to collect evidence via an allowlisted read-only MCP transport adapter.
+2. The transport enforces strict security boundaries:
+   - Server allowlist: only explicitly declared servers (e.g. `citable-evidence-pilot`, `gsc-mcp`) are permitted; untrusted servers fail closed.
+   - Read-only tools: only tools declared `read_only: true` can be invoked; state-changing tools are refused.
+   - Public network boundary: remote HTTP connections enforce HTTPS and reject private, loopback, or non-public IP destinations.
+   - Secret sanitization: bearer tokens, API keys, and credential headers are scrubbed from request arguments and responses.
+   - Hashes and provenance: argument hashes (`sha256`) and raw payload hashes (`sha256`) are recorded in `mcp-transport-envelope.json`.
+3. Refusal boundary: MCP operates strictly as a transport into the immutable observation model. An MCP response does not confer evidence authority, authenticity, completeness, or ranking guarantees.
+

@@ -13,8 +13,9 @@ import lifeMeas from './lifeMeas.js';
 import { hreflangDetectors } from './hreflang.js';
 import { cwvDetectors } from './cwv.js';
 import { AGENT_DETECTORS } from './agent.js';
+import cro from './cro.js';
 
-export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas, ...hreflangDetectors, ...cwvDetectors, ...AGENT_DETECTORS];
+export const ALL_DETECTORS = [...tech, ...crawl, ...arch, ...page, ...ans, ...entity, ...claim, ...evd, ...schemaData, ...link, ...geoReco, ...lifeMeas, ...hreflangDetectors, ...cwvDetectors, ...AGENT_DETECTORS, ...cro];
 
 const ids = new Set();
 for (const d of ALL_DETECTORS) {
@@ -45,9 +46,10 @@ export function selectDetectors({ scope, namespaces, discipline } = {}) {
       schema: ['SCHEMA'],
       lifecycle: ['LIFE'],
       corroboration: ['EXT'],
+      cro: ['CRO'],
     };
     if (scopeMap[scope]) ds = ds.filter((d) => scopeMap[scope].includes(d.namespace));
-    else if (['seo', 'aeo', 'geo'].includes(scope)) ds = ds.filter((d) => d.discipline.includes(scope));
+    else if (['seo', 'aeo', 'geo', 'cro'].includes(scope)) ds = ds.filter((d) => d.discipline.includes(scope));
   }
   return ds;
 }

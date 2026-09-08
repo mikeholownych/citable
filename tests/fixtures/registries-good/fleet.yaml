@@ -1,0 +1,30 @@
+version: 1
+kind: fleet
+entries:
+  - property_id: PROP-NEBULA-PROD
+    name: Nebula Components Production
+    description: Primary commercial web application and resource hub
+    primary_domain: nebulacomponents.com
+    domains:
+      - nebulacomponents.com
+      - www.nebulacomponents.com
+    environment: production
+    base_url: https://nebulacomponents.com
+    owner: Platform Engineering
+    tags:
+      - core
+      - saas
+      - commercial
+    status: active
+  - property_id: PROP-NEBULA-STAGING
+    name: Nebula Components Staging
+    description: Staging pre-release verification environment
+    primary_domain: staging.nebulacomponents.com
+    domains:
+      - staging.nebulacomponents.com
+    environment: staging
+    base_url: https://staging.nebulacomponents.com
+    owner: QA Team
+    tags:
+      - pre-release
+    status: active

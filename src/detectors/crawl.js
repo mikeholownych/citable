@@ -1,6 +1,7 @@
 import { defineDetector, entrySubject } from './framework.js';
 import { isAllowed } from '../crawler/robots.js';
 import { isPastDate } from '../shared/io.js';
+import { verifyCrawlerIp } from '../crawler/ipRanges.js';
 
 const D = [];
 
@@ -137,6 +138,51 @@ D.push(defineDetector({
         summary: `No decision recorded for ${c.user_agent} (${c.purpose})`,
         evidence: [`entry ${c.crawler_id}: decision=undecided`],
       }));
+  },
+}));
+
+D.push(defineDetector({
+  id: 'CRAWL-007', name: 'Spoofed crawler identity in access logs', namespace: 'CRAWL',
+  description: 'An observed crawler log row claims an authoritative bot user-agent (Googlebot, Bingbot, GPTBot, ClaudeBot, etc.) but its source IP is outside published provider ranges or reverse-DNS verification failed.',
+  discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', legal: 'medium' },
+  applicable_requirement: 'GEO §2 crawler verification; staged identity contract and provider-published IP boundaries',
+  remediation: 'Verify edge/WAF logs against official provider IP ranges or reverse-DNS, and block or throttle unverified impersonating crawlers.',
+  verification: 'Confirm observed crawler requests originate within official published CIDR ranges and pass rDNS.',
+  check(ctx) {
+    if (!ctx.observations) return [];
+    const hits = [];
+    for (const obs of ctx.observations) {
+      if (obs.kind !== 'crawler_log' || !obs.data) continue;
+      const d = obs.data;
+      const ua = d.user_agent;
+      const ip = d.source_ip;
+      const identity = d.crawler_identity;
+      if (!ua) continue;
+
+      const verification = verifyCrawlerIp(ip, ua);
+      const isContradictory = identity?.verification_status === 'contradictory'
+        || identity?.cidr_membership === 'not_matched'
+        || (verification.knownProvider && !verification.matched);
+
+      if (isContradictory) {
+        hits.push({
+          subject: { type: 'crawler', identifier: ua },
+          summary: `Spoofed or unverified crawler traffic detected for ${ua} from IP ${ip || 'unknown'}`,
+          evidence: [
+            `user_agent: ${ua}`,
+            `source_ip: ${ip || 'none'}`,
+            `provider: ${verification.provider || identity?.provider || 'unknown'}`,
+            `verification_status: ${identity?.verification_status || 'contradictory'}`,
+            `cidr_membership: ${identity?.cidr_membership || (verification.matched ? 'matched' : 'not_matched')}`,
+            `range_source: ${verification.sourceUrl || 'provider_published'}`,
+          ],
+          captured: { user_agent: ua, source_ip: ip, verification_status: identity?.verification_status || 'contradictory' },
+          expected: 'Crawler requests must originate from official provider-published IP ranges',
+        });
+      }
+    }
+    return hits;
   },
 }));
 

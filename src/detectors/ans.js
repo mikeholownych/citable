@@ -1,4 +1,5 @@
 import { defineDetector, indexTargets, registryPageFor, pageSubject } from './framework.js';
+import { parse } from 'node-html-parser';
 
 const D = [];
 
@@ -259,4 +260,285 @@ D.push(defineDetector({
   },
 }));
 
+D.push(defineDetector({
+  id: 'ANS-011', name: 'Over-diluted answer passage (missing direct answer lead)', namespace: 'ANS',
+  description: 'A section targeting an informational query or question heading lacks a concise, direct answer passage in its opening sentences, burying key factual answers behind excessive preamble or rambling prose.',
+  discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
+  impact: { citation: 'medium', representation: 'low' },
+  applicable_requirement: 'AEO §4 direct answer block in first 50–100 words; AEO §5 concise declarative answer passages',
+  false_positive_conditions: ['narrative essays or creative fiction where question headings are rhetorical devices'],
+  remediation: 'Provide a concise 30–70 word direct declarative answer immediately following the question heading before elaborating with background details.',
+  verification: 'Re-inspect question sections to verify the first paragraph delivers a direct factual answer.',
+  check(ctx) {
+    const hits = [];
+    const RAMBLE_RX = /^(to understand|before (exploring|answering|diving|we)|in order to understand|it is (important|essential) to (note|understand|first)|there are many (factors|aspects)|the answer to this question depends on)/i;
+
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const doc = parse(p.rawHtml);
+      const headings = doc.querySelectorAll('h2, h3, h4');
+
+      for (const h of headings) {
+        const text = h.text.trim();
+        const isQuestion = /\?$/.test(text) || /^(what|how|why|when|where|who|is|are|can|does|do|which)\b/i.test(text);
+        if (!isQuestion) continue;
+
+        let curr = h.nextElementSibling;
+        let firstP = null;
+        while (curr && !/^h[1-6]$/i.test(curr.tagName)) {
+          if (curr.tagName.toLowerCase() === 'p') {
+            const pt = curr.text.trim();
+            if (pt.length > 0) {
+              firstP = pt;
+              break;
+            }
+          }
+          curr = curr.nextElementSibling;
+        }
+
+        if (firstP) {
+          const words = firstP.split(/\s+/).filter(Boolean);
+          const isRambling = RAMBLE_RX.test(firstP);
+          const isOverlyLongWithoutDirectness = words.length > 130;
+          if (isRambling || isOverlyLongWithoutDirectness) {
+            hits.push({
+              subject: pageSubject(p),
+              summary: `Question section "${text.slice(0, 60)}" lacks a concise direct answer lead (${isRambling ? 'rambling preamble' : `opening paragraph is ${words.length} words`})`,
+              evidence: [
+                `heading: "${text}"`,
+                `opening: "${firstP.slice(0, 150)}..."`,
+                `word_count: ${words.length}`,
+              ],
+              confidence: 'medium',
+            });
+          }
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-012', name: 'Ungrounded quantitative metric in answer passage', namespace: 'ANS',
+  description: 'An answer-bearing passage asserts high-stakes quantitative metrics, percentages, or multiples without adjacent evidence citation, benchmark reference, or registered evidence link.',
+  discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
+  impact: { citation: 'medium', legal: 'low' },
+  applicable_requirement: 'AEO §8 version evidence; GEO §5 substantiated factual claims; premise 3.5: quantitative outcomes require grounding',
+  false_positive_conditions: ['introductory marketing pages where detailed case studies are linked elsewhere in the navigation'],
+  remediation: 'Attach an adjacent citation, benchmark link, methodology note, or registered evidence ID near the metric.',
+  verification: 'Confirm every statistical or multiple claim has adjacent attribution or registered evidence.',
+  check(ctx) {
+    const hits = [];
+    const STAT_RX = /\b(\d+(?:\.\d+)?%\s*(?:reduction|increase|faster|decrease|improvement|growth|boost|drop|savings?)|(?:\d+(?:\.\d+)?x)\s*(?:faster|more|performance|throughput|speed|improvement)|\$\d+(?:\.\d+)?[MBK]\b)/i;
+    const ATTRIBUTION_RX = /\[\d+\]|\((?:source|benchmark|study|audit|test|report|see)\b|according to|citation|evidence|EVD-|CLAIM-|\bhttps?:\/\/|href=/i;
+
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.paragraphs) continue;
+
+      for (const para of p.paragraphs) {
+        const statMatch = STAT_RX.exec(para);
+        if (statMatch) {
+          const hasAttribution = ATTRIBUTION_RX.test(para);
+          if (!hasAttribution) {
+            hits.push({
+              subject: pageSubject(p),
+              summary: `Ungrounded quantitative metric "${statMatch[1]}" in answer prose lacks citation or evidence attribution`,
+              evidence: [
+                `metric: "${statMatch[1]}"`,
+                `passage: "${para.slice(0, 150)}..."`,
+              ],
+              confidence: 'medium',
+            });
+          }
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-013', name: 'Comparative or procedural section lacking structured table or ordered sequence', namespace: 'ANS',
+  description: 'A section covering comparative evaluation (vs, alternatives, comparison) or multi-step execution (how to, steps) lacks structured <table>, <ol>, or <ul> markup, diminishing answer engine extraction fidelity.',
+  discipline: ['aeo', 'seo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { representation: 'medium', citation: 'low' },
+  applicable_requirement: 'AEO §5 structured answer surfaces; GEO §4 extractability; premise 3.3 information gain',
+  remediation: 'Represent comparisons with <table> markup and sequential instructions with <ol> step lists.',
+  verification: 'Confirm comparative/procedural sections contain <table> or <ol> structured elements.',
+  check(ctx) {
+    const hits = [];
+    const COMPARATIVE_RX = /\b(vs\.?|versus|comparison|alternatives|pros and cons|differences between)\b/i;
+    const PROCEDURAL_RX = /\b(how to|steps to|installation steps|quickstart guide|configuration steps|deployment guide)\b/i;
+
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const doc = parse(p.rawHtml);
+      const headings = doc.querySelectorAll('h2, h3');
+
+      for (const h of headings) {
+        const text = h.text.trim();
+        const isComp = COMPARATIVE_RX.test(text);
+        const isProc = PROCEDURAL_RX.test(text);
+        if (!isComp && !isProc) continue;
+
+        let curr = h.nextElementSibling;
+        let hasTable = false;
+        let hasList = false;
+        let textWordCount = 0;
+
+        while (curr && !/^h[1-3]$/i.test(curr.tagName)) {
+          if (curr.tagName.toLowerCase() === 'table' || curr.querySelector('table')) hasTable = true;
+          if (/^(ol|ul)$/i.test(curr.tagName) || curr.querySelector('ol, ul')) hasList = true;
+          if (curr.tagName.toLowerCase() === 'p') {
+            textWordCount += curr.text.split(/\s+/).filter(Boolean).length;
+          }
+          curr = curr.nextElementSibling;
+        }
+
+        if (textWordCount > 50) {
+          if (isComp && !hasTable) {
+            hits.push({
+              subject: pageSubject(p),
+              summary: `Comparative section "${text.slice(0, 60)}" lacks a structured <table> comparison surface`,
+              evidence: [`heading: "${text}"`, `section word count: ${textWordCount}`, 'no <table> detected before next heading'],
+              confidence: 'high',
+            });
+          } else if (isProc && !hasList) {
+            hits.push({
+              subject: pageSubject(p),
+              summary: `Procedural section "${text.slice(0, 60)}" lacks structured <ol> step or list markup`,
+              evidence: [`heading: "${text}"`, `section word count: ${textWordCount}`, 'no <ol>/<ul> detected before next heading'],
+              confidence: 'high',
+            });
+          }
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-014', name: 'Low information-gain fluff ratio in answer prose', namespace: 'ANS',
+  description: 'An answer passage contains excessive rhetorical filler, clichés, or conversational padding, reducing factual density for generative engine extraction.',
+  discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['site'],
+  impact: { representation: 'low', citation: 'low' },
+  applicable_requirement: 'AEO §8 concise factual grounding; GEO §4 information gain; premise 3.3 substantive answer density',
+  remediation: 'Remove conversational clichés, tautologies, and promotional fluff; state verifiable facts, properties, and constraints directly.',
+  verification: 'Re-audit answer passages to ensure cliché and filler phrases are removed.',
+  check(ctx) {
+    const hits = [];
+    const FLUFF_PATTERNS = [
+      /\b(?:as we all know|it goes without saying|needless to say)\b/i,
+      /\bat the end of the day\b/i,
+      /\b(?:in today's rapidly evolving|in this day and age)\b/i,
+      /\b(?:game[- ]changer|revolutionary new|paradigm shift)\b/i,
+      /\b(?:delve into|dive deep into|unlock the power of|leverage the power of)\b/i,
+      /\b(?:seamlessly integrate|cutting[- ]edge technology)\b/i,
+    ];
+
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.paragraphs) continue;
+
+      for (const para of p.paragraphs) {
+        if (para.length < 60) continue;
+        const matchedFluff = [];
+        for (const rx of FLUFF_PATTERNS) {
+          const m = rx.exec(para);
+          if (m) matchedFluff.push(m[0]);
+        }
+
+        if (matchedFluff.length >= 2) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Answer passage contains low information-gain fluff clichés (${matchedFluff.join(', ')})`,
+            evidence: [
+              `clichés detected: ${matchedFluff.join(', ')}`,
+              `passage: "${para.slice(0, 150)}..."`,
+            ],
+            confidence: 'medium',
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-015', name: 'Definitional page lacks direct copular definition', namespace: 'ANS',
+  description: 'A page with definitional intent (page_type=definition, /definition/, /glossary/, or "What is" heading) does not provide a direct copular definition ("X is a Y that Z") in the opening paragraph.',
+  discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'medium', citation: 'high' },
+  applicable_requirement: 'AEO §4 direct copular answer block; search engine featured snippet & LLM definition synthesis requirements',
+  remediation: 'Formulate the opening sentence with a direct copular definition stating what the concept is, its primary class, and its defining capability.',
+  verification: 'Confirm the opening paragraph defines the entity using a copular verb ("is", "are", "refers to") within the first 140 characters.',
+  check(ctx) {
+    const hits = [];
+    const COPULA_RX = /\b(?:is|are|refers\s+to|denotes|represents|means)\b/i;
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.paragraphs || p.paragraphs.length === 0) continue;
+      const reg = registryPageFor(ctx, p);
+      const isDefType = reg?.page_type === 'definition' || /\/(definition|glossary)\b/i.test(p.url);
+      const firstH1 = (p.headings || []).find((h) => h.level === 1)?.text || '';
+      const isWhatIsHeading = /^(what\s+is|definition\s+of|meaning\s+of)\b/i.test(firstH1);
+
+      if (isDefType || isWhatIsHeading) {
+        const firstP = p.paragraphs[0] || '';
+        const openingSlice = firstP.slice(0, 140);
+        if (!COPULA_RX.test(openingSlice)) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Definitional page opening does not provide a direct copular definition ("is", "are", "refers to")`,
+            evidence: [
+              `opening passage: "${firstP.slice(0, 120)}..."`,
+              'definitional query extractors require immediate copular formulation in lead sentence',
+            ],
+            captured: firstP.slice(0, 80),
+            expected: 'direct copular sentence (e.g. "X is a Y that Z") in first 140 characters',
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'ANS-016', name: 'Comprehensive long-form guide lacks executive summary or key takeaways', namespace: 'ANS',
+  description: 'An in-depth article or guide exceeding 1,200 words does not provide an executive summary, key takeaways, or TL;DR block, increasing RAG chunk fragmentation and extraction ambiguity.',
+  discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['site'],
+  impact: { representation: 'medium', citation: 'low' },
+  applicable_requirement: 'AEO §4 structural answer density; GEO §4 top-level synthesis grounding for RAG embedding retrieval',
+  remediation: 'Add an executive summary or bulleted key takeaways block near the top of the article before detailed section walkthroughs.',
+  verification: 'Re-audit page to verify a summary, key takeaways, or TL;DR section precedes long-form content.',
+  check(ctx) {
+    const hits = [];
+    const SUMMARY_RX = /\b(?:executive\s+summary|key\s+takeaways?|summary|overview|at\s+a\s+glance|tl;?dr|quick\s+summary|highlights?)\b/i;
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200) continue;
+      const wordCount = p.rawVisibleWordCount || p.wordCount || 0;
+      if (wordCount < 1200) continue;
+
+      const hasSummaryHeading = (p.headings || []).some((h) => SUMMARY_RX.test(h.text));
+      if (!hasSummaryHeading) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Long-form guide (${wordCount} words) lacks an executive summary, key takeaways, or TL;DR section`,
+          evidence: [
+            `word count: ${wordCount} words`,
+            'no heading matches executive summary, key takeaways, or TL;DR pattern',
+            'sprawling unsummarized documents experience lower RAG retrieval relevance in generative answer engines',
+          ],
+          captured: { wordCount, hasSummaryHeading: false },
+          expected: 'executive summary or key takeaways section for documents > 1,200 words',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
 export default D;
+

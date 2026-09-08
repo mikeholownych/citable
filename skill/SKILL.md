@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.15.1
+version: 1.16.0
 ---
 
 # Citable — evidence and change control for search and AI citation readiness
@@ -97,6 +97,7 @@ citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
 citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance/stance evidence
 citable observe stance --input <citations|prompts.json> [--entity <id>]
+citable observe attribution --input <citations|prompts.json> [--entity <id>]
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>
 citable observe probes --target <url> [--region <label>]
 citable observe network --input <regional-network-import.json>
@@ -107,6 +108,7 @@ citable apply --input <spec> [--write] # reviewed, hash-locked remediation; dry 
 citable monitor [runA runB] [--webhook <url>] [--min-severity <sev>]  # observation regression alerts
 citable report dashboard [--last N] [--since <run-id>]  # cross-run evidence trend (Markdown + HTML)
 citable report share-of-voice [--last N] [--since <run-id>]  # competitor citation share (Markdown + HTML)
+citable report consensus [--last N] [--since <run-id>]  # canonical discovery consensus matrix (Markdown + HTML)
 citable metrics import --provider <name> --input <csv|json>
 citable connect status
 citable connect configure --provider <gsc|ga4|wordpress|webflow> --connection-id <id> --property-id <id> [--credential-env <name>] [--write]
@@ -116,6 +118,8 @@ citable connect sync --connection-id <id> --start-date YYYY-MM-DD --end-date YYY
 citable connect read --connection-id <id> --target-id <id>
 citable connect apply --connection-id <id> --input <cms-spec.json> [--write]
 citable connect disconnect --connection-id <id> [--write]
+citable connect indexnow [--urls <file|list>] [--sitemap <url|file>] [--host <host>] [--key <key>] [--key-location <url>] [--skip-key-verify] [--endpoint <url>] [--write]
+citable connect mcp [--server <id>] [--tool <name>] [--args <json>] [--transport <stdio|http>] [--target <cmd|url>]
 citable objectives init --input <json|yaml> [--write]
 citable objectives validate
 citable evaluate [objective-id] [--ref-date YYYY-MM-DD]

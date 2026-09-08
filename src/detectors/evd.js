@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineDetector, entrySubject } from './framework.js';
 import { isPastDate } from '../shared/io.js';
 
@@ -158,6 +160,105 @@ D.push(defineDetector({
         summary: `Inaccessible evidence "${e.title}" still supports active claims: ${(e.supports_claims || []).join(', ')}`,
         evidence: [`access_status: ${e.access_status}; verification_status: ${e.verification_status}`],
       }));
+  },
+}));
+
+D.push(defineDetector({
+  id: 'EVD-008', name: 'Dangling media reference in claim evidence', namespace: 'EVD',
+  description: 'Claim evidence references a media asset (image, chart, diagram, or video) whose referenced source location or file is missing, unresolved, or unreachable.',
+  discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
+  impact: { legal: 'medium', citation: 'medium' },
+  applicable_requirement: 'Registry §6.5 evidence sources; premise 3.5: verified evidence must be grounded and inspectable',
+  remediation: 'Ensure referenced media artifacts exist at the specified target path or update the source location with an accessible asset.',
+  verification: 'All media evidence sources resolve to valid accessible files or active URLs.',
+  check(ctx) {
+    const isMedia = (e) => {
+      const st = (e.source_type || '').toLowerCase();
+      if (['media', 'image', 'video', 'diagram', 'chart', 'screenshot'].includes(st)) return true;
+      if (typeof e.source === 'string' && /\.(png|jpe?g|svg|webp|gif|mp4|webm)$/i.test(e.source.split('?')[0].split('#')[0])) return true;
+      return false;
+    };
+
+    const hits = [];
+    for (const e of (ctx.registries?.evidence?.entries || [])) {
+      if (!isMedia(e)) continue;
+
+      let dangling = false;
+      let reason = '';
+
+      if (!e.source || e.source.trim() === '') {
+        dangling = true;
+        reason = 'source field is empty or missing';
+      } else if (!/^https?:\/\//i.test(e.source)) {
+        // Local file reference
+        const cleanPath = e.source.replace(/^\/+/, '');
+        let fileFound = false;
+
+        if (ctx.site?.dir) {
+          const fullPath = path.resolve(ctx.site.dir, cleanPath);
+          if (fs.existsSync(fullPath)) fileFound = true;
+        }
+        if (!fileFound && ctx.root) {
+          const fullPath = path.resolve(ctx.root, cleanPath);
+          if (fs.existsSync(fullPath)) fileFound = true;
+        }
+        if (!fileFound && ctx.site?.pages) {
+          fileFound = ctx.site.pages.some((p) =>
+            p.images?.some((img) => img.src === e.source || img.src === `/${cleanPath}` || img.src?.endsWith(cleanPath))
+          );
+        }
+
+        if (!fileFound) {
+          dangling = true;
+          reason = `local media file not found: ${cleanPath}`;
+        }
+      }
+
+      if (dangling) {
+        hits.push({
+          subject: entrySubject('evidence', e.evidence_id),
+          summary: `Evidence "${e.title}" references dangling or missing media (${reason})`,
+          evidence: [`source: ${e.source || '(missing)'}`, `source_type: ${e.source_type || 'unspecified'}`, `reason: ${reason}`],
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'EVD-009', name: 'Unanchored PDF claim citation', namespace: 'EVD',
+  description: 'Evidence backed by a PDF document lacks a specific page, fragment, or section anchor (#page=, section, or page number in methodology/test_conditions), leaving cited claims unanchored and unfalsifiable.',
+  discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],
+  impact: { citation: 'medium', legal: 'low' },
+  applicable_requirement: 'AEO §8 version evidence; premise 3.5 precise citation anchoring for defensible claims',
+  false_positive_conditions: ['single-page PDF documents where page anchor is redundant'],
+  remediation: 'Append #page=<n> or specify the page/section citation in methodology or test_conditions.',
+  verification: 'PDF evidence sources carry explicit page, section, or fragment anchors.',
+  check(ctx) {
+    const isPdf = (e) => (e.source_type || '').toLowerCase() === 'pdf' || (typeof e.source === 'string' && /\.pdf([?#]|$)/i.test(e.source));
+    const hits = [];
+
+    for (const e of (ctx.registries?.evidence?.entries || [])) {
+      if (!isPdf(e)) continue;
+
+      const hasUrlAnchor = typeof e.source === 'string' && (/#page=\d+|#section|#[a-zA-Z0-9_-]{2,}/i.test(e.source));
+      const text = `${e.methodology || ''} ${e.test_conditions || ''}`;
+      const hasTextAnchor = /\b(page|p\.|section|sec\.|paragraph|para\.)\s*\d+/i.test(text);
+
+      if (!hasUrlAnchor && !hasTextAnchor) {
+        hits.push({
+          subject: entrySubject('evidence', e.evidence_id),
+          summary: `PDF evidence "${e.title}" lacks a specific page or section anchor for citation grounding`,
+          evidence: [
+            `source: ${e.source || '(missing)'}`,
+            `methodology: ${e.methodology || 'missing'}`,
+            `test_conditions: ${e.test_conditions || 'missing'}`,
+          ],
+        });
+      }
+    }
+    return hits;
   },
 }));
 

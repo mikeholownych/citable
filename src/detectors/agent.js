@@ -11,6 +11,8 @@
  *   - Agentic Commerce (x402, MPP, UCP, ACP)
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineDetector } from './framework.js';
 
 // ---------------------------------------------------------------------------
@@ -481,6 +483,130 @@ export const AGENT_010 = defineDetector({
   },
 });
 
+// ---------------------------------------------------------------------------
+// AGENT-011: llms.txt structure and link integrity
+// ---------------------------------------------------------------------------
+
+export const AGENT_011 = defineDetector({
+  id: 'AGENT-011',
+  name: 'llms.txt structure or link integrity broken',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness', 'geo'],
+  severity: 'medium',
+  deterministic: true,
+  description:
+    'An /llms.txt or /llms-full.txt file exists on the site but violates the llmstxt.org specification ' +
+    '(missing H1 title, missing blockquote description, malformed Markdown links) or contains broken links.',
+  applicable_requirement: 'llmstxt.org specification; GEO §3 discoverability; agent-readiness §content-accessibility',
+  remediation:
+    'Format /llms.txt with an opening H1 title, a blockquote summary, and valid Markdown links pointing to active HTTP 200 URLs. Run `citable generate llms-txt --write` to generate a conforming specification.',
+  verification: 'Fetch /llms.txt and verify H1 title, blockquote description, and resolvable link URLs.',
+  check(ctx) {
+    let raw = null;
+    let identifier = '/llms.txt';
+
+    if (ctx.site?.llmsTxt?.raw) {
+      raw = ctx.site.llmsTxt.raw;
+    } else {
+      const page = ctx.site?.pages?.find((p) => p.path === '/llms.txt' || p.url?.endsWith('/llms.txt'));
+      if (page) {
+        raw = page.rawHtml || page.text || null;
+        identifier = page.url || '/llms.txt';
+      } else if (ctx.site?.location) {
+        const localPath = path.join(ctx.site.location, 'llms.txt');
+        if (fs.existsSync(localPath)) {
+          raw = fs.readFileSync(localPath, 'utf8');
+        }
+      }
+    }
+
+    if (!raw || raw.trim().length === 0) return [];
+
+    const findings = [];
+    const problems = [];
+
+    if (!/^#\s+.+/m.test(raw)) {
+      problems.push('Missing H1 project/site title heading (# Title)');
+    }
+
+    if (!/^>\s+.+/m.test(raw)) {
+      problems.push('Missing blockquote description/summary (> Summary)');
+    }
+
+    const linkMatches = [...raw.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
+    const sitePages = ctx.site?.pages || [];
+    const brokenLinks = [];
+
+    for (const match of linkMatches) {
+      const linkText = match[1];
+      const linkUrl = match[2].trim();
+
+      let normalizedPath = null;
+      try {
+        if (linkUrl.startsWith('http://') || linkUrl.startsWith('https://')) {
+          const parsed = new URL(linkUrl);
+          const baseOrigin = ctx.config?.site?.base_url
+            ? new URL(ctx.config.site.base_url).origin
+            : (sitePages[0] ? new URL(sitePages[0].url).origin : null);
+          if (baseOrigin && parsed.origin === baseOrigin) {
+            normalizedPath = parsed.pathname;
+          }
+        } else if (linkUrl.startsWith('/')) {
+          normalizedPath = linkUrl.split('?')[0].split('#')[0];
+        }
+      } catch {
+        problems.push(`Malformed URL in markdown link: [${linkText}](${linkUrl})`);
+        continue;
+      }
+
+      if (normalizedPath && sitePages.length > 0) {
+        const existsInPages = sitePages.some((p) => {
+          try {
+            const pagePath = new URL(p.url).pathname;
+            return (
+              pagePath === normalizedPath ||
+              pagePath === normalizedPath + '/' ||
+              normalizedPath === pagePath + '/' ||
+              pagePath.replace(/\/index\.html$/, '/') === normalizedPath
+            );
+          } catch {
+            return false;
+          }
+        });
+
+        if (!existsInPages && (normalizedPath === '/llms-full.txt' || normalizedPath.endsWith('/llms-full.txt'))) {
+          const fullExists = Boolean(
+            ctx.site?.llmsFullTxt?.raw ||
+            ctx.site?.pages?.some((p) => p.path === '/llms-full.txt' || p.url?.endsWith('/llms-full.txt')) ||
+            (ctx.site?.location && fs.existsSync(path.join(ctx.site.location, 'llms-full.txt')))
+          );
+          if (!fullExists) {
+            brokenLinks.push(`[${linkText}](${linkUrl}) -> referenced /llms-full.txt not found`);
+          }
+        } else if (!existsInPages) {
+          brokenLinks.push(`[${linkText}](${linkUrl}) -> URL not found in crawled site pages`);
+        }
+      }
+    }
+
+    if (brokenLinks.length > 0) {
+      problems.push(`${brokenLinks.length} broken/unresolved internal link(s): ${brokenLinks.slice(0, 3).join(', ')}`);
+    }
+
+    if (problems.length > 0) {
+      findings.push({
+        subject: { type: 'file', identifier },
+        summary: `/llms.txt has ${problems.length} specification / link integrity problem(s)`,
+        evidence: problems,
+        captured: problems.join('; '),
+        expected: 'Valid llmstxt.org format with H1 title, blockquote summary, and resolvable link URLs',
+      });
+    }
+
+    return findings;
+  },
+});
+
 export const AGENT_DETECTORS = [
   AGENT_001,
   AGENT_002,
@@ -492,4 +618,5 @@ export const AGENT_DETECTORS = [
   AGENT_008,
   AGENT_009,
   AGENT_010,
+  AGENT_011,
 ];

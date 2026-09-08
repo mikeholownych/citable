@@ -1,3 +1,4 @@
+import { parse } from 'node-html-parser';
 import { defineDetector, hasHtmlDocumentMarkup, indexTargets, isHtmlDocument, isHtmlDocumentUrl, registryPageFor, pageSubject, safePath } from './framework.js';
 import { isAllowed } from '../crawler/robots.js';
 
@@ -355,6 +356,311 @@ D.push(defineDetector({
         summary: 'No viewport meta tag; mobile rendering readiness not established',
         evidence: ['meta[name=viewport] absent from document head'],
       }));
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-019', name: 'Open Graph URL conflicts with canonical', namespace: 'TECH',
+  description: 'Open Graph URL (og:url) disagrees with the declared canonical URL, sending conflicting canonicalization and entity identity signals.',
+  discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'low', ranking: 'medium', citation: 'medium' },
+  applicable_requirement: 'SEO §2 canonical signals should agree across Open Graph and HTML declarations; AEO §2 consistent identity signals',
+  remediation: 'Align og:url with the rel=canonical target on the index-target document, or omit og:url if self-canonicalizing.',
+  verification: 'Compare og:url and rel=canonical in rendered HTML.',
+  check(ctx) {
+    const hits = [];
+    for (const p of ctx.site.pages) {
+      if (p.canonicals.length !== 1 || !p.ogUrl) continue;
+      const declared = p.canonicals[0];
+      let normCanonical;
+      let normOg;
+      try {
+        normCanonical = ctx.site.normalize(new URL(declared, p.url).href);
+        normOg = ctx.site.normalize(new URL(p.ogUrl, p.url).href);
+      } catch {
+        continue;
+      }
+      if (normCanonical !== normOg) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Open Graph URL (${p.ogUrl}) disagrees with rel=canonical (${declared})`,
+          evidence: [`rel=canonical: ${declared}`, `og:url: ${p.ogUrl}`],
+          captured: { canonical: declared, ogUrl: p.ogUrl },
+          expected: 'matching canonical and og:url',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-020', name: 'Missing reciprocal hreflang return link', namespace: 'TECH',
+  description: 'An alternate hreflang URL targets an internal page, but that target page does not reciprocate with a matching hreflang link back to the source page.',
+  discipline: ['seo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', ranking: 'medium', citation: 'medium' },
+  applicable_requirement: 'SEO §2 internationalization controls; RFC 8288 and search engine hreflang reciprocity requirement',
+  remediation: 'Add a reciprocal <link rel="alternate" hreflang="..." href="..."> tag on the target page pointing back to the referencing page.',
+  verification: 'Extract hreflang alternate links on both URLs and confirm bidirectional reciprocity.',
+  check(ctx) {
+    const hits = [];
+    for (const p of ctx.site.pages) {
+      if (!p.hreflangs || p.hreflangs.length === 0) continue;
+      const normSource = ctx.site.normalize(p.url);
+      for (const alt of p.hreflangs) {
+        if (!alt.href || alt.lang === 'x-default') continue;
+        let normTarget;
+        try {
+          normTarget = ctx.site.normalize(new URL(alt.href, p.url).href);
+        } catch {
+          continue;
+        }
+        if (normTarget === normSource) continue;
+        const targetPage = ctx.site.byUrl.get(normTarget);
+        if (!targetPage) continue;
+        const hasReciprocal = (targetPage.hreflangs || []).some((tAlt) => {
+          try {
+            const normBack = ctx.site.normalize(new URL(tAlt.href, targetPage.url).href);
+            return normBack === normSource;
+          } catch {
+            return false;
+          }
+        });
+        if (!hasReciprocal) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Missing reciprocal hreflang link from ${alt.href} back to ${p.url}`,
+            evidence: [
+              `${p.url} references alternate ${alt.href} (hreflang="${alt.lang}")`,
+              `${normTarget} does not link back to ${p.url} in its hreflang annotations`,
+            ],
+            captured: { target: normTarget, hreflang: alt.lang },
+            expected: `reciprocal link to ${p.url}`,
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-021', name: 'Invalid or non-standard BCP 47 hreflang syntax', namespace: 'TECH',
+  description: 'An hreflang annotation uses an invalid language code, malformed region subtag, deprecated territory, or relative URL.',
+  discipline: ['seo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', ranking: 'medium', citation: 'medium' },
+  applicable_requirement: 'SEO §2 BCP 47 language/region standards (ISO 639-1 language, ISO 3166-1 alpha-2 region)',
+  remediation: 'Use lowercase two-letter ISO 639-1 language codes, optional uppercase ISO 3166-1 region codes (e.g. en-US, es-ES, de-DE), or x-default with absolute URLs.',
+  verification: 'Validate all hreflang attribute values against BCP 47 and confirm absolute URLs.',
+  check(ctx) {
+    const hits = [];
+    const BCP47_REGEX = /^(?:x-default|[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?)$/;
+    for (const p of ctx.site.pages) {
+      if (!p.hreflangs || p.hreflangs.length === 0) continue;
+      for (const alt of p.hreflangs) {
+        const code = alt.lang;
+        const href = alt.href;
+        const issues = [];
+        if (!code) {
+          issues.push('hreflang attribute is empty');
+        } else {
+          if (code.toLowerCase() === 'x-default') {
+            if (code !== 'x-default') issues.push(`x-default must be lowercase (got "${code}")`);
+          } else if (code.includes('_')) {
+            issues.push(`hreflang uses underscore instead of hyphen ("${code}")`);
+          } else if (/\ben-uk\b/i.test(code)) {
+            issues.push(`"UK" is not an ISO 3166-1 alpha-2 country code; use "GB" (got "${code}")`);
+          } else if (!BCP47_REGEX.test(code)) {
+            issues.push(`malformed BCP 47 code format ("${code}")`);
+          }
+        }
+        if (href && !/^https?:\/\//i.test(href)) {
+          issues.push(`hreflang target must be an absolute URL with scheme (got "${href}")`);
+        }
+        if (issues.length > 0) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Invalid hreflang annotation: ${issues.join('; ')}`,
+            evidence: issues.map((iss) => `${p.url}: ${iss}`),
+            captured: { hreflang: code, href },
+            expected: 'valid BCP 47 language/region code and absolute URL',
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-022', name: 'Hreflang alternate target conflicts with rel=canonical', namespace: 'TECH',
+  description: 'An alternate hreflang URL points to a page that declares a different rel=canonical target, breaking the alternate cluster.',
+  discipline: ['seo', 'geo'], severity: 'critical', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', ranking: 'high', citation: 'high' },
+  applicable_requirement: 'SEO §2 canonical and alternate harmony; localized pages in an hreflang cluster must be self-canonical',
+  remediation: 'Ensure each localized alternate page declares a self-referencing rel=canonical matching its own URL.',
+  verification: 'Check that target rel=canonical matches the alternate hreflang URL.',
+  check(ctx) {
+    const hits = [];
+    for (const p of ctx.site.pages) {
+      if (!p.hreflangs || p.hreflangs.length === 0) continue;
+      for (const alt of p.hreflangs) {
+        if (!alt.href) continue;
+        let normTarget;
+        try {
+          normTarget = ctx.site.normalize(new URL(alt.href, p.url).href);
+        } catch {
+          continue;
+        }
+        const targetPage = ctx.site.byUrl.get(normTarget);
+        if (!targetPage || targetPage.canonicals.length !== 1) continue;
+        let targetCanonical;
+        try {
+          targetCanonical = ctx.site.normalize(new URL(targetPage.canonicals[0], targetPage.url).href);
+        } catch {
+          continue;
+        }
+        if (targetCanonical !== normTarget) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Hreflang alternate ${alt.href} points to non-canonical page (canonical is ${targetCanonical})`,
+            evidence: [
+              `${p.url} lists ${alt.href} as alternate (${alt.lang})`,
+              `${normTarget} declares canonical ${targetCanonical}`,
+            ],
+            captured: { target: normTarget, canonical: targetCanonical },
+            expected: `self-canonical target (${normTarget})`,
+          });
+        }
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-023', name: 'Hydration gap: critical metadata or schema missing from initial server HTML response', namespace: 'TECH',
+  description: 'A single-page application or client-rendered document returns empty content mounting shells with virtually no static text (<20 words) in initial server HTML, breaking crawler and answer engine extraction without full headless JS rendering.',
+  discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', ranking: 'medium', citation: 'medium' },
+  applicable_requirement: 'SEO §2 crawlable HTML and server-side rendering; AEO §2 immediate extractability without execution delay',
+  remediation: 'Implement Server-Side Rendering (SSR) or Static Site Generation (SSG) so critical content and metadata are present in initial server HTML.',
+  verification: 'Inspect initial server HTML response to confirm main content and metadata are present before JavaScript execution.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const doc = parse(p.rawHtml);
+      const hasMountShell = doc.querySelector('#root, #__next, #app, [data-reactroot]');
+      const wordCount = p.rawVisibleWordCount || p.wordCount || 0;
+      const hasScripts = (p.scriptBytes || 0) > 0 || doc.querySelectorAll('script').length > 0;
+
+      if (hasMountShell && wordCount < 20 && hasScripts) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Client-rendered mounting shell (${hasMountShell.tagName.toLowerCase()}${hasMountShell.id ? '#' + hasMountShell.id : ''}) contains only ${wordCount} words in initial HTML response`,
+          evidence: [
+            `shell element: <${hasMountShell.tagName.toLowerCase()} id="${hasMountShell.id || ''}">`,
+            `initial static word count: ${wordCount}`,
+            'search engines and AI agents requiring raw HTML cannot extract content without full JavaScript rendering',
+          ],
+          captured: wordCount,
+          expected: '>= 20 words with server-rendered content',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-024', name: 'Excessive render-blocking script payload exceeding crawler execution budget', namespace: 'TECH',
+  description: 'The page delivers excessive inline/head script payloads (>1.2MB) or an excessive number of render-blocking head scripts (>12 without defer/async), exhausting crawler execution budgets and delaying indexing.',
+  discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'high', ranking: 'low' },
+  applicable_requirement: 'SEO §2 crawler execution budget; Google Search Central JavaScript rendering guidelines',
+  remediation: 'Reduce JavaScript payload size, code-split vendor bundles, and add defer or async to head script tags.',
+  verification: 'Verify total initial script payload is under 1.2MB and head script tags are deferred or asynchronous.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.rawHtml) continue;
+      const doc = parse(p.rawHtml);
+      const headScripts = doc.querySelectorAll('head script');
+      let blockingCount = 0;
+      for (const s of headScripts) {
+        const type = (s.getAttribute('type') || '').toLowerCase();
+        if (type === 'application/ld+json') continue;
+        const isAsync = s.hasAttribute('async');
+        const isDefer = s.hasAttribute('defer');
+        const isModule = type === 'module';
+        if (!isAsync && !isDefer && !isModule && s.hasAttribute('src')) {
+          blockingCount++;
+        }
+      }
+
+      const scriptBytes = p.scriptBytes || 0;
+      if (scriptBytes > 1200000 || blockingCount > 12) {
+        hits.push({
+          subject: pageSubject(p),
+          summary: `Page exceeds crawler script execution budget (${scriptBytes > 1200000 ? `${(scriptBytes / 1000000).toFixed(2)}MB script bytes` : ''}${scriptBytes > 1200000 && blockingCount > 12 ? '; ' : ''}${blockingCount > 12 ? `${blockingCount} render-blocking head scripts` : ''})`,
+          evidence: [
+            `script bytes: ${scriptBytes}`,
+            `render-blocking scripts in head: ${blockingCount}`,
+            'crawlers and generative search spiders may abort JavaScript execution under heavy script payloads',
+          ],
+          captured: { scriptBytes, blockingCount },
+          expected: 'scriptBytes <= 1.2MB and blockingCount <= 12',
+        });
+      }
+    }
+    return hits;
+  },
+}));
+
+D.push(defineDetector({
+  id: 'TECH-025', name: 'Oversized uncompressed image asset or heavy inline image payload', namespace: 'TECH',
+  description: 'The page embeds an excessively large inline image data URI (>100KB) or references raw uncompressed image payloads exceeding 1MB, delaying Largest Contentful Paint (LCP) and exhausting mobile data budgets.',
+  discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
+  impact: { retrieval: 'medium', ranking: 'low' },
+  applicable_requirement: 'SEO §2 crawler media payload budget; Google Search Central image optimization guidelines',
+  remediation: 'Compress image assets using modern formats (WebP/AVIF), resize to display dimensions, and externalize inline base64 image data.',
+  verification: 'Confirm all image references are under 1MB and inline data URIs are under 100KB.',
+  check(ctx) {
+    const hits = [];
+    for (const p of indexTargets(ctx)) {
+      if (p.status !== 200 || !p.images) continue;
+      for (const img of p.images) {
+        const src = img.src || '';
+        if (src.startsWith('data:image/') && src.length > 100000) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Heavy inline base64 image payload (${Math.round(src.length / 1024)}KB) bloats HTML document size`,
+            evidence: [
+              `data URI length: ${src.length} characters (~${Math.round(src.length / 1024)}KB)`,
+              'inline image payloads delay initial HTML parsing and waste crawler network budgets',
+            ],
+            captured: { dataUriLength: src.length },
+            expected: 'inline image data URI <= 100KB',
+          });
+          break;
+        } else if (img.bytes && img.bytes > 1000000) {
+          hits.push({
+            subject: pageSubject(p),
+            summary: `Oversized image asset "${src}" (${(img.bytes / 1000000).toFixed(2)}MB) delays LCP`,
+            evidence: [
+              `image source: ${src}`,
+              `image size: ${img.bytes} bytes`,
+              'images exceeding 1MB exhaust mobile rendering budgets and degrade Largest Contentful Paint',
+            ],
+            captured: { src, bytes: img.bytes },
+            expected: 'image bytes <= 1MB',
+          });
+          break;
+        }
+      }
+    }
+    return hits;
   },
 }));
 
