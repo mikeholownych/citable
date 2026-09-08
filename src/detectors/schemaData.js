@@ -384,12 +384,14 @@ D.push(defineDetector({
                   const isInternal = targetId.startsWith('#') || (ctx.site.base_url && targetId.startsWith(ctx.site.base_url)) || (ctx.site.baseUrl && targetId.startsWith(ctx.site.baseUrl)) || targetId.startsWith('http://') || targetId.startsWith('https://');
                   if (isInternal) {
                     let normTarget = targetId;
+                    let isSchemaOrg = false;
                     try {
                       const u = new URL(targetId, p.url);
                       normTarget = ctx.site.normalize(u.origin + u.pathname + u.search) + u.hash;
+                      isSchemaOrg = u.hostname === 'schema.org' || u.hostname === 'www.schema.org';
                     } catch {}
                     if (!siteDefinedIds.has(targetId) && !siteDefinedIds.has(normTarget)) {
-                      if (!targetId.startsWith('http://schema.org') && !targetId.startsWith('https://schema.org')) {
+                      if (!isSchemaOrg) {
                         hits.push({
                           subject: { type: 'schema_block', identifier: `${p.url}#${propPath ? propPath + '.' : ''}${key}`, url: p.url },
                           summary: `Dangling @id reference "${targetId}" not defined in site graph`,

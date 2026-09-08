@@ -61,7 +61,7 @@ export async function lintComponents(targetDir) {
       }
 
       // COMP-003: Generic CTA text
-      if (/<button\b[^>]*>(?:\s*|&nbsp;)*(Click here|Submit|Read more|Learn more)(?:\s*|&nbsp;)*<\/button>/i.test(line)) {
+      if (/<button\b[^>]*>(?:\s|&nbsp;)*(Click here|Submit|Read more|Learn more)(?:\s|&nbsp;)*<\/button>/i.test(line)) {
         findings.push({
           rule_id: "COMP-003",
           name: "Generic low-intent microcopy on conversion CTA",

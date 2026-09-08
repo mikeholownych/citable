@@ -134,7 +134,7 @@ export function buildIndexNowPayload({ host, key, keyLocation, urls = [] }) {
   const normalizedHost = normalizeHost(host);
   if (!key) throw new Error('key is required for IndexNow payload');
   if (!INDEXNOW_KEY_PATTERN.test(key)) {
-    throw new Error(`IndexNow key must be 8-128 alphanumeric characters or hyphens (received: "${key}")`);
+    throw new Error('IndexNow key must be 8-128 alphanumeric characters or hyphens');
   }
   if (!Array.isArray(urls) || urls.length === 0) {
     throw new Error('urls must be a non-empty array of URL strings');
@@ -273,7 +273,7 @@ export async function submitIndexNow(root = process.cwd(), {
     throw new Error('IndexNow key is required. Provide --key or set INDEXNOW_KEY environment variable');
   }
   if (!INDEXNOW_KEY_PATTERN.test(effectiveKey)) {
-    throw new Error(`IndexNow key must be 8-128 alphanumeric characters or hyphens (received: "${effectiveKey}")`);
+    throw new Error('IndexNow key must be 8-128 alphanumeric characters or hyphens');
   }
 
   // 4. Resolve keyLocation
