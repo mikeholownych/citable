@@ -45,6 +45,8 @@ const ROUTES = [
   { patterns: [/variance|miss|why.did.we/i],                 command: 'variance',             reason: 'Variance analysis' },
   { patterns: [/prioriti|roadmap|what.to.build|rank/i],      command: 'prioritize',           reason: 'Initiative prioritization' },
   { patterns: [/competitor|competitive|market.change/i],     command: 'competitive-intel',    reason: 'Competitive intelligence' },
+  { patterns: [/search|seo|aeo|geo|serp/i],                 command: 'executive-search',     reason: 'Enterprise Search & AEO/GEO Executive Report' },
+  { patterns: [/cro|conversion|funnel|journey/i],            command: 'executive-cro',        reason: 'Enterprise CRO & Journey Intelligence Executive Report' },
 ];
 
 const MAX_DEPTH = 1;
@@ -119,6 +121,8 @@ function commandToModule(cmd) {
     'variance':           'variance',
     'prioritize':         'prioritize',
     'competitive-intel':  'competitiveIntel',
+    'executive-search':   'executiveSearch',
+    'executive-cro':      'executiveCro',
   };
   return MAP[cmd] ?? cmd;
 }
@@ -136,6 +140,8 @@ function commandToExport(cmd) {
     'variance':           'varianceCommand',
     'prioritize':         'prioritizeCommand',
     'competitive-intel':  'competitiveIntelCommand',
+    'executive-search':   'executiveSearchCommand',
+    'executive-cro':      'executiveCroCommand',
   };
   return MAP[cmd] ?? cmd + 'Command';
 }

@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+import { auditCroSuite, formatCroSuiteOutput } from "../commands/croSuite.js";
+import { formatBacklogMarkdown } from "../commands/croBacklog.js";
+import { formatCroRoadmapMarkdown } from "../analysis/croRoadmap.js";
+import { sweepTechnical, formatSweepOutput } from "../commands/sweep.js";
+import { inspectEeat, formatEeatOutput } from "../commands/inspectEeat.js";
+import { inspectReadiness, formatReadinessOutput } from "../commands/answerEngineReadiness.js";
+import { auditBacklinks, formatBacklinksOutput } from "../commands/auditBacklinks.js";
+import { roadmapCommand } from "../commands/roadmapCmd.js";
+import { sowCommand } from "../commands/sowCmd.js";
+import { buildIceMatrix, formatIceMatrixOutput } from "../analysis/iceMatrix.js";
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -97,6 +107,15 @@ Commands
   check experiment          Experiment guardrails: SRM, stopping, power, contamination, lifecycle status
   map-claims                Extract material claim candidates from pages (--write to save)
   substantiate              Assess claim/evidence status (--write to apply downgrades)
+  cro [audit]               Full CRO intelligence suite: funnel, ATF clarity, trust, cognitive load, ICE matrix, roadmap
+  cro backlog               Generate A/B experimentation backlog with falsifiable hypotheses & guardrails
+  cro roadmap               30/90/180-day CRO roadmap tied to measurable conversion outcomes
+  sweep [technical]         Run technical SEO sweep with Core Web Vitals metrics
+  inspect eeat <page>       Evaluate on-page content against Google E-E-A-T rubric (0-5 scale)
+  inspect readiness <page>  Evaluate answer-engine readiness across Perplexity, Bing Copilot, and ChatGPT
+  audit backlinks           Audit off-page authority and identify toxic domains (--input <file>)
+  prioritize matrix         Impact/Effort/Confidence (ICE) scoring matrix for roadmap & findings
+  roadmap [generate|show]   30/90/180-day strategic roadmap with milestone horizons
   schema                    Validate deployed JSON-LD and propose registry-derived schema
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
@@ -109,6 +128,8 @@ Commands
   report dashboard [--last N] [--since <run-id>]   Render a cross-run evidence trend as Markdown + HTML
   report share-of-voice [--last N]                 Compute first-party and competitor citation share
   report consensus [--last N] [--since <run-id>]   Render Canonical Discovery Consensus Matrix (Markdown + HTML)
+  report search [--target <dir|url>] [--run <id>]  Enterprise Search Intelligence & AEO/GEO Executive Briefing (19 pillars)
+  report cro [--target <dir|url>] [--input <file>] Enterprise CRO & Customer Journey Executive Briefing (25 pillars)
   metrics import            Import declared metric observations from CSV/JSON
   connect status            List optional connectors and configured connections
   connect configure         Configure non-secret connection state (--write to save)
@@ -287,6 +308,12 @@ function parseArgs(argv) {
     else if (a === '--days-running') args['days-running'] = argv[++i];
     else if (a === '--baseline-rate') args['baseline-rate'] = argv[++i];
     else if (a === '--p-value') args['p-value'] = argv[++i];
+    else if (a === '--matrix') args.matrix = true;
+    else if (a === '--roadmap') args.roadmap = true;
+    else if (a === '--engines') args.engines = true;
+    else if (a === '--funnel') args.funnel = argv[++i];
+    else if (a === '--client') args.client = argv[++i];
+    else if (a === '--type') args.type = argv[++i];
     else if (a === '--revenue-claimed') args['revenue-claimed'] = true;
     else args._.push(a);
   }
@@ -360,6 +387,16 @@ export async function main(argv = process.argv.slice(2), options = {}) {
         break;
       }
       case 'audit': {
+        if (args._[0] === 'cro') {
+          const r = await auditCroSuite(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, input: args.input, funnelId: args.funnel });
+          out(args, formatCroSuiteOutput(r), r);
+          break;
+        }
+        if (args._[0] === 'backlinks') {
+          const r = await auditBacklinks(root, { input: args.input, target: args.target, minSeverity: args.minSeverity });
+          out(args, formatBacklinksOutput(r), r);
+          break;
+        }
         if (args._[0] === 'edge') {
           const file = args._[1];
           if (!file || !args.format) throw new Error('usage: citable audit edge <file> --format <cloudflare-worker|cloudflare-cro|vercel-middleware|shopify-snippet|html>');
@@ -386,6 +423,18 @@ ${r.findings.map((f) => `  [${f.rule_id}] (${f.severity}) ${f.summary}\n    Fix:
       }
       case 'inspect': {
         if (!args._[0]) throw new Error('usage: citable inspect <page> --target <dir|url> OR citable inspect serp <page> OR citable inspect cro <page> OR citable inspect aeo <page> OR citable inspect geo <page>');
+        if (args._[0] === 'eeat' || args._[0] === 'content') {
+          if (!args._[1]) throw new Error('usage: citable inspect eeat <page> --target <dir|url>');
+          const r = await inspectEeat(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+          out(args, formatEeatOutput(r), r);
+          break;
+        }
+        if (args._[0] === 'readiness' || args._[0] === 'engines') {
+          if (!args._[1]) throw new Error('usage: citable inspect readiness <page> --target <dir|url>');
+          const r = await inspectReadiness(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+          out(args, formatReadinessOutput(r), r);
+          break;
+        }
         if (args._[0] === 'serp') {
           if (!args._[1]) throw new Error('usage: citable inspect serp <page> --target <dir|url>');
           const r = await inspectSerp(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
@@ -409,7 +458,9 @@ ${richList}
           if (!args._[1]) throw new Error('usage: citable inspect cro <page> --target <dir|url>');
           const r = await inspectCro(root, args._[1], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
           const txt = `Inspect CRO ${r.url}
-  Status: ${r.conversion_status}
+  Status: ${r.conversion_status} (Conversion Readiness: ${r.conversion_readiness_score ?? 'N/A'}/100)
+  Above-the-Fold Clarity: ${r.atf_clarity?.score ?? 'N/A'}/100 (Scent: ${r.atf_clarity?.scent_match ? 'CONGRUENT' : 'GAP'})
+  Trust & Credibility: ${r.trust_and_credibility?.score ?? 'N/A'}/100
   Friction Surface Area: ${r.friction_surface_area}
   Declared Conversion Action: ${r.declared_conversion_action || 'none'}
   Page Type: ${r.page_type || 'unregistered'}; Intent: ${r.primary_intent || 'unregistered'}
@@ -746,6 +797,16 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
         break;
       }
       case 'action-plan': {
+        if (args.matrix) {
+          const r = await prioritizeCommand(['matrix', ...(args._[0] ? ['--run', args._[0]] : ['--findings'])], root);
+          out(args, r.formatted || JSON.stringify(r, null, 2), r);
+          break;
+        }
+        if (args.roadmap) {
+          const r = await roadmapCommand(root, { runId: args._[0], target: args.target, write: args.write !== false });
+          out(args, r.markdown, r);
+          break;
+        }
         const r = actionPlan(root, { runId: args._[0] });
         out(args, `action-plan: ${r.summary.total_actions} action(s) [ready:${r.summary.ready} blocked:${r.summary.blocked}]\nPlan: ${path.join(r.dir, 'action-plan.md')}\nSource audit: ${r.source_run_id}`, r);
         break;
@@ -798,11 +859,46 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
         } else if (sub === 'consensus') {
           const r = reportConsensus(root, { runId: args.runId, since: args.since, last: args.last ? Number(args.last) : undefined });
           out(args, `report consensus: ${r.urls_evaluated} URL(s) evaluated (${r.canonical_consensus_count} consensus, ${r.conflicts_count} conflict(s))\nMarkdown: ${r.path_md}\nHTML: ${r.path_html}`, r);
+        } else if (sub === 'search' || sub === 'seo') {
+          const r = await exportExecutiveReport(root, args.runId, {
+            type: 'search',
+            format: args.format || 'markdown',
+            clientName: args.client,
+            output: args.output,
+            target: args.target,
+            baseUrl: args.baseUrl,
+            refDate: args.refDate,
+            input: args.input,
+          });
+          out(args, r.content, r.data);
+        } else if (sub === 'cro') {
+          const r = await exportExecutiveReport(root, args.runId, {
+            type: 'cro',
+            format: args.format || 'markdown',
+            clientName: args.client,
+            output: args.output,
+            target: args.target,
+            baseUrl: args.baseUrl,
+            refDate: args.refDate,
+            input: args.input,
+            funnelId: args.funnel,
+          });
+          out(args, r.content, r.data);
         } else if (sub === 'export') {
-          const r = await exportExecutiveReport(root, args.runId, { format: args.format, clientName: args.client, output: args.output });
+          const r = await exportExecutiveReport(root, args.runId, {
+            format: args.format,
+            clientName: args.client,
+            output: args.output,
+            type: args.type,
+            target: args.target,
+            baseUrl: args.baseUrl,
+            refDate: args.refDate,
+            input: args.input,
+            funnelId: args.funnel,
+          });
           out(args, `Executive Report Exported (${r.format}) for "${r.client_name}"${r.output_path ? ` to ${r.output_path}` : ''}\n\n${r.content}`, r);
         } else {
-          throw new Error('usage: citable report <dashboard|share-of-voice|consensus|export> [--last <n>] [--since <run-id>] [--run <run-id>] [--format <html-brief|markdown-deck>]');
+          throw new Error('usage: citable report <dashboard|share-of-voice|consensus|search|cro|export> [--last <n>] [--since <run-id>] [--run <run-id>] [--format <md|html|json>]');
         }
         break;
       }
@@ -1176,6 +1272,56 @@ ${r.findings.map((f) => `  [${f.guardrail_id}] (${f.severity}) ${f.summary}`).jo
       case 'executive': {
         const r = await executiveCommand(argv.slice(1), root);
         out(args, JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'cro': {
+        const sub = args._[0];
+        if (sub === 'backlog') {
+          const r = await auditCroSuite(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, input: args.input });
+          out(args, formatBacklogMarkdown(r.experiment_backlog), r.experiment_backlog);
+          break;
+        }
+        if (sub === 'roadmap') {
+          const r = await auditCroSuite(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, input: args.input });
+          out(args, formatCroRoadmapMarkdown(r.strategic_roadmap), r.strategic_roadmap);
+          break;
+        }
+        const r = await auditCroSuite(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, input: args.input, funnelId: args.funnel });
+        out(args, formatCroSuiteOutput(r), r);
+        break;
+      }
+      case 'sweep': {
+        const sub = args._[0];
+        if (sub && sub !== 'technical') throw new Error('usage: citable sweep technical [--target <dir|url>]');
+        const r = await sweepTechnical(root, { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate, page: args._[1] });
+        out(args, formatSweepOutput(r), r);
+        break;
+      }
+      case 'matrix': {
+        const r = await prioritizeCommand(['matrix', ...argv.slice(1)], root);
+        out(args, r.formatted || JSON.stringify(r, null, 2), r);
+        break;
+      }
+      case 'roadmap': {
+        const r = await roadmapCommand(root, { runId: args.runId, target: args.target, write: args.write !== false });
+        out(args, r.markdown, r);
+        break;
+      }
+      case 'sow': {
+        const r = await sowCommand(argv.slice(1), root);
+        out(args, r.content || r.message || JSON.stringify(r, null, 2), r.data || r);
+        break;
+      }
+      case 'inspect-eeat': {
+        if (!args._[0]) throw new Error('usage: citable inspect-eeat <page> --target <dir|url>');
+        const r = await inspectEeat(root, args._[0], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+        out(args, formatEeatOutput(r), r);
+        break;
+      }
+      case 'inspect-readiness': {
+        if (!args._[0]) throw new Error('usage: citable inspect-readiness <page> --target <dir|url>');
+        const r = await inspectReadiness(root, args._[0], { target: args.target, baseUrl: args.baseUrl, refDate: args.refDate });
+        out(args, formatReadinessOutput(r), r);
         break;
       }
       case undefined:

@@ -2,9 +2,11 @@ import { buildContext } from './context.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors, sitePageFor } from '../detectors/framework.js';
 import { checklistItem, toStringArray } from '../shared/checklist.js';
+import { recommendSchemaForPages } from '../analysis/schemaRecommendations.js';
 
 /**
- * `citable schema` — derive JSON-LD proposals from registry data and validate deployed schema.
+ * `citable schema` — derive JSON-LD proposals from registry data, recommend FAQPage, Speakable,
+ * and HowTo markup from visible page content, and validate deployed schema.
  *
  * Generation is registry-driven: schema is only proposed for entities that exist in the
  * entity registry with a canonical URL. Nothing is fabricated; missing fields are listed
@@ -71,5 +73,11 @@ export async function schemaCommand(root, { target, baseUrl, refDate } = {}) {
     }
   }
 
-  return { findings, proposals, blocked, missingDeployment };
+  // 4. Recommend structural schema markup (FAQPage, Speakable, HowTo) from visible content
+  let recommendations = { faq: [], speakable: [], howto: [] };
+  if (ctx.site?.pages) {
+    recommendations = recommendSchemaForPages(ctx.site.pages);
+  }
+
+  return { findings, proposals, blocked, missingDeployment, recommendations };
 }
