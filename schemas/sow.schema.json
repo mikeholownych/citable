@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/sow.schema.json",
+  "title": "Enterprise Statement of Work (SOW)",
+  "type": "object",
+  "required": [
+    "sow_id",
+    "version",
+    "title",
+    "client",
+    "supplier",
+    "effective_date",
+    "executive_scope",
+    "admissibility_gate",
+    "work_packages",
+    "deliverables",
+    "acceptance_criteria",
+    "traceability_matrix"
+  ],
+  "properties": {
+    "sow_id": { "type": "string" },
+    "version": { "type": "string" },
+    "title": { "type": "string" },
+    "client": {
+      "type": "object",
+      "required": ["name", "contact"],
+      "properties": {
+        "name": { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "supplier": {
+      "type": "object",
+      "required": ["name", "contact"],
+      "properties": {
+        "name": { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "effective_date": { "type": "string" },
+    "term_days": { "type": "integer" },
+    "executive_scope": {
+      "type": "object",
+      "required": ["business_objective", "in_scope_properties", "in_scope_systems"],
+      "properties": {
+        "business_objective": { "type": "string" },
+        "in_scope_properties": { "type": "array", "items": { "type": "string" } },
+        "in_scope_systems": { "type": "array", "items": { "type": "string" } },
+        "channels": { "type": "array", "items": { "type": "string" } },
+        "geographies": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "admissibility_gate": {
+      "type": "object",
+      "required": ["total_findings_evaluated", "admitted_count", "refused_count"],
+      "properties": {
+        "total_findings_evaluated": { "type": "integer" },
+        "admitted_count": { "type": "integer" },
+        "refused_count": { "type": "integer" },
+        "refusal_log": { "type": "array" }
+      }
+    },
+    "work_packages": { "type": "array" },
+    "deliverables": { "type": "array" },
+    "acceptance_criteria": { "type": "array" },
+    "traceability_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "finding_id",
+          "recommendation",
+          "sow_requirement_id",
+          "deliverable_id",
+          "acceptance_test_id",
+          "owner",
+          "evidence_id"
+        ],
+        "properties": {
+          "finding_id": { "type": "string" },
+          "recommendation": { "type": "string" },
+          "sow_requirement_id": { "type": "string" },
+          "work_package_id": { "type": "string" },
+          "deliverable_id": { "type": "string" },
+          "acceptance_test_id": { "type": "string" },
+          "owner": { "type": "string" },
+          "evidence_id": { "type": "string" }
+        }
+      }
+    }
+  }
+}

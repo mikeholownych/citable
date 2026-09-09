@@ -33,6 +33,20 @@ test("exportExecutiveReport creates HTML brief and Markdown deck with disclaimer
   assert.ok(slidesRes.content.includes("Executive CRO Briefing"));
   assert.ok(slidesRes.content.includes("Friction Surface Area"));
   assert.ok(slidesRes.content.includes("Nebula Enterprise Client"));
+
+  const searchRes = await exportExecutiveReport(tmpDir, "RUN-TEST-001", {
+    type: "search",
+    clientName: "Nebula Enterprise Client",
+  });
+  assert.ok(searchRes.content.includes("Enterprise Search Intelligence & Discovery Governance Briefing"));
+  assert.ok(searchRes.data.pillars[1]);
+
+  const croRes = await exportExecutiveReport(tmpDir, "RUN-TEST-001", {
+    type: "cro",
+    clientName: "Nebula Enterprise Client",
+  });
+  assert.ok(croRes.content.includes("Enterprise Conversion Rate Optimization (CRO) & Journey Intelligence Briefing"));
+  assert.ok(croRes.data.pillars[25]);
 });
 
 test("alert formatters format Slack, Teams, and Discord payloads cleanly", () => {

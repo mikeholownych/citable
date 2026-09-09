@@ -24,4 +24,9 @@ test('inspectCro evaluates page conversion readiness and extracts CTAs, forms, a
   assert.equal(typeof res.has_choice_overload, 'boolean');
   assert.equal(typeof res.analytics_installed, 'boolean');
   assert.equal(typeof res.nav_links_count, 'number');
+  assert.equal(typeof res.conversion_readiness_score, 'number');
+  assert.ok(res.atf_clarity);
+  assert.ok(res.trust_and_credibility);
+  assert.ok(res.offer_architecture);
 });
+

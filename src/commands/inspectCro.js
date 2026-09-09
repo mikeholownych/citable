@@ -1,3 +1,4 @@
+import { auditPageCro } from "../analysis/croAudit.js";
 import { buildContext } from './context.js';
 import { registryPageFor, safePath } from '../detectors/framework.js';
 import { selectDetectors } from '../detectors/index.js';
@@ -74,8 +75,14 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
     return acc + w;
   }, 0);
 
+  const pageCroAudit = auditPageCro(page, ctx);
+
   return {
     url: page.url,
+    conversion_readiness_score: pageCroAudit.conversion_readiness_score,
+    atf_clarity: pageCroAudit.atf_clarity,
+    trust_and_credibility: pageCroAudit.trust_and_credibility,
+    offer_architecture: pageCroAudit.offer_architecture,
     sourceFile: page.sourceFile,
     status: page.status,
     declared_conversion_action: declaredAction,

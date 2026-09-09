@@ -15,6 +15,28 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.18.0 — 2026-09-09
+
+### Added — Enterprise Search, CRO Intelligence & SOW Governance
+
+- Added Enterprise Statement of Work (SOW) generation engine (`citable sow generate`, `citable sow validate`):
+  - Contractual schema `schemas/sow.schema.json` formalizing required executive scope, admissibility gate, work packages, deliverables, acceptance criteria, and 7-column traceability matrix.
+  - 6-criterion Scope Admissibility Gate (`src/sow/admissibilityGate.js`): enforces evidence maturity, scope boundary, technical feasibility, commercial materiality (ICE-BV / severity), measurable acceptance, and ownership clarity before findings become contractual scope. Catalogues refused items in an explicit contractual refusal log with refusal codes and remediation handling.
+  - Complete 25-pillar SOW generator (`src/sow/generateSow.js`) with standalone Markdown and responsive enterprise HTML renderers.
+  - Enforced 7-column Traceability Matrix mapping: Finding ID → Recommendation → SOW Requirement ID → Deliverable ID → Acceptance Test ID → Responsible Owner → Source Evidence.
+  - Commercial terms tied strictly to verified deliverable acceptance; disclaims search rankings, AI citations, and conversion revenue guarantees in adherence to Citable governance principles.
+- Added Enterprise Split Executive Reports (`src/reporting/executiveSearchReport.js`, `src/reporting/executiveCroReport.js`, `citable report search`, `citable report cro`):
+  - Enterprise Search Intelligence Briefing: 19 pillars, evidence register traceability, fact vs inference separation, multi-engine visibility baseline, Core Web Vitals, AEO/GEO extraction posture, schema architecture, competitive SERP footprint.
+  - Enterprise CRO & Customer Journey Briefing: 25 pillars, observation vs hypothesis vs causation separation, visual saliency modeling, message-match scoring, cognitive load and abandonment friction, offer architecture, and statistical experiment design.
+- Added Technical SEO Sweep & Core Web Vitals audit (`citable sweep technical`, `src/commands/sweep.js`): static analysis of render-blocking resources, image layout shifts, and CWV readiness thresholds (LCP, INP, CLS).
+- Added On-Page Content & E-E-A-T Scoring (`citable inspect eeat`, `src/analysis/eeat.js`): 0-5 rubric scoring across Experience, Expertise, Authoritativeness, and Trustworthiness with evidence extraction.
+- Added Answer-Engine Readiness inspection (`citable inspect readiness`, `src/analysis/readiness.js`): automated multi-engine evaluation across Perplexity, Bing Copilot, and ChatGPT.
+- Added Off-Page Authority Assessment & Toxic Backlink Detection (`citable audit backlinks`, `src/commands/auditBacklinks.js`, `src/analysis/offpage.js`): identifies spam TLDs, PBN footprints, and automated disavow recommendations.
+- Added Schema.org Recommendations engine (`src/analysis/schemaRecommendations.js`, `citable schema`): evaluates content patterns to propose structured markup for FAQPage, Speakable, and HowTo.
+- Added Impact / Effort / Confidence (ICE) Prioritization Matrix (`citable prioritize matrix`, `src/analysis/iceMatrix.js`): scoring matrix categorizing findings into Quick Wins, Strategic Bets, Low-Hanging Fruit, and Deprioritized.
+- Added 30/90/180-Day Strategic & CRO Milestone Roadmaps (`citable roadmap strategic`, `citable cro roadmap`, `src/analysis/strategicRoadmap.js`, `src/analysis/croRoadmap.js`): phased implementation schedules tied to verified technical deliverables and conversion metrics.
+- Added End-to-End CRO Intelligence Suite (`citable cro`, `src/commands/croSuite.js`, `src/analysis/croAudit.js`, `src/analysis/funnelAnalysis.js`, `src/analysis/behavioral.js`): conversion path continuity, above-the-fold clarity, trust and objection analysis, and prioritized A/B experiment backlog with statistical power blueprints.
+
 ## 1.17.0 — 2026-09-08
 
 ### Added — Closed-Loop Remediation & Customer Fulfillment (Nebula Release Requests)

@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.17.0
+version: 1.18.0
 ---
 
 # Citable — evidence and change control for search and AI citation readiness
@@ -88,7 +88,13 @@ prefer running it over re-deriving its checks by hand:
 citable init                        # initialize .citable/ (non-destructive)
 citable audit [scope] --target <dir|url> [--base-url <url>] [--ref-date YYYY-MM-DD]
 citable plan-audit --target <dir|url> [--base-url <url>]
+citable sweep technical --target <dir|url> # Technical SEO sweep + Core Web Vitals metrics
 citable inspect <page> --target <dir|url>
+citable inspect eeat <page> --target <dir|url> # On-page content analysis & 0-5 E-E-A-T score
+citable inspect readiness <page> --target <dir|url> # Answer-engine readiness (Perplexity, Copilot, ChatGPT)
+citable audit backlinks --input <file>  # Off-page authority assessment & toxic domain identification
+citable prioritize matrix [--run <run-id>] # Impact/Effort/Confidence (ICE) scoring matrix
+citable roadmap [generate|show]         # 30/90/180-day strategic milestone roadmap
 citable map-claims --target <dir|url> [--write]
 citable substantiate [--write]
 citable schema --target <dir|url>
@@ -109,6 +115,8 @@ citable monitor [runA runB] [--webhook <url>] [--min-severity <sev>]  # observat
 citable report dashboard [--last N] [--since <run-id>]  # cross-run evidence trend (Markdown + HTML)
 citable report share-of-voice [--last N] [--since <run-id>]  # competitor citation share (Markdown + HTML)
 citable report consensus [--last N] [--since <run-id>]  # canonical discovery consensus matrix (Markdown + HTML)
+citable report search [--target <dir|url>] [--run <id>] [--format md|html|json] # Enterprise Search Intelligence Briefing (19 pillars, evidence-traceable)
+citable report cro [--target <dir|url>] [--input <file>] [--format md|html|json] # Enterprise CRO & Journey Briefing (25 pillars: observations vs hypotheses vs causation)
 citable metrics import --provider <name> --input <csv|json>
 citable connect status
 citable connect configure --provider <gsc|ga4|wordpress|webflow> --connection-id <id> --property-id <id> [--credential-env <name>] [--write]
@@ -143,6 +151,15 @@ citable artifacts export <run-id> --output <directory>
 citable artifacts verify --input <directory>
 citable artifacts import --input <directory>
 citable inspect cro <page> --target <dir|url>   # CRO readiness: CTAs, forms, payment-wallet vs authentication readiness, modeled saliency indices
+citable cro [--target <dir|url>] [--funnel <id>] # Full CRO intelligence suite: funnel, ATF clarity, trust, cognitive load, ICE matrix, roadmap
+citable cro backlog [--target <dir|url>]         # Prioritized A/B experiment backlog with falsifiable hypotheses & guardrails
+citable cro roadmap [--target <dir|url>]         # 30/90/180-day CRO strategic roadmap tied to measurable conversion outcomes
+citable sweep technical [--target <dir|url>]    # Technical SEO sweep with Core Web Vitals readiness metrics (LCP, INP, CLS)
+citable inspect eeat <page> --target <dir|url>  # On-page E-E-A-T evaluation on a 0-5 rubric scale
+citable inspect readiness <page> --target <dir|url> # Answer-engine readiness across Perplexity, Bing Copilot, ChatGPT
+citable audit backlinks --input <backlinks.json> # Off-page authority assessment and toxic domain identification
+citable prioritize matrix                       # Impact/Effort/Confidence (ICE) scoring matrix for findings & roadmap
+citable roadmap strategic                       # 30/90/180-day strategic milestone horizons with KPI linkages
 citable preview cro <page> [--export <file.html>]  # split-screen before/remediated sandbox (layout-contract checked; accessibility-aware)
 citable remediate --finding <id> [--target <file>] [--write]  # production-safe patch: framework detection, unified diff, static validation, confidence gate, rollback snapshot; semantic copy changes always refuse automated write
 citable verify remediation --run <run-id> --finding <id> [--target <file>] [--apply]  # closed loop: re-run the detector and emit a before/after evidence bundle (schema remediation-verification)
@@ -150,6 +167,8 @@ citable verify page <page> --target <dir|url>   # all detectors scoped to one pa
 citable check experiment <id> [--observed-control N --observed-variant N --days-running N]  # SRM, stopping, power, contamination; lifecycle: planned|running|inconclusive|validated
 citable compatibility   # Node engine, optional adapters, browser, framework, registries, edge size limits
 citable kit export --run <run-id> --finding <id> [--target <file>]  # customer-ready implementation kit (finding, diff, evidence, acceptance tests, deployment, limitations)
+citable sow generate [--target <dir|url>] [--budget <amount>] [--format md|html|json] [--output <path>] # Enterprise SOW from findings with 6-gate admissibility & 7-column traceability
+citable sow validate <sow.json>                  # Validate SOW schema, admissibility gates, and complete traceability matrix
 ```
 
 Audit scopes: `technical seo aeo geo architecture entity claims evidence schema

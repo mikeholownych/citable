@@ -1,19 +1,21 @@
 /**
- * prioritize command — Initiative Prioritization
+ * prioritize command — Initiative and Finding Prioritization (ICE Matrix)
  *
- * Ranks roadmap and investment choices. Weights must be visible when
- * weighted scoring is used — no opaque scores.
+ * Ranks roadmap, audit findings, and investment choices.
+ * Weights and factors must be visible when weighted scoring is used — no opaque scores.
  *
  * Usage:
  *   citable prioritize [--status proposed|approved]
  *   citable prioritize show <initiative_id>
  *   citable prioritize validate
- *   citable prioritize rank   — ranked list with explicit criteria
+ *   citable prioritize rank     — ranked list with explicit criteria
+ *   citable prioritize matrix   — Impact/Effort/Confidence (ICE) scoring matrix
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
-import path from 'node:path';
-
+import { buildIceMatrix, formatIceMatrixOutput } from '../analysis/iceMatrix.js';
 
 const SCALE = { none: 0, low: 1, medium: 2, high: 3, critical: 4, validated: 4, transformative: 4, trivial: 0, very_high: 4, negligible: 0, 'n/a': 0 };
 
@@ -25,6 +27,7 @@ export async function prioritizeCommand(args, root = process.cwd()) {
     case 'show':     return initiativeShow(file, rest[0]);
     case 'validate': return initiativeValidate(file);
     case 'rank':     return initiativeRank(file);
+    case 'matrix':   return initiativeMatrix(file, root, rest);
     case 'list':
     default: {
       const statusFilter = rest[rest.indexOf('--status') + 1] ?? null;
@@ -84,6 +87,39 @@ function initiativeRank(file) {
     weights: 'equal weights — override with scoring_weights field per initiative if asymmetric weighting is required',
     total: scored.length,
   };
+}
+
+function initiativeMatrix(file, root, rest = []) {
+  const runIdx = rest.indexOf('--run');
+  const runId = runIdx !== -1 ? rest[runIdx + 1] : null;
+
+  if (runId) {
+    const findingsPath = path.join(root, '.citable', 'runs', runId, 'findings.json');
+    if (!fs.existsSync(findingsPath)) throw new Error(`run ${runId} findings.json not found`);
+    const findings = JSON.parse(fs.readFileSync(findingsPath, 'utf8'));
+    const matrix = buildIceMatrix(findings, { type: 'findings' });
+    return { ...matrix, formatted: formatIceMatrixOutput(matrix) };
+  }
+
+  // Check if findings.json exists in latest run
+  const runsDir = path.join(root, '.citable', 'runs');
+  if (fs.existsSync(runsDir)) {
+    const runs = fs.readdirSync(runsDir).filter((r) => fs.existsSync(path.join(runsDir, r, 'findings.json'))).sort().reverse();
+    if (runs.length > 0 && rest.includes('--findings')) {
+      const findings = JSON.parse(fs.readFileSync(path.join(runsDir, runs[0], 'findings.json'), 'utf8'));
+      const matrix = buildIceMatrix(findings, { type: 'findings' });
+      return { ...matrix, formatted: formatIceMatrixOutput(matrix) };
+    }
+  }
+
+  // Default: score initiatives from initiatives.yaml
+  if (fs.existsSync(file)) {
+    const data = load(file);
+    const matrix = buildIceMatrix(data.entries || [], { type: 'initiatives' });
+    return { ...matrix, formatted: formatIceMatrixOutput(matrix) };
+  }
+
+  throw new Error('prioritize matrix requires initiatives.yaml or an audit run (--run <run-id>)');
 }
 
 function initiativeValidate(file) {

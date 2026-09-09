@@ -1,6 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readJson } from "../shared/io.js";
+import { exportExecutiveSearchReport, buildExecutiveSearchReport, renderSearchReportMarkdown, renderSearchReportHtml } from "./executiveSearchReport.js";
+import { exportExecutiveCroReport, buildExecutiveCroReport, renderCroReportMarkdown, renderCroReportHtml } from "./executiveCroReport.js";
+
+export {
+  exportExecutiveSearchReport,
+  buildExecutiveSearchReport,
+  renderSearchReportMarkdown,
+  renderSearchReportHtml,
+  exportExecutiveCroReport,
+  buildExecutiveCroReport,
+  renderCroReportMarkdown,
+  renderCroReportHtml,
+};
 
 /**
  * Generates an executive briefing deliverable (HTML brief or Markdown deck)
@@ -10,7 +23,56 @@ export async function exportExecutiveReport(root, runId, {
   format = "html-brief",
   clientName = "Nebula Client",
   output = null,
+  type = null,
+  target = null,
+  baseUrl = null,
+  refDate = null,
+  input = null,
+  funnelId = null,
 } = {}) {
+  if (type === 'search' || type === 'seo' || format === 'search') {
+    const r = await exportExecutiveSearchReport(root, {
+      runId,
+      format: ['html-brief', 'html'].includes(format) ? 'html' : format === 'search' ? 'markdown' : format,
+      clientName,
+      output,
+      target,
+      baseUrl,
+      refDate,
+      backlinksInput: input,
+    });
+    return {
+      format: r.format,
+      client_name: r.client_name,
+      run_id: runId,
+      output_path: r.output_path,
+      content: r.content,
+      data: r.data,
+    };
+  }
+
+  if (type === 'cro' || format === 'cro') {
+    const r = await exportExecutiveCroReport(root, {
+      runId,
+      format: ['html-brief', 'html'].includes(format) ? 'html' : format === 'cro' ? 'markdown' : format,
+      clientName,
+      output,
+      target,
+      baseUrl,
+      refDate,
+      telemetryInput: input,
+      funnelId,
+    });
+    return {
+      format: r.format,
+      client_name: r.client_name,
+      run_id: runId,
+      output_path: r.output_path,
+      content: r.content,
+      data: r.data,
+    };
+  }
+
   const runsDir = path.join(root, ".citable", "runs");
   let targetRun = runId;
 
