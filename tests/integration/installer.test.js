@@ -50,7 +50,15 @@ test('install into Claude, Codex, and Cursor project locations, then rerun idemp
     true,
   );
   assert.equal(
+    fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-remediator.md')),
+    true,
+  );
+  assert.equal(
     fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-semantic-reviewer.md')),
+    true,
+  );
+  assert.equal(
+    fs.existsSync(path.join(project, '.claude', 'agents', 'citable', 'citable-sow-architect.md')),
     true,
   );
   assert.equal(fs.existsSync(path.join(project, '.agents', 'agents', 'citable')), false);
@@ -69,7 +77,12 @@ test('Claude profile sidecars are managed, collision-safe, and removed without t
   const profileManifest = readJson(path.join(profileDir, 'manifest.json'));
   assert.equal(profileManifest.name, 'citable-agent-profiles');
   assert.equal(profileManifest.managedBy, 'citable-cli');
-  assert.deepEqual(Object.keys(profileManifest.files).sort(), ['citable-auditor.md', 'citable-semantic-reviewer.md']);
+  assert.deepEqual(Object.keys(profileManifest.files).sort(), [
+    'citable-auditor.md',
+    'citable-remediator.md',
+    'citable-semantic-reviewer.md',
+    'citable-sow-architect.md',
+  ]);
 
   const userAgent = path.join(first.project, '.claude', 'agents', 'team-reviewer.md');
   fs.writeFileSync(userAgent, '# user-owned agent\n', 'utf8');
@@ -114,7 +127,7 @@ test('dry-run install makes no filesystem changes', async () => {
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, true);
   assert.equal(result.plan[0].agentProfiles.action, 'install');
-  assert.equal(result.plan[0].agentProfiles.filesToCreate.length, 2);
+  assert.equal(result.plan[0].agentProfiles.filesToCreate.length, 4);
   assert.equal(result.plan[0].agentProfiles.path, path.join(project, '.claude', 'agents', 'citable'));
   assert.equal(fs.existsSync(path.join(project, '.claude', 'skills', 'citable')), false);
   assert.equal(fs.existsSync(path.join(project, '.claude', 'agents', 'citable')), false);

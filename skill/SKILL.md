@@ -7,7 +7,7 @@ description: >
   generative engine optimization, structured data governance, claim substantiation,
   crawler policy, entity consistency, content discoverability, or wants a site audited
   for how search and AI systems will retrieve, understand, cite, or recommend it.
-version: 1.18.0
+version: 1.18.1
 ---
 
 # Citable — evidence and change control for search and AI citation readiness
@@ -258,6 +258,27 @@ The CRO suite completes the loop. Rules that govern every step:
 7. **Machine-readable output is a contract.** `--json` wraps every command
    payload in the `citable_output_schema` 1.0 envelope
    (`schemas/cli-output-envelope.schema.json`).
+
+## Enterprise SOW & governance protocol (findings → admissibility → traceability → contract)
+
+The SOW engine (`citable sow generate`, `citable sow validate`) translates verified audit findings into legally enforceable enterprise Statements of Work:
+
+1. **Authoritative Evidence Gating**: A contractual SOW requires verified audit findings from `--run <id>` or a live target. Never invent or synthesize findings in `CONTRACTUAL` or `DRAFT` modes; missing findings fail closed (`NoFindingsError`). Synthetic baseline findings are strictly confined to `--sample` / `--demo`.
+2. **Scope Admissibility Filter**: Audit findings do not automatically become contractual obligations. Every candidate finding must pass 7 objective gates:
+   - *Exclusion Gate*: No explicitly blacklisted detectors (`REFUSE-EXCLUDED`).
+   - *Discipline Authorization*: Finding discipline must be authorized in engagement terms (`REFUSE-DISCIPLINE-NOT-AUTHORIZED`).
+   - *Evidence Maturity*: Deterministic/observed confidence with real evidence (`REFUSE-EXPERIMENTAL`, `REFUSE-NO-EVIDENCE`).
+   - *Scope Boundary*: URL matches contracted origins, hosts, or paths (`REFUSE-OUT-OF-SCOPE`).
+   - *Technical Feasibility*: Reject legal, trademark, GDPR, or unfeasible remediation (`REFUSE-UNFEASIBLE-REMEDIATION`).
+   - *Commercial Materiality*: High severity or ICE score >= min threshold (`REFUSE-LOW-MATERIALITY`).
+   - *Measurable Acceptance*: Automated verification rerun detector or test (`REFUSE-UNVERIFIABLE`).
+   - *Ownership Clarity*: Resolvable accountable delivery owner (`REFUSE-OWNER-UNRESOLVED`).
+   All refused findings are logged in `admissibility_gate.refusal_log`. Never force a refused item into scope.
+3. **The 7-Column Traceability Matrix**: Every admitted requirement must strictly link:
+   `Finding ID → Recommendation → SOW Req ID → Deliverable ID → Acceptance Test ID → Responsible Owner → Source Evidence IDs`.
+4. **Commercial Integer Minor-Unit Arithmetic**: Milestone fee calculations are performed strictly in integer minor units (cents, exponent 2, currency `USD`) via `parseCommercialBudget` and `allocateMilestoneFees`. Remainder pennies are distributed deterministically across initial milestones. Fractional sub-cents (`100.001`) and negative budgets are rejected. Milestone fees and total fees must balance to the exact integer cent.
+5. **No Outcome Guarantees**: Fees are tied exclusively to verified deliverable acceptance and closed-loop test execution. Ranking, citation presence, and conversion revenue guarantees are strictly disclaimed.
+6. **Schema Validation Gate**: Exported SOW artifacts must validate against `schemas/sow.schema.json` with `additionalProperties: false`.
 
 ## Command workflows
 

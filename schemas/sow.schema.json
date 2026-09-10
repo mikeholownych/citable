@@ -6,87 +6,404 @@
   "required": [
     "sow_id",
     "version",
+    "generation_mode",
     "title",
     "client",
     "supplier",
     "effective_date",
+    "term_days",
+    "currency",
+    "currency_minor_unit_exponent",
+    "commercial_total_fee_minor",
+    "commercial_total_fee_usd",
     "executive_scope",
     "admissibility_gate",
     "work_packages",
     "deliverables",
     "acceptance_criteria",
-    "traceability_matrix"
+    "traceability_matrix",
+    "generation_provenance"
   ],
   "properties": {
-    "sow_id": { "type": "string" },
+    "$schema": { "type": "string" },
+    "sow_id": { "type": "string", "pattern": "^SOW-[A-Za-z0-9_-]+$" },
     "version": { "type": "string" },
-    "title": { "type": "string" },
+    "generation_mode": {
+      "type": "string",
+      "enum": ["CONTRACTUAL", "DRAFT", "NON_CONTRACTUAL_SAMPLE"]
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "synthetic_evidence": { "type": "boolean" },
     "client": {
       "type": "object",
       "required": ["name", "contact"],
       "properties": {
-        "name": { "type": "string" },
-        "contact": { "type": "string" }
-      }
+        "name": { "type": "string", "minLength": 1 },
+        "contact": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
     },
     "supplier": {
       "type": "object",
       "required": ["name", "contact"],
       "properties": {
-        "name": { "type": "string" },
-        "contact": { "type": "string" }
-      }
+        "name": { "type": "string", "minLength": 1 },
+        "contact": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
     },
     "effective_date": { "type": "string" },
-    "term_days": { "type": "integer" },
+    "term_days": { "type": "integer", "minimum": 1 },
+    "currency": { "type": "string", "enum": ["USD"] },
+    "currency_minor_unit_exponent": { "type": "integer", "enum": [2] },
+    "commercial_total_fee_minor": { "type": "integer", "minimum": 0 },
+    "commercial_total_fee_usd": { "type": "number", "minimum": 0 },
     "executive_scope": {
       "type": "object",
       "required": ["business_objective", "in_scope_properties", "in_scope_systems"],
       "properties": {
-        "business_objective": { "type": "string" },
+        "business_objective": { "type": "string", "minLength": 1 },
         "in_scope_properties": { "type": "array", "items": { "type": "string" } },
         "in_scope_systems": { "type": "array", "items": { "type": "string" } },
         "channels": { "type": "array", "items": { "type": "string" } },
-        "geographies": { "type": "array", "items": { "type": "string" } }
-      }
+        "geographies": { "type": "array", "items": { "type": "string" } },
+        "organizational_boundaries": { "type": "string" }
+      },
+      "additionalProperties": false
     },
     "admissibility_gate": {
       "type": "object",
-      "required": ["total_findings_evaluated", "admitted_count", "refused_count"],
+      "required": ["total_findings_evaluated", "admitted_count", "refused_count", "admissibility_rate_pct", "refusal_log"],
       "properties": {
-        "total_findings_evaluated": { "type": "integer" },
-        "admitted_count": { "type": "integer" },
-        "refused_count": { "type": "integer" },
-        "refusal_log": { "type": "array" }
+        "total_findings_evaluated": { "type": "integer", "minimum": 0 },
+        "admitted_count": { "type": "integer", "minimum": 0 },
+        "refused_count": { "type": "integer", "minimum": 0 },
+        "admissibility_rate_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "refusal_log": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["finding_id", "subject", "gate_failed", "refusal_code", "refusal_rationale"],
+            "properties": {
+              "finding_id": { "type": "string" },
+              "detector_id": { "type": "string" },
+              "subject": { "type": "string" },
+              "gate_failed": { "type": "string" },
+              "refusal_code": { "type": "string" },
+              "refusal_rationale": { "type": "string" },
+              "suggested_handling": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "methodology": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "assumptions_and_constraints": {
+      "type": "object",
+      "required": ["assumptions", "dependencies", "exclusions", "constraints", "unresolved_unknowns"],
+      "properties": {
+        "assumptions": { "type": "array", "items": { "type": "string" } },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "constraints": { "type": "array", "items": { "type": "string" } },
+        "unresolved_unknowns": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "work_packages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["work_package_id", "name", "deliverable_id", "owner", "requirements"],
+        "properties": {
+          "work_package_id": { "type": "string" },
+          "name": { "type": "string" },
+          "deliverable_id": { "type": "string" },
+          "owner": { "type": "string" },
+          "requirements": { "type": "array", "minItems": 1 }
+        },
+        "additionalProperties": false
       }
     },
-    "work_packages": { "type": "array" },
-    "deliverables": { "type": "array" },
-    "acceptance_criteria": { "type": "array" },
+    "deliverables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["deliverable_id", "work_package_id", "title", "artifact_type", "format", "owner", "delivery_criteria"],
+        "properties": {
+          "deliverable_id": { "type": "string" },
+          "work_package_id": { "type": "string" },
+          "title": { "type": "string" },
+          "artifact_type": { "type": "string" },
+          "format": { "type": "string" },
+          "owner": { "type": "string" },
+          "delivery_criteria": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "technical_requirements": {
+      "type": "object",
+      "properties": {
+        "supported_frameworks": { "type": "array", "items": { "type": "string" } },
+        "git_branching_model": { "type": "string" },
+        "rollback_mechanism": { "type": "string" },
+        "access_requirements": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["acceptance_test_id", "sow_requirement_id", "test_description", "validation_method", "pass_threshold", "evidence_required"],
+        "properties": {
+          "acceptance_test_id": { "type": "string" },
+          "sow_requirement_id": { "type": "string" },
+          "test_description": { "type": "string" },
+          "validation_method": { "type": "string" },
+          "pass_threshold": { "type": "string" },
+          "evidence_required": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "baseline_and_target_metrics": {
+      "type": "object",
+      "properties": {
+        "disclaimer": { "type": "string" },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["metric", "baseline", "target", "validation"],
+            "properties": {
+              "metric": { "type": "string" },
+              "baseline": { "type": "string" },
+              "target": { "type": "string" },
+              "validation": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "experiment_specifications": {
+      "type": "object",
+      "properties": {
+        "standard": { "type": "string" },
+        "stopping_criteria": { "type": "string" },
+        "guardrails": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "raci_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "r", "raci"],
+        "properties": {
+          "role": { "type": "string" },
+          "r": { "type": "string" },
+          "raci": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "customer_obligations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "delivery_schedule": {
+      "type": "object",
+      "required": ["total_duration_weeks", "milestones"],
+      "properties": {
+        "total_duration_weeks": { "type": "integer", "minimum": 1 },
+        "milestones": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["milestone_id", "work_package_id", "name", "fee_minor", "fee_usd", "billing_trigger", "target_delivery_week"],
+            "properties": {
+              "milestone_id": { "type": "string" },
+              "work_package_id": { "type": "string" },
+              "name": { "type": "string" },
+              "fee_minor": { "type": "integer", "minimum": 0 },
+              "fee_usd": { "type": "number", "minimum": 0 },
+              "billing_trigger": { "type": "string" },
+              "target_delivery_week": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "change_control_process": {
+      "type": "object",
+      "properties": {
+        "procedure": { "type": "string" },
+        "authorization": { "type": "string" },
+        "superceding_rules": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "risk_register": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "description", "mitigation"],
+        "properties": {
+          "id": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "mitigation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "data_governance": {
+      "type": "object",
+      "properties": {
+        "authorized_sources": { "type": "array", "items": { "type": "string" } },
+        "retention_period": { "type": "string" },
+        "processing_purpose": { "type": "string" },
+        "deletion_upon_termination": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "security_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "platform_dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "qa_plan": {
+      "type": "object",
+      "properties": {
+        "methodology": { "type": "string" },
+        "evidence_package": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "governance_model": {
+      "type": "object",
+      "properties": {
+        "weekly_sync": { "type": "string" },
+        "written_reports": { "type": "string" },
+        "decision_logging": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "commercial_terms": {
+      "type": "object",
+      "required": ["total_fixed_fee_minor", "total_fixed_fee_usd", "currency", "payment_terms", "milestones"],
+      "properties": {
+        "total_fixed_fee_minor": { "type": "integer", "minimum": 0 },
+        "total_fixed_fee_usd": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "payment_terms": { "type": "string" },
+        "milestones": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warranty_terms": {
+      "type": "object",
+      "properties": {
+        "warranty_window_days": { "type": "integer", "minimum": 0 },
+        "defect_definition": { "type": "string" },
+        "exclusion": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "completion_and_handoff": {
+      "type": "object",
+      "properties": {
+        "handoff_assets": { "type": "array", "items": { "type": "string" } },
+        "operational_signoff": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "termination_provisions": {
+      "type": "object",
+      "properties": {
+        "convenience": { "type": "string" },
+        "compensation": { "type": "string" },
+        "asset_transfer": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "traceability_matrix": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": [
           "finding_id",
           "recommendation",
           "sow_requirement_id",
+          "work_package_id",
           "deliverable_id",
           "acceptance_test_id",
           "owner",
-          "evidence_id"
+          "evidence_id",
+          "evidence_ids"
         ],
         "properties": {
           "finding_id": { "type": "string" },
+          "detector_id": { "type": "string" },
           "recommendation": { "type": "string" },
           "sow_requirement_id": { "type": "string" },
           "work_package_id": { "type": "string" },
           "deliverable_id": { "type": "string" },
           "acceptance_test_id": { "type": "string" },
           "owner": { "type": "string" },
-          "evidence_id": { "type": "string" }
-        }
+          "owner_source": { "type": "string" },
+          "owner_mapping_version": { "type": "string" },
+          "evidence_id": { "type": "string" },
+          "evidence_ids": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "severity": { "type": "string" },
+          "target_subject": { "type": "string" },
+          "acceptance_criteria": { "type": "string" }
+        },
+        "additionalProperties": false
       }
+    },
+    "generation_provenance": {
+      "type": "object",
+      "required": [
+        "generated_at",
+        "generator_version",
+        "generation_mode",
+        "source_type",
+        "source_findings_count",
+        "synthetic_evidence"
+      ],
+      "properties": {
+        "generated_at": { "type": "string" },
+        "generator_version": { "type": "string" },
+        "generation_mode": { "type": "string", "enum": ["CONTRACTUAL", "DRAFT", "NON_CONTRACTUAL_SAMPLE"] },
+        "source_type": { "type": "string" },
+        "source_identifier": { "type": ["string", "null"] },
+        "source_findings_count": { "type": "integer", "minimum": 0 },
+        "findings_integrity_hash": { "type": ["string", "null"] },
+        "synthetic_evidence": { "type": "boolean" }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

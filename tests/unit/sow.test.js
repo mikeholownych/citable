@@ -17,6 +17,7 @@ test('generateSow creates enterprise-grade SOW satisfying schemas/sow.schema.jso
     supplierContact: 'practice@nebula.test',
     budget: 65000,
     termDays: 90,
+    sample: true,
   });
 
   // 1. Validate JSON Schema contract
@@ -72,6 +73,7 @@ test('renderSowMarkdown and renderSowHtml render complete formatted documents', 
   const sow = await generateSow(ROOT, {
     client: 'Apollo Technologies',
     budget: 50000,
+    sample: true,
   });
 
   const md = renderSowMarkdown(sow);
@@ -96,19 +98,19 @@ test('exportSow writes deliverables to disk and returns content', async () => {
   const jsonFile = path.join(tmpDir, 'SOW.json');
 
   // Export Markdown
-  const mdRes = await exportSow(ROOT, { format: 'markdown', output: mdFile });
+  const mdRes = await exportSow(ROOT, { format: 'markdown', output: mdFile, sample: true });
   assert.equal(mdRes.format, 'markdown');
   assert.equal(fs.existsSync(mdFile), true);
   assert.ok(fs.readFileSync(mdFile, 'utf8').includes('Statement of Work'));
 
   // Export HTML
-  const htmlRes = await exportSow(ROOT, { format: 'html', output: htmlFile });
+  const htmlRes = await exportSow(ROOT, { format: 'html', output: htmlFile, sample: true });
   assert.equal(htmlRes.format, 'html');
   assert.equal(fs.existsSync(htmlFile), true);
   assert.ok(fs.readFileSync(htmlFile, 'utf8').includes('<!DOCTYPE html>'));
 
   // Export JSON
-  const jsonRes = await exportSow(ROOT, { format: 'json', output: jsonFile });
+  const jsonRes = await exportSow(ROOT, { format: 'json', output: jsonFile, sample: true });
   assert.equal(jsonRes.format, 'json');
   assert.equal(fs.existsSync(jsonFile), true);
   const parsed = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
@@ -120,7 +122,7 @@ test('sowCommand CLI generates and validates SOW artifact', async () => {
   const jsonFile = path.join(tmpDir, 'test-sow.json');
 
   // 1. Generate JSON SOW via CLI
-  await sowCommand(['--format', 'json', '--output', jsonFile, '--budget', '75000'], ROOT);
+  await sowCommand(['--format', 'json', '--output', jsonFile, '--budget', '75000', '--sample'], ROOT);
   assert.equal(fs.existsSync(jsonFile), true);
 
   // 2. Validate JSON SOW via CLI
@@ -130,3 +132,4 @@ test('sowCommand CLI generates and validates SOW artifact', async () => {
   assert.deepEqual(valResult.errors, []);
   assert.ok(valResult.message.includes('strictly to schemas/sow.schema.json contract'));
 });
+

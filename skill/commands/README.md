@@ -42,6 +42,19 @@ intent, not executability, so statuses are strict:
 | /citable validate-render | partially implemented by `observe render`; fixed Chromium profiles and schema-validated Chromium/Firefox/WebKit journeys are implemented, while reviewed semantic-impact detectors and reusable application-specific journey libraries remain |
 | /citable measure seo/aeo/geo, test-prompts, monitor-crawlers, monitor-contradictions | partially implemented by metric/observation imports, objective evaluation, Google/CrUX live APIs, custom citation adapters, and monitor comparisons |
 | `citable artifacts export/verify/import` | implemented — portable, versioned, checksum-bound run interchange without hosted-service authority |
+| /citable sow generate / validate | implemented — 25-pillar SOW with 7-gate admissibility, 7-column traceability matrix, and integer minor-unit arithmetic (sow.md) |
+| /citable report search / cro | implemented — split 19-pillar Search and 25-pillar CRO executive briefings with observation vs hypothesis vs causation taxonomy (reporting.md) |
+| /citable sweep technical | implemented — static Core Web Vitals readiness analysis (LCP, INP, CLS) |
+| /citable inspect eeat / inspect readiness | implemented — on-page 0-5 E-E-A-T rubric scoring and multi-answer-engine readiness (Perplexity, Copilot, ChatGPT) |
+| /citable audit backlinks | implemented — off-page authority assessment, toxic TLD detection, and disavow generator |
+| /citable prioritize matrix | implemented — Impact / Effort / Confidence (ICE) scoring matrix for findings |
+| /citable roadmap strategic / cro roadmap | implemented — 30/90/180-day milestone implementation roadmaps |
+| /citable cro / cro backlog | implemented — conversion path continuity, message match, cognitive friction, and falsifiable experiment backlog |
+| /citable remediate / verify remediation / kit export | implemented — framework detection, idempotent AST patches, confidence gate, detector rerun verification, and customer delivery kits (remediation.md) |
+| /citable check experiment | implemented — sample-ratio mismatch (SRM), early stopping, and statistical power guardrails |
+| /citable test visual / preview cro | implemented — visual layout contract testing and accessibility-aware preview sandbox |
+| /citable compatibility | implemented — pre-flight runtime, dependency, framework, and edge worker diagnostics |
+| /citable corpus benchmark | implemented — golden benchmark corpus evaluation with per-detector precision/recall gates |
 
 Shared refusal conditions (all commands): any action that would fabricate
 facts, citations, evidence, authorship, reviews, corroboration, or hidden
