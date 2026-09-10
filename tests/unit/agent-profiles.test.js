@@ -88,6 +88,52 @@ test('semantic reviewer cannot upgrade evidence or mutate source artifacts', () 
   assert.match(body, /source run|finding hash/i);
 });
 
+test('remediator profile requires closed-loop verification and safe AST patching', () => {
+  const remediator = readProfile('citable-remediator');
+
+  assert.equal(remediator.frontmatter.name, 'citable-remediator');
+  assert.deepEqual(remediator.frontmatter.skills, ['citable']);
+  assert.equal(remediator.frontmatter.model, 'inherit');
+  assert.ok(remediator.frontmatter.maxTurns <= 25);
+
+  const tools = new Set(remediator.frontmatter.tools);
+  assert.deepEqual([...tools].sort(), ['Bash', 'Glob', 'Grep', 'Read']);
+  assert.ok(!tools.has('Edit'));
+  assert.ok(!tools.has('Write'));
+
+  const { body } = remediator;
+  assert.match(body, /citable remediate/);
+  assert.match(body, /citable verify remediation/);
+  assert.match(body, /citable kit export/);
+  assert.match(body, /AST validation|AST patch/i);
+  assert.match(body, /rollback snapshot/i);
+  assert.match(body, /no.*ranking|never promise/i);
+});
+
+test('SOW architect profile enforces admissibility gates and minor-unit arithmetic', () => {
+  const architect = readProfile('citable-sow-architect');
+
+  assert.equal(architect.frontmatter.name, 'citable-sow-architect');
+  assert.deepEqual(architect.frontmatter.skills, ['citable']);
+  assert.equal(architect.frontmatter.model, 'inherit');
+  assert.ok(architect.frontmatter.maxTurns <= 25);
+
+  const tools = new Set(architect.frontmatter.tools);
+  assert.deepEqual([...tools].sort(), ['Bash', 'Glob', 'Grep', 'Read']);
+  assert.ok(!tools.has('Edit'));
+  assert.ok(!tools.has('Write'));
+
+  const { body } = architect;
+  assert.match(body, /citable sow generate/);
+  assert.match(body, /citable sow validate/);
+  assert.match(body, /citable report search/);
+  assert.match(body, /citable report cro/);
+  assert.match(body, /admissibility gate/i);
+  assert.match(body, /traceability/i);
+  assert.match(body, /integer minor-unit/i);
+  assert.match(body, /no search engine crawling.*guaranteed|never promise/i);
+});
+
 test('distribution generates discoverable Claude profiles and fails closed for unverified hosts', () => {
   const build = spawnSync(process.execPath, ['scripts/build-dist.js'], {
     cwd: ROOT,
@@ -99,13 +145,23 @@ test('distribution generates discoverable Claude profiles and fails closed for u
   const claudeProfiles = path.join(ROOT, 'dist', 'universal', '.claude', 'agents', 'citable');
   const auditor = path.join(claudeProfiles, 'citable-auditor.md');
   const reviewer = path.join(claudeProfiles, 'citable-semantic-reviewer.md');
+  const remediator = path.join(claudeProfiles, 'citable-remediator.md');
+  const architect = path.join(claudeProfiles, 'citable-sow-architect.md');
+
   assert.equal(fs.readFileSync(auditor, 'utf8'), fs.readFileSync(path.join(AGENTS, 'citable-auditor.md'), 'utf8'));
   assert.equal(fs.readFileSync(reviewer, 'utf8'), fs.readFileSync(path.join(AGENTS, 'citable-semantic-reviewer.md'), 'utf8'));
+  assert.equal(fs.readFileSync(remediator, 'utf8'), fs.readFileSync(path.join(AGENTS, 'citable-remediator.md'), 'utf8'));
+  assert.equal(fs.readFileSync(architect, 'utf8'), fs.readFileSync(path.join(AGENTS, 'citable-sow-architect.md'), 'utf8'));
 
   const profileManifest = JSON.parse(fs.readFileSync(path.join(claudeProfiles, 'manifest.json'), 'utf8'));
   assert.equal(profileManifest.name, 'citable-agent-profiles');
   assert.equal(profileManifest.provider, 'claude');
-  assert.deepEqual(Object.keys(profileManifest.files).sort(), ['citable-auditor.md', 'citable-semantic-reviewer.md']);
+  assert.deepEqual(Object.keys(profileManifest.files).sort(), [
+    'citable-auditor.md',
+    'citable-remediator.md',
+    'citable-semantic-reviewer.md',
+    'citable-sow-architect.md',
+  ]);
   assert.match(profileManifest.treeHash, /^sha256:[a-f0-9]{64}$/);
 
   const skillManifest = JSON.parse(fs.readFileSync(path.join(claudeSkill, 'manifest.json'), 'utf8'));

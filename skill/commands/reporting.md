@@ -71,3 +71,31 @@ any observed change to a specific intervention.
    authoritative index guarantees. Divergences are reported as factual observations,
    never fabricated or interpolated.
 
+# Enterprise Search Intelligence Briefing (`citable report search`)
+
+1. Run `citable report search [--target <dir|url>] [--run <id>] [--format md|html|json] [--output <file>]`
+   to generate the 19-pillar Executive Search Intelligence Briefing.
+2. Synthesizes technical crawlability, indexation, Core Web Vitals readiness,
+   AEO answer-extractability, GEO citation frequency, knowledge graph schema
+   architecture, and competitor SERP landscape into an executive document.
+3. Every recommendation binds to a verified finding in the Evidence Register.
+4. Facts and inferences are strictly segregated: deterministic observations are
+   reported in green data panels; strategic hypotheses and inferences are explicitly
+   labeled with confidence ratings.
+5. Refusal boundary: Never promises rankings, algorithmic immunity, or indexing
+   guarantees.
+
+# Enterprise CRO & Customer Journey Briefing (`citable report cro`)
+
+1. Run `citable report cro [--target <dir|url>] [--input <file>] [--format md|html|json] [--output <file>]`
+   to generate the 25-pillar Executive Conversion & Customer Journey Briefing.
+2. Covers end-to-end conversion paths: above-the-fold clarity, message-match
+   scoring, cognitive load, checkout friction, trust and objection analysis, offer
+   architecture, and prioritized A/B experiment blueprints.
+3. Strictly adheres to the **Observation vs Hypothesis vs Causation** taxonomy:
+   - **Observations**: Verbatim DOM defects (e.g. missing autocomplete, undersized touch targets).
+   - **Hypotheses**: Falsifiable experiment statements with measurable primary metrics and guardrails.
+   - **Causation**: Statistical lift attribution requiring concluded, SRM-clean A/B experiments.
+4. Refusal boundary: Revenue lift, conversion percentage improvements, and visual
+   saliency scores are modeled heuristic indices, never observed behavior or guaranteed revenue.
+

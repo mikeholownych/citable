@@ -4,143 +4,503 @@ import { buildContext } from '../commands/context.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors, indexTargets } from '../detectors/framework.js';
 import { evaluateScopeAdmissibility } from './admissibilityGate.js';
-import { readJson, nowIso } from '../shared/io.js';
+import { readJson, nowIso, sha256 } from '../shared/io.js';
+import { validateAgainst } from '../shared/schemaValidator.js';
+
+/**
+ * Typed SOW Domain Errors
+ */
+export class SowError extends Error {
+  constructor(message, code = 'SOW_ERROR') {
+    super(message);
+    this.name = this.constructor.name;
+    this.code = code;
+  }
+}
+
+export class RunNotFoundError extends SowError {
+  constructor(runId) {
+    super(`Specified run not found: ${runId}`, 'RUN_NOT_FOUND');
+    this.runId = runId;
+  }
+}
+
+export class FindingsMissingError extends SowError {
+  constructor(runId, filePath) {
+    super(`Run ${runId} is missing findings.json at ${filePath}`, 'FINDINGS_MISSING');
+    this.runId = runId;
+    this.filePath = filePath;
+  }
+}
+
+export class FindingsInvalidError extends SowError {
+  constructor(runId, message) {
+    super(`Run ${runId} contains malformed or invalid findings: ${message}`, 'FINDINGS_INVALID');
+    this.runId = runId;
+  }
+}
+
+export class LiveInspectionFailedError extends SowError {
+  constructor(target, reason) {
+    super(`Live target inspection failed for ${target}: ${reason}`, 'LIVE_INSPECTION_FAILED');
+    this.target = target;
+  }
+}
+
+export class NoFindingsError extends SowError {
+  constructor(source) {
+    super(`No audit findings available from ${source}. Production SOW generation requires authoritative findings. (Use --sample to generate non-contractual demonstration SOW)`, 'NO_FINDINGS');
+  }
+}
+
+export class NoAdmissibleRequirementsError extends SowError {
+  constructor(totalEvaluated, refusalCount) {
+    super(`Scope admissibility gate refused all ${totalEvaluated} findings (${refusalCount} refused). Zero contractable requirements remain.`, 'NO_ADMISSIBLE_REQUIREMENTS');
+  }
+}
+
+export class BudgetCalculationError extends SowError {
+  constructor(message) {
+    super(message, 'INVALID_COMMERCIAL_TERMS');
+  }
+}
+
+export class SowInvariantError extends SowError {
+  constructor(message) {
+    super(`SOW invariant failure: ${message}`, 'INVARIANT_VIOLATION');
+  }
+}
+
+export const SOW_CURRENCY = 'USD';
+export const SOW_CURRENCY_MINOR_EXPONENT = 2;
+
+/**
+ * Parse commercial budget into integer minor units (cents) and major units (USD).
+ * Ensures money units are unambiguous and rejects invalid, negative, or sub-cent fractional budgets.
+ */
+export function parseCommercialBudget({ budget = 45000, budgetMinor = null } = {}) {
+  if (budgetMinor !== null && budgetMinor !== undefined) {
+    if (!Number.isInteger(budgetMinor) || budgetMinor < 0) {
+      throw new BudgetCalculationError(`budgetMinor must be a non-negative integer (cents), got: ${budgetMinor}`);
+    }
+    const feeUsd = Number((budgetMinor / 100).toFixed(2));
+    return {
+      feeMinor: budgetMinor,
+      feeUsd,
+      currency: SOW_CURRENCY,
+      minorUnitExponent: SOW_CURRENCY_MINOR_EXPONENT,
+    };
+  }
+
+  const num = Number(budget);
+  if (Number.isNaN(num) || !Number.isFinite(num) || num < 0) {
+    throw new BudgetCalculationError(`Commercial budget must be a non-negative number, got: ${budget}`);
+  }
+
+  const minorUnits = Math.round(num * 100);
+  if (Math.abs(num * 100 - minorUnits) > 1e-6) {
+    throw new BudgetCalculationError(`Commercial budget cannot contain fractional minor units (sub-cents): ${budget}`);
+  }
+
+  const feeUsd = Number((minorUnits / 100).toFixed(2));
+  return {
+    feeMinor: minorUnits,
+    feeUsd,
+    currency: SOW_CURRENCY,
+    minorUnitExponent: SOW_CURRENCY_MINOR_EXPONENT,
+  };
+}
+
+/**
+ * Exact integer milestone fee allocation distributing remainder deterministically.
+ * Allocates integer currency units (such as minor units / cents) across work packages without remainder leaks.
+ */
+export function allocateMilestoneFees(totalUnits, count) {
+  if (!Number.isInteger(totalUnits) || totalUnits < 0) {
+    throw new BudgetCalculationError(`Commercial budget units must be a non-negative integer, got: ${totalUnits}`);
+  }
+  if (!Number.isInteger(count) || count <= 0) {
+    throw new BudgetCalculationError(`Cannot allocate milestone fees across ${count} work packages`);
+  }
+  const base = Math.floor(totalUnits / count);
+  const remainder = totalUnits - (base * count);
+  const fees = [];
+  for (let i = 0; i < count; i++) {
+    fees.push(base + (i < remainder ? 1 : 0));
+  }
+  const sum = fees.reduce((acc, f) => acc + f, 0);
+  if (sum !== totalUnits) {
+    throw new BudgetCalculationError(`Milestone fee sum (${sum}) does not equal total units (${totalUnits})`);
+  }
+  return fees;
+}
+
+/**
+ * Extract canonical timestamp (epoch ms) from run package
+ * Hierarchy:
+ * 1. manifest.json `timestamp` or `created_at` ISO string
+ * 2. Run ID timestamp prefix (YYYYMMDDTHHmmss)
+ * 3. findings.json mtime
+ * 4. run directory mtime
+ */
+export function getCanonicalRunTimestamp(runDir, runId = '') {
+  // 1. manifest.json
+  const manifestPath = path.join(runDir, 'manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      if (manifest.timestamp) {
+        const ms = Date.parse(manifest.timestamp);
+        if (!Number.isNaN(ms)) return ms;
+      }
+      if (manifest.created_at) {
+        const ms = Date.parse(manifest.created_at);
+        if (!Number.isNaN(ms)) return ms;
+      }
+    } catch {}
+  }
+
+  // 2. Run ID timestamp prefix (YYYYMMDDTHHmmss)
+  const m = String(runId).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
+  if (m) {
+    const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+    const ms = Date.parse(iso);
+    if (!Number.isNaN(ms)) return ms;
+  }
+
+  // 3. findings.json mtime
+  const findPath = path.join(runDir, 'findings.json');
+  if (fs.existsSync(findPath)) {
+    try {
+      return fs.statSync(findPath).mtimeMs;
+    } catch {}
+  }
+
+  // 4. Directory mtime
+  try {
+    return fs.statSync(runDir).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Sort run candidate directory names by chronological timestamp descending,
+ * with deterministic lexicographical tie-breaking.
+ * Invariant:
+ *   latest run = max(canonical run timestamp)
+ *   tie = deterministic secondary key
+ */
+export function sortRunCandidatesChronologically(runsDir, candidateRunIds = []) {
+  return [...candidateRunIds].sort((a, b) => {
+    const timeA = getCanonicalRunTimestamp(path.join(runsDir, a), a);
+    const timeB = getCanonicalRunTimestamp(path.join(runsDir, b), b);
+    if (timeB !== timeA) {
+      return timeB - timeA; // Descending: latest timestamp first
+    }
+    return b.localeCompare(a); // Deterministic tie-breaker
+  });
+}
+
+/**
+ * Verify cross-object runtime invariants before SOW export
+ */
+export function validateSowInvariants(sow) {
+  if (!sow || typeof sow !== 'object') {
+    throw new SowInvariantError('SOW root must be an object');
+  }
+  if (!['CONTRACTUAL', 'DRAFT', 'NON_CONTRACTUAL_SAMPLE'].includes(sow.generation_mode)) {
+    throw new SowInvariantError(`Invalid generation_mode: ${sow.generation_mode}`);
+  }
+  if (sow.generation_mode === 'CONTRACTUAL' && sow.synthetic_evidence) {
+    throw new SowInvariantError('Contractual SOW cannot contain synthetic evidence');
+  }
+  if (sow.currency !== 'USD') {
+    throw new SowInvariantError(`Currency must be 'USD', got: ${sow.currency}`);
+  }
+  if (sow.currency_minor_unit_exponent !== 2) {
+    throw new SowInvariantError(`Minor unit exponent must be 2, got: ${sow.currency_minor_unit_exponent}`);
+  }
+  if (typeof sow.commercial_total_fee_minor !== 'number' || !Number.isInteger(sow.commercial_total_fee_minor)) {
+    throw new SowInvariantError(`commercial_total_fee_minor must be an integer, got: ${sow.commercial_total_fee_minor}`);
+  }
+  if (typeof sow.commercial_total_fee_usd !== 'number' || sow.commercial_total_fee_usd < 0) {
+    throw new SowInvariantError(`commercial_total_fee_usd must be a non-negative number, got: ${sow.commercial_total_fee_usd}`);
+  }
+  if (sow.commercial_total_fee_minor !== Math.round(sow.commercial_total_fee_usd * 100)) {
+    throw new SowInvariantError(`commercial_total_fee_minor (${sow.commercial_total_fee_minor}) does not match commercial_total_fee_usd (${sow.commercial_total_fee_usd})`);
+  }
+  if (!Array.isArray(sow.work_packages) || sow.work_packages.length === 0) {
+    throw new SowInvariantError('SOW must contain at least one work package');
+  }
+  if (!Array.isArray(sow.deliverables) || sow.deliverables.length === 0) {
+    throw new SowInvariantError('SOW must contain at least one deliverable');
+  }
+  if (sow.work_packages.length !== sow.deliverables.length) {
+    throw new SowInvariantError(`Work packages count (${sow.work_packages.length}) must match deliverables count (${sow.deliverables.length})`);
+  }
+  if (!Array.isArray(sow.traceability_matrix) || sow.traceability_matrix.length === 0) {
+    throw new SowInvariantError('SOW must contain at least one traceability matrix requirement');
+  }
+  const wpIds = new Set(sow.work_packages.map((wp) => wp.work_package_id));
+  const delivIds = new Set(sow.deliverables.map((d) => d.deliverable_id));
+  for (const row of sow.traceability_matrix) {
+    if (!wpIds.has(row.work_package_id)) {
+      throw new SowInvariantError(`Traceability matrix references unknown work package: ${row.work_package_id}`);
+    }
+    if (!delivIds.has(row.deliverable_id)) {
+      throw new SowInvariantError(`Traceability matrix references unknown deliverable: ${row.deliverable_id}`);
+    }
+    if (!Array.isArray(row.evidence_ids) || row.evidence_ids.length === 0) {
+      throw new SowInvariantError(`Traceability matrix row ${row.sow_requirement_id} lacks supporting evidence_ids`);
+    }
+  }
+
+  const milestones = sow.delivery_schedule?.milestones || [];
+  const milestoneMinorSum = milestones.reduce((sum, m) => sum + m.fee_minor, 0);
+  if (milestoneMinorSum !== sow.commercial_total_fee_minor) {
+    throw new SowInvariantError(`Milestone minor fees sum (${milestoneMinorSum}) does not match total minor fee (${sow.commercial_total_fee_minor})`);
+  }
+  const milestoneUsdSum = Number(milestones.reduce((sum, m) => sum + m.fee_usd, 0).toFixed(2));
+  if (milestoneUsdSum !== sow.commercial_total_fee_usd) {
+    throw new SowInvariantError(`Milestone USD fees sum (${milestoneUsdSum}) does not match total fee USD (${sow.commercial_total_fee_usd})`);
+  }
+  for (const m of milestones) {
+    if (m.fee_minor !== Math.round(m.fee_usd * 100)) {
+      throw new SowInvariantError(`Milestone ${m.milestone_id} fee_minor (${m.fee_minor}) does not match fee_usd (${m.fee_usd})`);
+    }
+  }
+
+  const gate = sow.admissibility_gate;
+  if (gate.total_findings_evaluated !== gate.admitted_count + gate.refused_count) {
+    throw new SowInvariantError(`Admissibility gate numbers do not balance: ${gate.total_findings_evaluated} != ${gate.admitted_count} + ${gate.refused_count}`);
+  }
+  return true;
+}
+
+/**
+ * Standard synthetic baseline findings used strictly for sample mode (--sample / --demo)
+ */
+export function getSampleBaselineFindings() {
+  return [
+    {
+      finding_id: 'F-TECH-CWV-001',
+      detector_id: 'TECH-001',
+      discipline: ['technical'],
+      classification: { severity: 'critical', confidence: 'deterministic' },
+      subject: { identifier: 'https://example.test/', url: 'https://example.test/' },
+      observation: { summary: 'Render-blocking JavaScript bundle degrades Mobile LCP to 4.2s', evidence: ['EVD-CWV-001'] },
+      remediation: { preferred: 'Implement asynchronous resource loading and preconnect headers' },
+      verification: { detector_to_rerun: 'TECH-001', method: 'Static CWV inspection and HTTP header probe' },
+      ice_score: 14.5,
+    },
+    {
+      finding_id: 'F-CRO-AUTO-007',
+      detector_id: 'CRO-007',
+      discipline: ['cro'],
+      classification: { severity: 'high', confidence: 'deterministic' },
+      subject: { identifier: 'https://example.test/checkout', url: 'https://example.test/checkout' },
+      observation: { summary: 'Checkout form inputs lack HTML5 autocomplete attributes, increasing manual mobile entry by 68%', evidence: ['EVD-CRO-007'] },
+      remediation: { preferred: 'Inject standard autocomplete attributes (autocomplete="email", autocomplete="name", autocomplete="tel")' },
+      verification: { detector_to_rerun: 'CRO-007', method: 'DOM inspection and AST patch verification' },
+      ice_score: 18.0,
+    },
+    {
+      finding_id: 'F-CRO-DIST-013',
+      detector_id: 'CRO-013',
+      discipline: ['cro'],
+      classification: { severity: 'high', confidence: 'deterministic' },
+      subject: { identifier: 'https://example.test/checkout', url: 'https://example.test/checkout' },
+      observation: { summary: 'Dedicated checkout funnel contains 14 external header navigation links creating distraction leaks', evidence: ['EVD-CRO-013'] },
+      remediation: { preferred: 'Deploy enclosed distraction-free checkout layout stripping non-essential navigation' },
+      verification: { detector_to_rerun: 'CRO-013', method: 'Navigation link count verification' },
+      ice_score: 12.0,
+    },
+    {
+      finding_id: 'F-ANS-PRIC-001',
+      detector_id: 'ANS-001',
+      discipline: ['aeo'],
+      classification: { severity: 'high', confidence: 'deterministic' },
+      subject: { identifier: 'https://example.test/saas/pricing.html', url: 'https://example.test/saas/pricing.html' },
+      observation: { summary: 'Commercial pricing questions lack direct-extract definition passages under 75 words', evidence: ['EVD-ANS-001'] },
+      remediation: { preferred: 'Restructure FAQ headings with immediate concise copular answer passages' },
+      verification: { detector_to_rerun: 'ANS-001', method: 'Passage length and question-answer extraction test' },
+      ice_score: 11.0,
+    },
+    {
+      finding_id: 'F-SCHEMA-FAQ-001',
+      detector_id: 'SCHEMA-001',
+      discipline: ['schema'],
+      classification: { severity: 'medium', confidence: 'deterministic' },
+      subject: { identifier: 'https://example.test/pricing', url: 'https://example.test/pricing' },
+      observation: { summary: 'Commercial FAQ content lacks FAQPage JSON-LD schema markup', evidence: ['EVD-SCH-001'] },
+      remediation: { preferred: 'Deploy validated Schema.org FAQPage structured data' },
+      verification: { detector_to_rerun: 'SCHEMA-001', method: 'JSON-LD schema validation gate' },
+      ice_score: 9.5,
+    },
+    {
+      finding_id: 'F-EXP-GEO-999',
+      detector_id: 'EXP-GEO-999',
+      discipline: ['geo'],
+      classification: { severity: 'low', confidence: 'experimental', finding_type: 'experimental' },
+      subject: { identifier: 'https://unrelated-blog.test/post-1', url: 'https://unrelated-blog.test/post-1' },
+      observation: { summary: 'Speculative model hallucination on third-party forum', evidence: [] },
+      remediation: { preferred: 'Consult external legal counsel regarding public forum sentiment' },
+      ice_score: 2.0,
+    },
+  ];
+}
 
 /**
  * Generate an Enterprise-Grade Statement of Work (SOW) from SEO, AEO, GEO, SERP, and CRO findings.
- * Forces strict traceability: Evidence -> Obligation -> Acceptance Test.
+ * Forces strict downward traceability: Evidence -> Obligation -> Acceptance Test.
  */
 export async function generateSow(root, {
   target,
   baseUrl,
   refDate,
   runId,
+  live = false,
+  sample = false,
+  demo = false,
+  draft = false,
+  findings: inputFindings = null,
   client = 'Acme Corporation',
   clientContact = 'client-procurement@acme.test',
   supplier = 'Nebula Components & Citable Practice',
   supplierContact = 'advisory@nebulacomponents.test',
   budget = 45000,
+  budgetMinor = null,
   termDays = 90,
   inScopeProperties = [],
+  scopeMode = 'HOST_AND_SUBDOMAINS',
   minIceScore = 8.0,
+  allowedDisciplines = ['seo', 'aeo', 'geo', 'technical', 'schema', 'entity', 'cro'],
+  allowExperimental = false,
+  excludedDetectors = [],
+  roleMapping = null,
   sowId = null,
 } = {}) {
   const generatedAt = nowIso();
   const sowIdentifier = sowId || `SOW-${Date.now().toString(36).toUpperCase()}`;
+  const isSample = Boolean(sample || demo);
+  const isDraft = Boolean(draft);
+  const generationMode = isSample ? 'NON_CONTRACTUAL_SAMPLE' : (isDraft ? 'DRAFT' : 'CONTRACTUAL');
 
   let findings = [];
-  let sitePages = [];
+  let sourceProvenance = {
+    source_type: null,
+    source_identifier: null,
+    findings_count: 0,
+    integrity_hash: null,
+  };
 
-  // Attempt building live or target context if target provided
-  if (target) {
+  // 1. Precedence: Direct findings supplied programmatically
+  if (Array.isArray(inputFindings)) {
+    findings = inputFindings;
+    sourceProvenance.source_type = 'DIRECT_FINDINGS';
+    sourceProvenance.source_identifier = 'in_memory';
+  }
+  // 2. Precedence: Explicit run requested via --run <id>
+  else if (runId) {
+    const runsDir = path.join(root, '.citable', 'runs');
+    const runPath = path.join(runsDir, runId);
+    if (!fs.existsSync(runPath)) {
+      throw new RunNotFoundError(runId);
+    }
+    const findPath = path.join(runPath, 'findings.json');
+    if (!fs.existsSync(findPath)) {
+      throw new FindingsMissingError(runId, findPath);
+    }
+    try {
+      findings = readJson(findPath);
+      if (!Array.isArray(findings)) throw new Error('findings.json root must be an array');
+      sourceProvenance.source_type = 'HISTORICAL_RUN';
+      sourceProvenance.source_identifier = runId;
+      sourceProvenance.integrity_hash = sha256(fs.readFileSync(findPath));
+    } catch (err) {
+      throw new FindingsInvalidError(runId, err.message);
+    }
+  }
+  // 3. Precedence: Live target inspection requested via --live or target
+  else if (live || target) {
+    if (!target) {
+      throw new SowError('Target is required for live inspection (e.g. --target <url|dir>)', 'TARGET_REQUIRED');
+    }
     try {
       const ctx = await buildContext(root, { target, baseUrl, refDate });
-      if (ctx?.site) {
-        sitePages = indexTargets(ctx);
-        const detectors = selectDetectors({ scopes: ['technical', 'seo', 'aeo', 'geo', 'schema', 'entity'] });
-        const res = runDetectors(detectors, ctx);
-        findings = res.findings;
+      if (!ctx?.site) {
+        throw new Error(`Target ${target} did not produce a valid site context`);
       }
-    } catch (e) {
-      // Non-blocking fallback
+      indexTargets(ctx);
+      const detectors = selectDetectors({ scopes: ['technical', 'seo', 'aeo', 'geo', 'schema', 'entity', 'cro'] });
+      const res = runDetectors(detectors, ctx);
+      findings = res.findings || [];
+      sourceProvenance.source_type = 'LIVE_INSPECTION';
+      sourceProvenance.source_identifier = target;
+    } catch (err) {
+      throw new LiveInspectionFailedError(target, err.message);
+    }
+  }
+  // 4. Precedence: Automatically load latest recorded run from .citable/runs if present
+  // Invariant: latest run = max(canonical run timestamp), tie = deterministic secondary key
+  else {
+    const runsDir = path.join(root, '.citable', 'runs');
+    if (fs.existsSync(runsDir)) {
+      const candidates = fs.readdirSync(runsDir)
+        .filter((d) => !d.startsWith('.') && fs.existsSync(path.join(runsDir, d, 'findings.json')));
+      const sortedCandidates = sortRunCandidatesChronologically(runsDir, candidates);
+
+      if (sortedCandidates.length > 0) {
+        const latestRunId = sortedCandidates[0];
+        const findPath = path.join(runsDir, latestRunId, 'findings.json');
+        try {
+          findings = readJson(findPath);
+          if (Array.isArray(findings)) {
+            sourceProvenance.source_type = 'LATEST_RECORDED_RUN';
+            sourceProvenance.source_identifier = latestRunId;
+            sourceProvenance.integrity_hash = sha256(fs.readFileSync(findPath));
+          }
+        } catch {}
+      }
     }
   }
 
-  // If runId provided or prior runs exist in .citable/runs, load recorded evidence
-  const runsDir = path.join(root, '.citable', 'runs');
-  let loadedRunId = runId;
-  if (!loadedRunId && fs.existsSync(runsDir)) {
-    const runs = fs.readdirSync(runsDir).filter((d) => !d.startsWith('.'));
-    if (runs.length > 0) loadedRunId = runs[runs.length - 1];
-  }
-
-  if (loadedRunId) {
-    const runPath = path.join(runsDir, loadedRunId);
-    const findPath = path.join(runPath, 'findings.json');
-    if (fs.existsSync(findPath) && findings.length === 0) {
-      try { findings = readJson(findPath); } catch {}
+  // 5. If no findings were discovered:
+  if (!Array.isArray(findings) || findings.length === 0) {
+    if (isSample) {
+      findings = getSampleBaselineFindings();
+      sourceProvenance.source_type = 'SAMPLE_BASELINE';
+      sourceProvenance.source_identifier = 'citable://samples/enterprise-baseline';
+    } else {
+      const srcDesc = target ? `live target "${target}"` : (runId ? `run "${runId}"` : 'local workspace');
+      throw new NoFindingsError(srcDesc);
     }
   }
 
-  // If no findings exist from live run, supply standard baseline audit findings for SOW generation
-  if (findings.length === 0) {
-    findings = [
-      {
-        detector_id: 'TECH-001',
-        discipline: ['technical'],
-        classification: { severity: 'critical', confidence: 'deterministic' },
-        subject: { identifier: 'https://example.test/', url: 'https://example.test/' },
-        observation: { summary: 'Render-blocking JavaScript bundle degrades Mobile LCP to 4.2s', evidence: ['EVD-CWV-001'] },
-        remediation: { preferred: 'Implement asynchronous resource loading and preconnect headers' },
-        verification: { detector_to_rerun: 'TECH-001', method: 'Static CWV inspection and HTTP header probe' },
-        ice_score: 14.5,
-      },
-      {
-        detector_id: 'CRO-007',
-        discipline: ['cro'],
-        classification: { severity: 'high', confidence: 'deterministic' },
-        subject: { identifier: 'https://example.test/checkout', url: 'https://example.test/checkout' },
-        observation: { summary: 'Checkout form inputs lack HTML5 autocomplete attributes, increasing manual mobile entry by 68%', evidence: ['EVD-CRO-007'] },
-        remediation: { preferred: 'Inject standard autocomplete attributes (autocomplete="email", autocomplete="name", autocomplete="tel")' },
-        verification: { detector_to_rerun: 'CRO-007', method: 'DOM inspection and AST patch verification' },
-        ice_score: 18.0,
-      },
-      {
-        detector_id: 'CRO-013',
-        discipline: ['cro'],
-        classification: { severity: 'high', confidence: 'deterministic' },
-        subject: { identifier: 'https://example.test/checkout', url: 'https://example.test/checkout' },
-        observation: { summary: 'Dedicated checkout funnel contains 14 external header navigation links creating distraction leaks', evidence: ['EVD-CRO-013'] },
-        remediation: { preferred: 'Deploy enclosed distraction-free checkout layout stripping non-essential navigation' },
-        verification: { detector_to_rerun: 'CRO-013', method: 'Navigation link count verification' },
-        ice_score: 12.0,
-      },
-      {
-        detector_id: 'ANS-001',
-        discipline: ['aeo'],
-        classification: { severity: 'high', confidence: 'deterministic' },
-        subject: { identifier: 'https://example.test/saas/pricing.html', url: 'https://example.test/saas/pricing.html' },
-        observation: { summary: 'Commercial pricing questions lack direct-extract definition passages under 75 words', evidence: ['EVD-ANS-001'] },
-        remediation: { preferred: 'Restructure FAQ headings with immediate concise copular answer passages' },
-        verification: { detector_to_rerun: 'ANS-001', method: 'Passage length and question-answer extraction test' },
-        ice_score: 11.0,
-      },
-      {
-        detector_id: 'SCHEMA-001',
-        discipline: ['schema'],
-        classification: { severity: 'medium', confidence: 'deterministic' },
-        subject: { identifier: 'https://example.test/pricing', url: 'https://example.test/pricing' },
-        observation: { summary: 'Commercial FAQ content lacks FAQPage JSON-LD schema markup', evidence: ['EVD-SCH-001'] },
-        remediation: { preferred: 'Deploy validated Schema.org FAQPage structured data' },
-        verification: { detector_to_rerun: 'SCHEMA-001', method: 'JSON-LD schema validation gate' },
-        ice_score: 9.5,
-      },
-      // Inadmissible exploratory finding (for demonstrating the gate)
-      {
-        detector_id: 'EXP-GEO-999',
-        discipline: ['geo'],
-        classification: { severity: 'low', confidence: 'experimental', finding_type: 'experimental' },
-        subject: { identifier: 'https://unrelated-blog.test/post-1', url: 'https://unrelated-blog.test/post-1' },
-        observation: { summary: 'Speculative model hallucination on third-party forum', evidence: [] },
-        remediation: { preferred: 'Consult external legal counsel regarding public forum sentiment' },
-        ice_score: 2.0,
-      },
-    ];
-  }
+  sourceProvenance.findings_count = findings.length;
 
   const effectiveScopeProps = inScopeProperties.length > 0
     ? inScopeProperties
-    : [baseUrl || 'https://example.test'];
+    : (baseUrl ? [baseUrl] : (isSample ? ['https://example.test'] : []));
 
   // -------------------------------------------------------------
-  // THE ADMISSIBILITY GATE (Filter findings to contractual scope)
+  // THE ADMISSIBILITY GATE (Filter findings into contractual scope)
   // -------------------------------------------------------------
   const gateResult = evaluateScopeAdmissibility(findings, {
     inScopeProperties: effectiveScopeProps,
+    scopeMode,
     minIceScore,
+    allowedDisciplines,
+    allowExperimental,
+    excludedDetectors,
+    roleMapping,
   });
 
   const admitted = gateResult.admitted_requirements;
+  if (admitted.length === 0) {
+    throw new NoAdmissibleRequirementsError(findings.length, gateResult.refusal_log.length);
+  }
 
   // Group admitted requirements into Work Packages
   const wpMap = new Map();
@@ -162,20 +522,24 @@ export async function generateSow(root, {
   // Mapping Finding -> Recommendation -> SOW Requirement -> Deliverable -> Acceptance Test -> Owner -> Evidence
   const traceabilityMatrix = admitted.map((item) => ({
     finding_id: item.finding_id,
+    detector_id: item.detector_id,
     recommendation: item.recommendation,
     sow_requirement_id: item.sow_requirement_id,
     work_package_id: item.work_package_id,
     deliverable_id: item.deliverable_id,
     acceptance_test_id: item.acceptance_test_id,
     owner: item.owner,
+    owner_source: item.owner_source,
+    owner_mapping_version: item.owner_mapping_version,
     evidence_id: item.evidence_id,
+    evidence_ids: item.evidence_ids,
     severity: item.severity,
     target_subject: item.subject,
     acceptance_criteria: item.acceptance_test,
   }));
 
   // Deliverables definitions
-  const deliverables = workPackages.map((wp, idx) => ({
+  const deliverables = workPackages.map((wp) => ({
     deliverable_id: wp.deliverable_id,
     work_package_id: wp.work_package_id,
     title: `${wp.name} Implementation & Verification Package`,
@@ -195,27 +559,41 @@ export async function generateSow(root, {
     evidence_required: `Deterministic before-and-after observation JSON matching ${item.evidence_id}`,
   }));
 
-  // Commercial structure
-  const feePerWp = Math.round(budget / (workPackages.length || 1));
+  // Commercial structure with deterministic integer minor-unit arithmetic
+  const { feeMinor, feeUsd, currency, minorUnitExponent } = parseCommercialBudget({ budget, budgetMinor });
+  const milestoneFeesMinor = allocateMilestoneFees(feeMinor, workPackages.length);
+  const milestoneFeesUsd = milestoneFeesMinor.map((m) => Number((m / 100).toFixed(2)));
   const commercialMilestones = workPackages.map((wp, idx) => ({
     milestone_id: `MILESTONE-0${idx + 1}`,
     work_package_id: wp.work_package_id,
     name: wp.name,
-    fee_usd: feePerWp,
+    fee_minor: milestoneFeesMinor[idx],
+    fee_usd: milestoneFeesUsd[idx],
     billing_trigger: `Successful customer acceptance sign-off of Deliverable ${wp.deliverable_id}`,
     target_delivery_week: (idx + 1) * 3,
   }));
+
+  const sowTitle = isSample
+    ? 'Statement of Work: Enterprise Search & Conversion Intelligence Engineering [DEMONSTRATION SAMPLE]'
+    : (isDraft
+      ? 'Statement of Work: Enterprise Search & Conversion Intelligence Engineering [DRAFT]'
+      : 'Statement of Work: Enterprise Search & Conversion Intelligence Engineering');
 
   const sow = {
     $schema: 'citable://schemas/sow.schema.json',
     sow_id: sowIdentifier,
     version: '1.0.0',
-    title: `Statement of Work: Enterprise Search & Conversion Intelligence Engineering`,
+    generation_mode: generationMode,
+    title: sowTitle,
+    synthetic_evidence: isSample,
     client: { name: client, contact: clientContact },
     supplier: { name: supplier, contact: supplierContact },
     effective_date: generatedAt.split('T')[0],
     term_days: termDays,
-    commercial_total_fee_usd: budget,
+    currency,
+    currency_minor_unit_exponent: minorUnitExponent,
+    commercial_total_fee_minor: feeMinor,
+    commercial_total_fee_usd: feeUsd,
 
     // Pillar 1: Executive Scope Statement
     executive_scope: {
@@ -373,7 +751,9 @@ export async function generateSow(root, {
 
     // Pillar 20: Commercial Structure
     commercial_terms: {
-      total_fixed_fee_usd: budget,
+      total_fixed_fee_minor: feeMinor,
+      total_fixed_fee_usd: feeUsd,
+      currency,
       payment_terms: 'Net 30 upon verified deliverable acceptance',
       milestones: commercialMilestones,
     },
@@ -413,7 +793,21 @@ export async function generateSow(root, {
 
     // Pillar 25: The Final Traceability Matrix
     traceability_matrix: traceabilityMatrix,
+
+    // Machine-readable Provenance Envelope
+    generation_provenance: {
+      generated_at: generatedAt,
+      generator_version: '1.18.1',
+      generation_mode: generationMode,
+      source_type: sourceProvenance.source_type || 'UNKNOWN',
+      source_identifier: sourceProvenance.source_identifier || null,
+      source_findings_count: sourceProvenance.findings_count,
+      findings_integrity_hash: sourceProvenance.integrity_hash || null,
+      synthetic_evidence: isSample,
+    },
   };
+
+  validateSowInvariants(sow);
 
   return sow;
 }
@@ -422,16 +816,23 @@ export async function generateSow(root, {
  * Render Statement of Work as GitHub-flavored Markdown
  */
 export function renderSowMarkdown(sow) {
+  const modeBanner = sow.generation_mode === 'NON_CONTRACTUAL_SAMPLE'
+    ? '> ⚠️ **NON-CONTRACTUAL DEMONSTRATION SAMPLE**: This document was generated with synthetic audit baseline findings for evaluation and demonstration purposes. It does NOT represent a binding contractual obligation or live audit evidence.'
+    : (sow.generation_mode === 'DRAFT'
+      ? '> 📝 **DRAFT STATEMENT OF WORK**: This preliminary draft contains unfinalized engagement terms and requirements. Final executive approval required prior to signature.'
+      : '> **Contractual Principle**: This Statement of Work forces strict downward traceability from documented audit evidence to contractual obligation, and from obligation to verifiable acceptance. Findings are admitted strictly through a formal Admissibility Gate. In adherence to Citable governance principles, **no search rankings, AI citations, or conversion revenues are guaranteed**; fees are tied exclusively to objective deliverable acceptance.');
+
   const lines = [
     `# ${sow.title}`,
     `====================================================================`,
-    `- **SOW ID**: \`${sow.sow_id}\` | **Version**: \`${sow.version}\``,
+    `- **SOW ID**: \`${sow.sow_id}\` | **Version**: \`${sow.version}\` | **Mode**: \`${sow.generation_mode}\``,
     `- **Client**: **${sow.client.name}** (${sow.client.contact})`,
     `- **Supplier**: **${sow.supplier.name}** (${sow.supplier.contact})`,
     `- **Effective Date**: \`${sow.effective_date}\` | **Term**: \`${sow.term_days} calendar days\``,
-    `- **Commercial Total**: **$${sow.commercial_total_fee_usd.toLocaleString()} USD**`,
+    `- **Commercial Total**: **$${sow.commercial_total_fee_usd.toLocaleString('en-US', { minimumFractionDigits: (sow.commercial_total_fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })} USD**`,
+    `- **Audit Source**: \`${sow.generation_provenance.source_type}\` (${sow.generation_provenance.source_identifier || 'N/A'}) | **Generator**: \`v${sow.generation_provenance.generator_version}\``,
     ``,
-    `> **Contractual Principle**: This Statement of Work forces strict downward traceability from documented audit evidence to contractual obligation, and from obligation to verifiable acceptance. Findings are admitted strictly through a formal Admissibility Gate. In adherence to Citable governance principles, **no search rankings, AI citations, or conversion revenues are guaranteed**; fees are tied exclusively to objective deliverable acceptance.`,
+    modeBanner,
     ``,
     `---`,
     `## 1. Executive Scope Statement`,
@@ -505,7 +906,7 @@ export function renderSowMarkdown(sow) {
     `## 12. Delivery Sequencing & Milestone Schedule`,
     `| Milestone | Work Package | Target Week | Fee (USD) | Acceptance Trigger |`,
     `| :--- | :--- | :--- | :--- | :--- |`,
-    ...sow.delivery_schedule.milestones.map((m) => `| **${m.milestone_id}** | \`${m.work_package_id}\` | Week ${m.target_delivery_week} | **$${m.fee_usd.toLocaleString()}** | ${m.billing_trigger} |`),
+    ...sow.delivery_schedule.milestones.map((m) => `| **${m.milestone_id}** | \`${m.work_package_id}\` | Week ${m.target_delivery_week} | **$${m.fee_usd.toLocaleString('en-US', { minimumFractionDigits: (m.fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })}** | ${m.billing_trigger} |`),
     ``,
     `## 13. Scope Change-Control Process`,
     `- **Procedure**: ${sow.change_control_process.procedure}`,
@@ -537,7 +938,7 @@ export function renderSowMarkdown(sow) {
     `- **Decision Records**: ${sow.governance_model.decision_logging}`,
     ``,
     `## 20. Commercial Terms & Payment Schedule`,
-    `- **Total Contract Value**: **$${sow.commercial_terms.total_fixed_fee_usd.toLocaleString()} USD**`,
+    `- **Total Contract Value**: **$${sow.commercial_terms.total_fixed_fee_usd.toLocaleString('en-US', { minimumFractionDigits: (sow.commercial_terms.total_fixed_fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })} USD**`,
     `- **Terms**: ${sow.commercial_terms.payment_terms}`,
     ``,
     `## 21. Explicit Out-of-Scope Declarations`,
@@ -563,7 +964,7 @@ export function renderSowMarkdown(sow) {
     ``,
     `| Finding ID | Recommendation | SOW Req ID | Deliverable ID | Acceptance Test ID | Responsible Owner | Source Evidence |`,
     `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |`,
-    ...sow.traceability_matrix.map((t) => `| **\`${t.finding_id}\`** | ${t.recommendation.slice(0, 45)}... | **\`${t.sow_requirement_id}\`** | \`${t.deliverable_id}\` | \`${t.acceptance_test_id}\` | ${t.owner} | \`${t.evidence_id}\` |`),
+    ...sow.traceability_matrix.map((t) => `| **\`${t.finding_id}\`** | ${t.recommendation.slice(0, 45)}... | **\`${t.sow_requirement_id}\`** | \`${t.deliverable_id}\` | \`${t.acceptance_test_id}\` | ${t.owner} | \`${t.evidence_ids?.join(', ') || t.evidence_id}\` |`),
     ``,
     `---`,
     `### Contract Execution & Authorization`,
@@ -583,6 +984,15 @@ export function renderSowMarkdown(sow) {
  * Render Statement of Work as Standalone Enterprise HTML
  */
 export function renderSowHtml(sow) {
+  const isSample = sow.generation_mode === 'NON_CONTRACTUAL_SAMPLE';
+  const isDraft = sow.generation_mode === 'DRAFT';
+  const badgeColor = isSample ? 'var(--warning)' : (isDraft ? 'var(--accent)' : 'var(--success)');
+  const modeNotice = isSample
+    ? '<div class="disclosure" style="border-left-color:var(--warning); background:rgba(210,153,34,0.15);"><strong style="color:var(--warning);">DEMONSTRATION SAMPLE NOTICE:</strong> This Statement of Work contains synthetic audit baseline findings for evaluation and demonstration purposes. It does NOT represent a binding contractual obligation or live audit evidence.</div>'
+    : (isDraft
+      ? '<div class="disclosure"><strong style="color:var(--accent);">DRAFT ENGAGEMENT NOTICE:</strong> This document represents a preliminary draft with unfinalized commercial parameters. Final executive sign-off required prior to contract binding.</div>'
+      : '<div class="disclosure"><strong>Enterprise Statement of Work Governance Notice:</strong> This agreement binds supplier fees exclusively to verified deliverable acceptance and closed-loop test execution. In compliance with Citable governance standards, <strong>no search engine ranking, AI citation presence, or commercial conversion revenue outcomes are guaranteed</strong>.</div>');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -594,7 +1004,7 @@ export function renderSowHtml(sow) {
     .container { max-width: 1180px; margin: 0 auto; }
     header { border-bottom: 2px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
     h1 { font-size: 28px; margin: 0 0 10px 0; color: #fff; }
-    .sow-badge { background: #1f6feb; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+    .sow-badge { background: ${badgeColor}; color: #000; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
     .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 18px; }
     .card-val { font-size: 26px; font-weight: bold; color: #fff; margin-top: 4px; }
@@ -616,19 +1026,20 @@ export function renderSowHtml(sow) {
     <header>
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <h1>${sow.title}</h1>
-        <span class="sow-badge">${sow.sow_id}</span>
+        <div>
+          <span class="sow-badge">${sow.generation_mode}</span>
+          <span class="sow-badge" style="background:#1f6feb; color:#fff; margin-left:8px;">${sow.sow_id}</span>
+        </div>
       </div>
       <div style="color:#8b949e; font-size:14px; margin-top:8px;">
-        Client: <strong>${sow.client.name}</strong> &nbsp;|&nbsp; Supplier: <strong>${sow.supplier.name}</strong> &nbsp;|&nbsp; Term: <strong>${sow.term_days} Days</strong> &nbsp;|&nbsp; Effective: <strong>${sow.effective_date}</strong>
+        Client: <strong>${sow.client.name}</strong> &nbsp;|&nbsp; Supplier: <strong>${sow.supplier.name}</strong> &nbsp;|&nbsp; Term: <strong>${sow.term_days} Days</strong> &nbsp;|&nbsp; Effective: <strong>${sow.effective_date}</strong> &nbsp;|&nbsp; Source: <strong>${sow.generation_provenance.source_type}</strong>
       </div>
     </header>
 
-    <div class="disclosure">
-      <strong>Enterprise Statement of Work Governance Notice:</strong> This agreement binds supplier fees exclusively to verified deliverable acceptance and closed-loop test execution. In compliance with Citable governance standards, <strong>no search engine ranking, AI citation presence, or commercial conversion revenue outcomes are guaranteed</strong>.
-    </div>
+    ${modeNotice}
 
     <div class="meta-grid">
-      <div class="card"><div>Total Contract Fee</div><div class="card-val">$${sow.commercial_total_fee_usd.toLocaleString()}</div></div>
+      <div class="card"><div>Total Contract Fee</div><div class="card-val">$${sow.commercial_total_fee_usd.toLocaleString('en-US', { minimumFractionDigits: (sow.commercial_total_fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })}</div></div>
       <div class="card"><div>Admitted SOW Requirements</div><div class="card-val">${sow.admissibility_gate.admitted_count}</div></div>
       <div class="card"><div>Refused / Excluded Scope</div><div class="card-val" style="color:var(--danger);">${sow.admissibility_gate.refused_count}</div></div>
       <div class="card"><div>Contracted Work Packages</div><div class="card-val">${sow.work_packages.length}</div></div>
@@ -672,7 +1083,7 @@ export function renderSowHtml(sow) {
             <td>${m.name}</td>
             <td><span class="code-ref">${m.work_package_id}</span></td>
             <td>${m.billing_trigger}</td>
-            <td style="font-weight:bold; color:var(--success);">$${m.fee_usd.toLocaleString()} USD</td>
+            <td style="font-weight:bold; color:var(--success);">$${m.fee_usd.toLocaleString('en-US', { minimumFractionDigits: (m.fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })} USD</td>
           </tr>
         `).join('')}
       </tbody>
@@ -693,7 +1104,7 @@ export function renderSowHtml(sow) {
             <td>${t.deliverable_id}</td>
             <td><code>${t.acceptance_test_id}</code></td>
             <td>${t.owner}</td>
-            <td><span class="code-ref">${t.evidence_id}</span></td>
+            <td><span class="code-ref">${t.evidence_ids?.join(', ') || t.evidence_id}</span></td>
           </tr>
         `).join('')}
       </tbody>
@@ -727,10 +1138,15 @@ export function renderSowHtml(sow) {
 }
 
 /**
- * Export SOW deliverable to filesystem or string
+ * Export SOW deliverable to filesystem or string with strict schema validation
  */
 export async function exportSow(root, options = {}) {
   const sow = await generateSow(root, options);
+  const validation = validateAgainst('sow.schema.json', sow);
+  if (!validation.valid) {
+    throw new SowError(`Generated SOW violates schemas/sow.schema.json: ${validation.errors.join('; ')}`, 'SCHEMA_VALIDATION_FAILED');
+  }
+
   const format = options.format || 'markdown';
   let content = '';
 

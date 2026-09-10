@@ -4,7 +4,7 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.18.0)
+## Current State (v1.18.1)
 
 | Metric | Value |
 |--------|-------|
@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 526 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 102 packaged files per provider; 2 managed Claude profiles |
+| Distribution | 106 packaged files per provider; 4 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,17 +20,18 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 102 packaged skill files per provider
+The current development branch builds 106 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
-manifested two-profile discovery payload.
+manifested four-profile discovery payload.
 
 ## Delivered
 
 - Public npm package and provider-specific skill installation.
-- Two evidence-phase Claude Code profiles: a guarded audit/collection role and
-  a read-only semantic-review role, both generated from canonical `skill/`
-  sources. Other hosts fail closed as unsupported for native profiles.
+- Four Claude Code profiles: a guarded audit/collection role, a read-only
+  semantic-review role, a closed-loop remediation role, and an enterprise SOW/governance
+  role, all generated from canonical `skill/` sources. Other hosts fail closed as
+  unsupported for native profiles.
 - Read-only installer and runtime capability diagnosis that keeps optional
   dependency or credential presence separate from successful browser launch,
   API authorization, property access, and collection.

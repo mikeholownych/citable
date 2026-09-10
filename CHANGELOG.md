@@ -15,6 +15,46 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.18.1 — 2026-09-10
+
+### Fixed — SOW Evidence Traceability & Admissibility Gate Hardening
+
+- Hardened Scope Admissibility Gate (`src/sow/admissibilityGate.js`):
+  - Fixed acceptance gate bypass: findings without an automated rerun detector (`f.verification.detector_to_rerun`), validation method, or acceptance test are strictly refused with `REFUSE-UNVERIFIABLE`.
+  - Fixed scope boundary check: replaced naive substring matching with URL-aware hostname, subdomain, origin, and path prefix boundary validation (`checkScopeBoundary`), eliminating hostname-prefix and suffix spoofing vulnerabilities (`example.com.attacker.example`, `notexample.com`).
+  - Fixed identity conflation: separated `finding_id` from `detector_id`, ensuring deterministic uniqueness across multiple findings from the same detector.
+  - Fixed fake ownership: implemented real ownership gate resolving from `f.delivery_owner`, `f.remediation.owner`, `f.owner`, or declared engagement role mappings (`owner_source`, `owner_mapping_version`), refusing unresolved assignments with `REFUSE-OWNER-UNRESOLVED`.
+  - Fixed evidence collapsing: preserved complete supporting evidence lists in `evidence_ids[]` array without collapsing or synthesizing fallback IDs.
+  - Enforced `allowedDisciplines`: findings outside authorized disciplines are formally refused with `REFUSE-DISCIPLINE-NOT-AUTHORIZED`.
+- Hardened Statement of Work (SOW) Generator (`src/sow/generateSow.js`):
+  - Eliminated implicit hardcoded fallback findings: generation from live target or historical run fails closed when findings are missing (`NoFindingsError`). Synthetic demonstration findings are strictly confined to explicit sample mode (`--sample` / `--demo`).
+  - Added typed SOW error classes: `SowError`, `RunNotFoundError`, `FindingsMissingError`, `FindingsInvalidError`, `LiveInspectionFailedError`, `NoFindingsError`, `NoAdmissibleRequirementsError`, `BudgetCalculationError`, and `SowInvariantError`.
+  - Enforced strict run authority: explicit `--run <id>` takes absolute precedence over live scanning and fails closed if the run does not exist or findings are missing/malformed.
+  - Machine-readable `generation_provenance` block: records `generator_version`, `generated_at`, `generation_mode` (`CONTRACTUAL`, `DRAFT`, `NON_CONTRACTUAL_SAMPLE`), `source_type`, `source_identifier`, `source_findings_count`, and `findings_integrity_hash`.
+  - Canonical run chronology: established `max(canonical run timestamp)` latest-run selection with deterministic secondary key tie-breaking (`getCanonicalRunTimestamp`, `sortRunCandidatesChronologically`) across run package manifests (`manifest.json`), ISO timestamp prefixes, and findings file metadata, replacing raw directory string sorting.
+  - Unambiguous minor-unit commercial currency arithmetic: established internal integer minor units (cents, exponent 2, currency `USD`) as source of truth (`commercial_total_fee_minor`, `milestones[].fee_minor`, `commercial_terms.total_fixed_fee_minor`) via `parseCommercialBudget`, distributing remainder pennies deterministically without fractional cents or commercial leaks, rejecting negative/sub-cent budgets, and formatting major-unit USD (`fee_usd`) at presentation boundaries.
+  - Added runtime cross-object invariants validation (`validateSowInvariants`): enforces fee balancing across minor and major units, currency compliance, work package and deliverable parity, and non-empty evidence links before artifact export.
+- Hardened SOW Schema Contract (`schemas/sow.schema.json`):
+  - Enforced strict types, non-empty collections, and `additionalProperties: false` across all SOW pillars and sub-objects.
+  - Mandated `currency`, `currency_minor_unit_exponent`, `commercial_total_fee_minor`, `fee_minor`, `generation_mode`, `generation_provenance`, and `evidence_ids` in contractual requirements.
+- Hardened CLI & Exporters (`src/commands/sowCmd.js`):
+  - Added CLI options: `--sample`, `--demo`, `--draft`, `--live`, `--run`, `--scope`, `--in-scope`, `--budget-minor`, and `--min-ice`.
+  - Enforced schema validation gate in `exportSow`, rejecting any artifact that violates `schemas/sow.schema.json`.
+
+### Added — Command Contracts & Claude Agent Profiles
+
+- Added Command Contracts:
+  - `skill/commands/sow.md`: SOW generation, 7-gate scope admissibility table, standardized refusal codes, and 7-column evidence traceability matrix.
+  - `skill/commands/remediation.md`: Closed-loop code remediation, AST patch validation, confidence thresholds, and delivery kit exporter.
+  - `skill/commands/reporting.md`: Expanded with contracts for Enterprise Search Intelligence (`citable report search`) and Enterprise CRO (`citable report cro`).
+  - `skill/commands/README.md`: Matrix updated with all 13 newly implemented commands.
+- Added Managed Claude Agent Profiles:
+  - `skill/agents/citable-remediator.md`: Closed-loop code remediation specialist with AST safety validation.
+  - `skill/agents/citable-sow-architect.md`: Enterprise SOW and governance architect enforcing admissibility and traceability invariants.
+- Updated Canonical Skill & Multi-Provider Distribution:
+  - `skill/SKILL.md`: Added Enterprise SOW & governance protocol section (findings → admissibility → traceability → contract).
+  - Rebuilt distributions across 12 agent harnesses (106 packaged files per provider, 4 managed Claude agent profiles).
+
 ## 1.18.0 — 2026-09-09
 
 ### Added — Enterprise Search, CRO Intelligence & SOW Governance
