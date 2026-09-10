@@ -297,7 +297,7 @@ test('generateSow generates CONTRACTUAL SOW with machine-readable provenance and
 
   // Verify machine-readable provenance
   assert.ok(sow.generation_provenance);
-  assert.equal(sow.generation_provenance.generator_version, '1.18.1');
+  assert.equal(sow.generation_provenance.generator_version, '1.18.2');
   assert.equal(sow.generation_provenance.generation_mode, 'CONTRACTUAL');
   assert.equal(sow.generation_provenance.synthetic_evidence, false);
   assert.equal(sow.generation_provenance.source_findings_count, 2);

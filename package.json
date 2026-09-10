@@ -1,6 +1,6 @@
 {
   "name": "@nebulacomponents/citable",
-  "version": "1.18.1",
+  "version": "1.18.2",
   "description": "Production-grade SEO, AEO, and GEO agent skill with auditable detection, claim governance, evidence validation, and multi-agent installation.",
   "keywords": [
     "seo",
@@ -52,6 +52,7 @@
     "test:integration": "node --test --test-concurrency=1 --test-reporter=spec 'tests/integration/**/*.test.js'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.js'",
     "build:dist": "node scripts/build-dist.js",
+    "validate:schemas": "node scripts/validate-schemas.js",
     "release:prepare": "node scripts/release-process.js prepare",
     "release:validate": "node scripts/release-process.js validate",
     "release:manifest": "node scripts/release-governance.js manifest",

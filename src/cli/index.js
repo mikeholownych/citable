@@ -9,6 +9,7 @@ import { auditBacklinks, formatBacklinksOutput } from "../commands/auditBacklink
 import { roadmapCommand } from "../commands/roadmapCmd.js";
 import { sowCommand } from "../commands/sowCmd.js";
 import { buildIceMatrix, formatIceMatrixOutput } from "../analysis/iceMatrix.js";
+import { verifyCustomerArtifactCommand } from "../artifacts/verifyCustomerArtifact.js";
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -1117,7 +1118,13 @@ ${r.per_detector.filter((d) => d.true_positives + d.false_negatives + d.false_po
         } else if (mode === 'import') {
           const r = importArtifactPackage(root, { input: args.input });
           out(args, `artifacts import ${r.run_id}: ${r.status}\nRun package: ${r.destination}`, r);
-        } else throw new Error('usage: citable artifacts <export <run-id> --output <directory>|verify --input <directory>|import --input <directory>>');
+        } else if (mode === 'verify-customer') {
+          const filePath = args._[1];
+          if (!filePath) throw new Error('usage: citable artifacts verify-customer <file>');
+          const r = await verifyCustomerArtifactCommand(filePath, argv.slice(3), root);
+          out(args, r.message, r);
+          if (!r.valid) process.exitCode = 1;
+        } else throw new Error('usage: citable artifacts <export <run-id> --output <directory>|verify --input <directory>|import --input <directory>|verify-customer <file>>');
         break;
       }
       case 'verify': {

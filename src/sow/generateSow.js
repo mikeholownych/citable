@@ -6,6 +6,18 @@ import { runDetectors, indexTargets } from '../detectors/framework.js';
 import { evaluateScopeAdmissibility } from './admissibilityGate.js';
 import { readJson, nowIso, sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import {
+  resolveEvidenceSource,
+  getCanonicalRunTimestamp,
+  sortRunCandidatesChronologically,
+} from '../shared/evidenceSourceResolver.js';
+import {
+  escapeHtml,
+  escapeHtmlAttr,
+  sanitizeUrl,
+  escapeMarkdownTableCell,
+  sanitizeForMarkdown,
+} from '../shared/htmlEscape.js';
 
 /**
  * Typed SOW Domain Errors
@@ -135,72 +147,7 @@ export function allocateMilestoneFees(totalUnits, count) {
   return fees;
 }
 
-/**
- * Extract canonical timestamp (epoch ms) from run package
- * Hierarchy:
- * 1. manifest.json `timestamp` or `created_at` ISO string
- * 2. Run ID timestamp prefix (YYYYMMDDTHHmmss)
- * 3. findings.json mtime
- * 4. run directory mtime
- */
-export function getCanonicalRunTimestamp(runDir, runId = '') {
-  // 1. manifest.json
-  const manifestPath = path.join(runDir, 'manifest.json');
-  if (fs.existsSync(manifestPath)) {
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      if (manifest.timestamp) {
-        const ms = Date.parse(manifest.timestamp);
-        if (!Number.isNaN(ms)) return ms;
-      }
-      if (manifest.created_at) {
-        const ms = Date.parse(manifest.created_at);
-        if (!Number.isNaN(ms)) return ms;
-      }
-    } catch {}
-  }
-
-  // 2. Run ID timestamp prefix (YYYYMMDDTHHmmss)
-  const m = String(runId).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/);
-  if (m) {
-    const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
-    const ms = Date.parse(iso);
-    if (!Number.isNaN(ms)) return ms;
-  }
-
-  // 3. findings.json mtime
-  const findPath = path.join(runDir, 'findings.json');
-  if (fs.existsSync(findPath)) {
-    try {
-      return fs.statSync(findPath).mtimeMs;
-    } catch {}
-  }
-
-  // 4. Directory mtime
-  try {
-    return fs.statSync(runDir).mtimeMs;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Sort run candidate directory names by chronological timestamp descending,
- * with deterministic lexicographical tie-breaking.
- * Invariant:
- *   latest run = max(canonical run timestamp)
- *   tie = deterministic secondary key
- */
-export function sortRunCandidatesChronologically(runsDir, candidateRunIds = []) {
-  return [...candidateRunIds].sort((a, b) => {
-    const timeA = getCanonicalRunTimestamp(path.join(runsDir, a), a);
-    const timeB = getCanonicalRunTimestamp(path.join(runsDir, b), b);
-    if (timeB !== timeA) {
-      return timeB - timeA; // Descending: latest timestamp first
-    }
-    return b.localeCompare(a); // Deterministic tie-breaker
-  });
-}
+export { getCanonicalRunTimestamp, sortRunCandidatesChronologically };
 
 /**
  * Verify cross-object runtime invariants before SOW export
@@ -244,6 +191,8 @@ export function validateSowInvariants(sow) {
   }
   const wpIds = new Set(sow.work_packages.map((wp) => wp.work_package_id));
   const delivIds = new Set(sow.deliverables.map((d) => d.deliverable_id));
+  const seenReqIds = new Set();
+  const seenFindingKeys = new Set();
   for (const row of sow.traceability_matrix) {
     if (!wpIds.has(row.work_package_id)) {
       throw new SowInvariantError(`Traceability matrix references unknown work package: ${row.work_package_id}`);
@@ -254,6 +203,15 @@ export function validateSowInvariants(sow) {
     if (!Array.isArray(row.evidence_ids) || row.evidence_ids.length === 0) {
       throw new SowInvariantError(`Traceability matrix row ${row.sow_requirement_id} lacks supporting evidence_ids`);
     }
+    if (seenReqIds.has(row.sow_requirement_id)) {
+      throw new SowInvariantError(`Duplicate sow_requirement_id in traceability matrix: ${row.sow_requirement_id}`);
+    }
+    seenReqIds.add(row.sow_requirement_id);
+    const findingKey = `${row.finding_id}:${row.target_subject || ''}`;
+    if (seenFindingKeys.has(findingKey)) {
+      throw new SowInvariantError(`Duplicate finding_id and subject in traceability matrix: ${findingKey}`);
+    }
+    seenFindingKeys.add(findingKey);
   }
 
   const milestones = sow.delivery_schedule?.milestones || [];
@@ -395,94 +353,100 @@ export async function generateSow(root, {
     integrity_hash: null,
   };
 
-  // 1. Precedence: Direct findings supplied programmatically
-  if (Array.isArray(inputFindings)) {
-    findings = inputFindings;
-    sourceProvenance.source_type = 'DIRECT_FINDINGS';
-    sourceProvenance.source_identifier = 'in_memory';
-  }
-  // 2. Precedence: Explicit run requested via --run <id>
-  else if (runId) {
-    const runsDir = path.join(root, '.citable', 'runs');
-    const runPath = path.join(runsDir, runId);
-    if (!fs.existsSync(runPath)) {
+  let resolved;
+  try {
+    resolved = await resolveEvidenceSource(root, {
+      findings: inputFindings,
+      runId,
+      target,
+      live,
+      baseUrl,
+      refDate,
+      sample,
+      demo,
+      draft,
+      scopes: ['technical', 'seo', 'aeo', 'geo', 'schema', 'entity', 'cro'],
+    });
+  } catch (err) {
+    if (err.code === 'RUN_NOT_FOUND') {
       throw new RunNotFoundError(runId);
     }
-    const findPath = path.join(runPath, 'findings.json');
-    if (!fs.existsSync(findPath)) {
-      throw new FindingsMissingError(runId, findPath);
+    if (err.code === 'FINDINGS_MISSING') {
+      throw new FindingsMissingError(runId, err.details?.filePath);
     }
-    try {
-      findings = readJson(findPath);
-      if (!Array.isArray(findings)) throw new Error('findings.json root must be an array');
-      sourceProvenance.source_type = 'HISTORICAL_RUN';
-      sourceProvenance.source_identifier = runId;
-      sourceProvenance.integrity_hash = sha256(fs.readFileSync(findPath));
-    } catch (err) {
+    if (err.code === 'FINDINGS_INVALID') {
       throw new FindingsInvalidError(runId, err.message);
     }
-  }
-  // 3. Precedence: Live target inspection requested via --live or target
-  else if (live || target) {
-    if (!target) {
-      throw new SowError('Target is required for live inspection (e.g. --target <url|dir>)', 'TARGET_REQUIRED');
-    }
-    try {
-      const ctx = await buildContext(root, { target, baseUrl, refDate });
-      if (!ctx?.site) {
-        throw new Error(`Target ${target} did not produce a valid site context`);
-      }
-      indexTargets(ctx);
-      const detectors = selectDetectors({ scopes: ['technical', 'seo', 'aeo', 'geo', 'schema', 'entity', 'cro'] });
-      const res = runDetectors(detectors, ctx);
-      findings = res.findings || [];
-      sourceProvenance.source_type = 'LIVE_INSPECTION';
-      sourceProvenance.source_identifier = target;
-    } catch (err) {
+    if (err.code === 'LIVE_INSPECTION_FAILED') {
       throw new LiveInspectionFailedError(target, err.message);
     }
-  }
-  // 4. Precedence: Automatically load latest recorded run from .citable/runs if present
-  // Invariant: latest run = max(canonical run timestamp), tie = deterministic secondary key
-  else {
-    const runsDir = path.join(root, '.citable', 'runs');
-    if (fs.existsSync(runsDir)) {
-      const candidates = fs.readdirSync(runsDir)
-        .filter((d) => !d.startsWith('.') && fs.existsSync(path.join(runsDir, d, 'findings.json')));
-      const sortedCandidates = sortRunCandidatesChronologically(runsDir, candidates);
-
-      if (sortedCandidates.length > 0) {
-        const latestRunId = sortedCandidates[0];
-        const findPath = path.join(runsDir, latestRunId, 'findings.json');
-        try {
-          findings = readJson(findPath);
-          if (Array.isArray(findings)) {
-            sourceProvenance.source_type = 'LATEST_RECORDED_RUN';
-            sourceProvenance.source_identifier = latestRunId;
-            sourceProvenance.integrity_hash = sha256(fs.readFileSync(findPath));
-          }
-        } catch {}
-      }
+    if (err.code === 'NO_FINDINGS') {
+      const srcDesc = target ? `live target "${target}"` : (runId ? `run "${runId}"` : 'local workspace');
+      throw new NoFindingsError(srcDesc);
     }
+    throw err;
   }
 
-  // 5. If no findings were discovered:
+  findings = resolved.findings;
+  sourceProvenance = {
+    source_type: resolved.source_type,
+    source_identifier: resolved.source_identifier,
+    findings_count: resolved.findings_count,
+    integrity_hash: resolved.integrity_hash,
+  };
+
+  // If no findings were discovered:
   if (!Array.isArray(findings) || findings.length === 0) {
     if (isSample) {
       findings = getSampleBaselineFindings();
       sourceProvenance.source_type = 'SAMPLE_BASELINE';
       sourceProvenance.source_identifier = 'citable://samples/enterprise-baseline';
+      sourceProvenance.findings_count = findings.length;
     } else {
       const srcDesc = target ? `live target "${target}"` : (runId ? `run "${runId}"` : 'local workspace');
       throw new NoFindingsError(srcDesc);
     }
   }
 
-  sourceProvenance.findings_count = findings.length;
+  if (generationMode === 'CONTRACTUAL') {
+    if (!client || typeof client !== 'string' || client.trim() === '') {
+      throw new SowError('Contractual SOW requires explicit client name', 'INVALID_COMMERCIAL_TERMS');
+    }
+    if (budget === null && budgetMinor === null) {
+      throw new SowError('Contractual SOW requires explicit budget or budgetMinor', 'INVALID_COMMERCIAL_TERMS');
+    }
+    if (!termDays || termDays <= 0 || !Number.isFinite(termDays)) {
+      throw new SowError('Contractual SOW requires positive finite termDays', 'INVALID_COMMERCIAL_TERMS');
+    }
+  }
 
-  const effectiveScopeProps = inScopeProperties.length > 0
-    ? inScopeProperties
-    : (baseUrl ? [baseUrl] : (isSample ? ['https://example.test'] : []));
+  let effectiveScopeProps = inScopeProperties.length > 0 ? [...inScopeProperties] : [];
+  if (effectiveScopeProps.length === 0) {
+    if (baseUrl) {
+      effectiveScopeProps.push(baseUrl);
+    } else if (target && typeof target === 'string' && target.startsWith('http')) {
+      effectiveScopeProps.push(target);
+    } else if (isSample) {
+      effectiveScopeProps.push('https://example.test');
+    } else {
+      // Derive from finding subjects
+      for (const f of findings) {
+        const s = f.subject?.identifier || f.subject?.url || (typeof f.subject === 'string' ? f.subject : null);
+        if (s) {
+          try {
+            const u = new URL(s.includes('://') ? s : `https://${s}`);
+            if (!effectiveScopeProps.includes(u.origin)) {
+              effectiveScopeProps.push(u.origin);
+            }
+          } catch {}
+        }
+      }
+    }
+  }
+
+  if (generationMode === 'CONTRACTUAL' && effectiveScopeProps.length === 0) {
+    throw new SowError('Contractual SOW requires explicit inScopeProperties or derivable target properties', 'SCOPE_REQUIRED');
+  }
 
   // -------------------------------------------------------------
   // THE ADMISSIBILITY GATE (Filter findings into contractual scope)
@@ -495,6 +459,7 @@ export async function generateSow(root, {
     allowExperimental,
     excludedDetectors,
     roleMapping,
+    rejectTemplateDefaultOwner: generationMode === 'CONTRACTUAL',
   });
 
   const admitted = gateResult.admitted_requirements;
@@ -536,6 +501,7 @@ export async function generateSow(root, {
     severity: item.severity,
     target_subject: item.subject,
     acceptance_criteria: item.acceptance_test,
+    acceptance_basis: item.acceptance_basis || 'automated_detector_rerun',
   }));
 
   // Deliverables definitions
@@ -797,7 +763,7 @@ export async function generateSow(root, {
     // Machine-readable Provenance Envelope
     generation_provenance: {
       generated_at: generatedAt,
-      generator_version: '1.18.1',
+      generator_version: '1.18.2',
       generation_mode: generationMode,
       source_type: sourceProvenance.source_type || 'UNKNOWN',
       source_identifier: sourceProvenance.source_identifier || null,
@@ -997,7 +963,7 @@ export function renderSowHtml(sow) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${sow.title} - ${sow.sow_id}</title>
+  <title>${escapeHtml(sow.title)} - ${escapeHtml(sow.sow_id)}</title>
   <style>
     :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --accent: #58a6ff; --danger: #f85149; --warning: #d29922; --success: #3fb950; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 40px 20px; }
@@ -1025,14 +991,14 @@ export function renderSowHtml(sow) {
   <div class="container">
     <header>
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>${sow.title}</h1>
+        <h1>${escapeHtml(sow.title)}</h1>
         <div>
-          <span class="sow-badge">${sow.generation_mode}</span>
-          <span class="sow-badge" style="background:#1f6feb; color:#fff; margin-left:8px;">${sow.sow_id}</span>
+          <span class="sow-badge">${escapeHtml(sow.generation_mode)}</span>
+          <span class="sow-badge" style="background:#1f6feb; color:#fff; margin-left:8px;">${escapeHtml(sow.sow_id)}</span>
         </div>
       </div>
       <div style="color:#8b949e; font-size:14px; margin-top:8px;">
-        Client: <strong>${sow.client.name}</strong> &nbsp;|&nbsp; Supplier: <strong>${sow.supplier.name}</strong> &nbsp;|&nbsp; Term: <strong>${sow.term_days} Days</strong> &nbsp;|&nbsp; Effective: <strong>${sow.effective_date}</strong> &nbsp;|&nbsp; Source: <strong>${sow.generation_provenance.source_type}</strong>
+        Client: <strong>${escapeHtml(sow.client.name)}</strong> &nbsp;|&nbsp; Supplier: <strong>${escapeHtml(sow.supplier.name)}</strong> &nbsp;|&nbsp; Term: <strong>${escapeHtml(String(sow.term_days))} Days</strong> &nbsp;|&nbsp; Effective: <strong>${escapeHtml(sow.effective_date)}</strong> &nbsp;|&nbsp; Source: <strong>${escapeHtml(sow.generation_provenance.source_type)}</strong>
       </div>
     </header>
 
@@ -1047,10 +1013,10 @@ export function renderSowHtml(sow) {
 
     <h2 class="section-title">1. Executive Scope Statement</h2>
     <div class="card">
-      <p><strong>Objective:</strong> ${sow.executive_scope.business_objective}</p>
-      <p><strong>In-Scope Properties:</strong> <code>${sow.executive_scope.in_scope_properties.join(', ')}</code></p>
-      <p><strong>In-Scope Systems:</strong> ${sow.executive_scope.in_scope_systems.join('; ')}</p>
-      <p><strong>Boundaries:</strong> ${sow.executive_scope.organizational_boundaries}</p>
+      <p><strong>Objective:</strong> ${escapeHtml(sow.executive_scope.business_objective)}</p>
+      <p><strong>In-Scope Properties:</strong> <code>${escapeHtml(sow.executive_scope.in_scope_properties.join(', '))}</code></p>
+      <p><strong>In-Scope Systems:</strong> ${escapeHtml(sow.executive_scope.in_scope_systems.join('; '))}</p>
+      <p><strong>Boundaries:</strong> ${escapeHtml(sow.executive_scope.organizational_boundaries)}</p>
     </div>
 
     <h2 class="section-title">2. Scope Admissibility Gate & Excluded Findings Log</h2>
@@ -1061,11 +1027,11 @@ export function renderSowHtml(sow) {
       <tbody>
         ${sow.admissibility_gate.refusal_log.map((r) => `
           <tr>
-            <td><span class="code-ref">${r.finding_id}</span></td>
-            <td>${r.subject}</td>
-            <td><code>${r.gate_failed}</code></td>
-            <td><span class="badge badge-refuse">${r.refusal_code}</span></td>
-            <td>${r.refusal_rationale}</td>
+            <td><span class="code-ref">${escapeHtml(r.finding_id)}</span></td>
+            <td>${escapeHtml(r.subject)}</td>
+            <td><code>${escapeHtml(r.gate_failed)}</code></td>
+            <td><span class="badge badge-refuse">${escapeHtml(r.refusal_code)}</span></td>
+            <td>${escapeHtml(r.refusal_rationale)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -1079,10 +1045,10 @@ export function renderSowHtml(sow) {
       <tbody>
         ${sow.delivery_schedule.milestones.map((m) => `
           <tr>
-            <td><strong>${m.milestone_id}</strong></td>
-            <td>${m.name}</td>
-            <td><span class="code-ref">${m.work_package_id}</span></td>
-            <td>${m.billing_trigger}</td>
+            <td><strong>${escapeHtml(m.milestone_id)}</strong></td>
+            <td>${escapeHtml(m.name)}</td>
+            <td><span class="code-ref">${escapeHtml(m.work_package_id)}</span></td>
+            <td>${escapeHtml(m.billing_trigger)}</td>
             <td style="font-weight:bold; color:var(--success);">$${m.fee_usd.toLocaleString('en-US', { minimumFractionDigits: (m.fee_minor % 100 === 0) ? 0 : 2, maximumFractionDigits: 2 })} USD</td>
           </tr>
         `).join('')}
@@ -1098,13 +1064,13 @@ export function renderSowHtml(sow) {
       <tbody>
         ${sow.traceability_matrix.map((t) => `
           <tr>
-            <td><span class="code-ref">${t.finding_id}</span></td>
-            <td>${t.recommendation}</td>
-            <td><strong>${t.sow_requirement_id}</strong></td>
-            <td>${t.deliverable_id}</td>
-            <td><code>${t.acceptance_test_id}</code></td>
-            <td>${t.owner}</td>
-            <td><span class="code-ref">${t.evidence_ids?.join(', ') || t.evidence_id}</span></td>
+            <td><span class="code-ref">${escapeHtml(t.finding_id)}</span></td>
+            <td>${escapeHtml(t.recommendation)}</td>
+            <td><strong>${escapeHtml(t.sow_requirement_id)}</strong></td>
+            <td>${escapeHtml(t.deliverable_id)}</td>
+            <td><code>${escapeHtml(t.acceptance_test_id)}</code></td>
+            <td>${escapeHtml(t.owner)}</td>
+            <td><span class="code-ref">${escapeHtml(t.evidence_ids?.join(', ') || t.evidence_id)}</span></td>
           </tr>
         `).join('')}
       </tbody>
@@ -1113,7 +1079,7 @@ export function renderSowHtml(sow) {
     <h2 class="section-title">Signatures & Contractual Authorization</h2>
     <table class="sig-table">
       <thead>
-        <tr><th>For Customer: ${sow.client.name}</th><th>For Supplier: ${sow.supplier.name}</th></tr>
+        <tr><th>For Customer: ${escapeHtml(sow.client.name)}</th><th>For Supplier: ${escapeHtml(sow.supplier.name)}</th></tr>
       </thead>
       <tbody>
         <tr>

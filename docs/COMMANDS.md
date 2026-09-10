@@ -72,7 +72,7 @@ citable kit export --run <id> --finding <id> --target <file> # exports client de
 ```
 
 - `remediate` uses AST parsing to calculate idempotent patches. Automated writes
-  require structural syntax validation, confidence score >= `0.85`, and an
+  require structural syntax validation, confidence score >= `0.70`, and an
   automatic rollback snapshot under `.citable/remediation/snapshots/`.
 - Automated writes refuse semantic copy or editorial content (`CRO-012`, `COMP-003`).
 - `verify remediation` re-runs the source detector against the modified target to
@@ -119,8 +119,8 @@ citable sow validate <sow-file.json>
 ```
 
 - `sow generate` transforms empirical audit findings into contractually enforceable SOWs.
-- **7 Scope Admissibility Gates**: Enforces origin, host, subdomain, path boundaries,
-  resource types, ownership clarity, and verified rerun detectors before findings
+- **8 Scope Admissibility Gates**: Enforces origin, host, subdomain, path boundaries,
+  resource types, non-template ownership, and verified rerun detectors before findings
   become contractual scope. Refused findings are cataloged in `refusal_log` with
   standard refusal codes.
 - **7-Column Traceability Matrix**: Finding ID → Recommendation → SOW Requirement ID →
@@ -132,6 +132,16 @@ citable sow validate <sow-file.json>
   findings are strictly confined to explicit `--sample` / `--demo` mode.
 - `sow validate` validates the SOW artifact against `schemas/sow.schema.json` and
   enforces cross-object commercial and deliverable invariants.
+
+## Customer artifact verification
+
+```bash
+citable artifacts verify-customer <file>
+```
+
+- Verifies customer-facing deliverables (SOW JSON, Search Report JSON, CRO Report JSON) against Draft-07 schemas.
+- Validates arithmetic consistency across minor-unit currencies and deliverable budgets.
+- Scans for raw `<script>` tags, inline javascript event handlers (`onerror`, `onload`), and template default owner placeholders.
 
 ## Measurements and connectors
 
@@ -158,7 +168,7 @@ aggregation, sampling, privacy, attribution, and availability limits.
 | `schedules run` | Execute a version-pinned canonical schedule |
 | `project github` | Render non-authoritative annotations |
 | `corpus evaluate/publish/receipt/compare-receipts` | Govern acceptance evidence and reproducibility |
-| `artifacts export/verify/import` | Move sealed runs without changing canonical bytes |
+| `artifacts export/verify/import/verify-customer` | Move sealed runs and verify customer deliverables (SOW, Search, CRO) |
 
 All Citable commands govern declared KPIs, outcomes, risks, decisions,
 assumptions, scenarios, priorities, and competitive evidence; they do not

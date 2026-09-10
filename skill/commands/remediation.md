@@ -12,7 +12,7 @@ The remediation suite provides safe, gated code fixes for deterministic technica
 
 ## 1. Safe Patch Application (`citable remediate`)
 
-1. **Framework Detection**: Identifies target source syntax (`jsx`, `tsx`, `vue`, `html`). Fails closed on unknown or ambiguous frameworks.
+1. **Framework Detection**: Identifies target source syntax (`jsx`, `tsx`, `vue`, `svelte`, `html`). Fails closed on unknown or ambiguous frameworks.
 2. **Idempotent AST Patching**: Patches are mathematically verified to be idempotent (`applyPatchDetailed`): applying the patch a second time produces an identical AST (a fixed point).
 3. **Structural Validation Gate**: Runs `validatePatchedSource` to confirm that the patch does not break AST structure, introduce syntax errors, or alter unrelated code blocks.
 4. **Confidence Threshold**: Computes an explicit multi-factor confidence score (`computeConfidence`). `--write` is refused if confidence falls below `0.70`.

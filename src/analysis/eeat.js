@@ -1,5 +1,6 @@
 import { parse as parseHtml } from 'node-html-parser';
 import { registryPageFor, safePath } from '../detectors/framework.js';
+import { isAuthoritativeDomain } from '../shared/domainUtils.js';
 
 /**
  * Evaluates on-page content against Google's E-E-A-T rubric on a 0.0 - 5.0 scale.
@@ -101,7 +102,7 @@ export function evaluateEeat(page, ctx = {}) {
   const BIO_RX = /\b(?:ph\.?d|m\.?d|engineer|architect|researcher|director|specialist|consultant|analyst|professor|founder|lead)\b/i;
   if (authorSameAs || BIO_RX.test(text)) {
     expertScore += 1.2;
-    expertSignals.push('Author credentials, professional title, or external disambiguation profiles verified');
+    expertSignals.push(authorSameAs ? 'Author disambiguation profile linked' : 'Author professional title or credentials indicator detected');
   } else {
     expertMissing.push('Link author to authoritative profile (sameAs: LinkedIn, ORCID, GitHub) and list credentials');
   }
@@ -132,12 +133,7 @@ export function evaluateEeat(page, ctx = {}) {
   }));
 
   const externalLinks = links.filter((l) => /^https?:\/\//i.test(l.href));
-  const authoritativeDomains = externalLinks.filter((l) => {
-    const u = l.href.toLowerCase();
-    return u.includes('.edu') || u.includes('.gov') || u.includes('.org') ||
-           u.includes('w3.org') || u.includes('rfc-editor.org') || u.includes('github.com') ||
-           u.includes('arxiv.org') || u.includes('developer.mozilla.org') || u.includes('web.dev');
-  });
+  const authoritativeDomains = externalLinks.filter((l) => isAuthoritativeDomain(l.href));
 
   if (authoritativeDomains.length >= 2) {
     authScore += 1.5;
@@ -150,9 +146,13 @@ export function evaluateEeat(page, ctx = {}) {
     authMissing.push('Add outbound citations to primary sources and industry standards');
   }
 
-  // Registry claim grounding
+  // Registry claim grounding (strictly page-scoped)
   const claims = ctx.registries?.claims?.entries || [];
-  const pageClaims = claims.filter((c) => c.canonical_url === page.url || c.claim_id);
+  const pageClaims = claims.filter((c) => {
+    if (!c) return false;
+    const target = c.canonical_url || c.subject?.url || c.page_id;
+    return Boolean(target && (target === page.url || target === page.canonicalUrl));
+  });
   const verifiedClaims = pageClaims.filter((c) => c.status === 'verified');
   if (verifiedClaims.length >= 1) {
     authScore += 1.5;
@@ -259,6 +259,7 @@ export function evaluateEeat(page, ctx = {}) {
   return {
     url: page.url,
     fact_status: 'modeled_rubric_evaluation',
+    epistemic_status: 'MODELED',
     methodology: 'Google Search Quality Rater Guidelines (E-E-A-T Evaluative Rubric)',
     disclaimer: 'E-E-A-T is an evaluative heuristic rubric modeled on Quality Rater Guidelines, not an algorithmic ranking score. Google does not calculate a single E-E-A-T metric.',
     composite_score: composite,
