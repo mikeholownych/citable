@@ -11,7 +11,7 @@ inferences separate.
 | Run a first audit | [Getting started](GETTING_STARTED.md) |
 | Find the right CLI workflow | [Command guide](COMMANDS.md) |
 | Connect or import external evidence | [Integrations](INTEGRATIONS.md) |
-| Delegate collection or semantic review | [Agent profiles](AGENT_PROFILES.md) |
+| Delegate collection, review, remediation, or SOW scoping | [Agent profiles](AGENT_PROFILES.md) |
 | Diagnose an incomplete or blocked run | [Troubleshooting](TROUBLESHOOTING.md) |
 | Adapt an older file or workflow | [Migrations](MIGRATIONS.md) |
 | Understand what Citable cannot establish | [Known limitations](known-limitations.md) |
@@ -19,13 +19,15 @@ inferences separate.
 ## Evidence lifecycle
 
 ```text
-prerequisites → plan → immutable run → governed action → new observation
-    doctor     plan-audit    audit       action-plan      monitor/compare
+prerequisites → plan → immutable run → remediation/SOW → new observation
+    doctor     plan-audit    audit      remediate/sow    monitor/compare
 ```
 
 - `doctor` reports prerequisite state; it does not prove successful collection.
 - `plan-audit` produces a bounded proposal; it does not create evidence.
 - `audit` and `observe` create immutable run packages.
+- `remediate` and `kit export` deliver AST-safe patches with detector rerun verification.
+- `sow generate` transforms empirical findings into contractually enforceable SOWs.
 - `action-plan` preserves findings and exposes owners, blockers, reviews, and
   verification work.
 - `monitor` and `compare-snapshots` compare captured states without assigning
