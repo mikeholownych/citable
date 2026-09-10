@@ -7,6 +7,7 @@ external workspaces without changing its canonical bytes.
 citable artifacts export <run-id> --output <directory>
 citable artifacts verify --input <directory>
 citable artifacts import --input <directory>
+citable artifacts verify-customer <file>
 ```
 
 An export contains the original run package plus
@@ -26,3 +27,7 @@ was authentic, that external observations were representative or complete, or
 that an intervention caused an outcome. Hosted tenancy, authentication,
 storage, retention, billing, scheduling, and dashboards are outside this
 contract.
+
+Use `citable artifacts verify-customer <file>` to validate customer deliverables
+(SOW, Search, and CRO JSON reports) against their JSON Schemas, verify arithmetic
+consistency (e.g. minor-unit fee totals), and reject unescaped script or event handler injections.

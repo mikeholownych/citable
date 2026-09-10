@@ -31,8 +31,10 @@ export async function exportExecutiveReport(root, runId, {
   funnelId = null,
 } = {}) {
   if (type === 'search' || type === 'seo' || format === 'search') {
+    const runExists = Boolean(runId && fs.existsSync(path.join(root, '.citable', 'runs', runId)));
     const r = await exportExecutiveSearchReport(root, {
-      runId,
+      runId: runExists ? runId : null,
+      sample: !runExists && !target,
       format: ['html-brief', 'html'].includes(format) ? 'html' : format === 'search' ? 'markdown' : format,
       clientName,
       output,
@@ -52,8 +54,10 @@ export async function exportExecutiveReport(root, runId, {
   }
 
   if (type === 'cro' || format === 'cro') {
+    const runExists = Boolean(runId && fs.existsSync(path.join(root, '.citable', 'runs', runId)));
     const r = await exportExecutiveCroReport(root, {
-      runId,
+      runId: runExists ? runId : null,
+      sample: !runExists && !target,
       format: ['html-brief', 'html'].includes(format) ? 'html' : format === 'cro' ? 'markdown' : format,
       clientName,
       output,

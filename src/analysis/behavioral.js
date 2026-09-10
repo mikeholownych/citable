@@ -2,10 +2,11 @@
  * Analyze behavioral interaction evidence across funnels, sessions, cohorts, and interaction signals.
  */
 export function analyzeBehavioralTelemetry(telemetryData = {}) {
-  const sessions = telemetryData.sessions || telemetryData.metrics || {};
-  const cohorts = telemetryData.cohorts || {};
-  const interactions = telemetryData.interactions || {};
-  const funnelSteps = telemetryData.funnel || [];
+  const data = telemetryData || {};
+  const sessions = data.sessions || data.metrics || {};
+  const cohorts = data.cohorts || {};
+  const interactions = data.interactions || {};
+  const funnelSteps = data.funnel || [];
 
   const findings = [];
   const frictionIndicators = [];

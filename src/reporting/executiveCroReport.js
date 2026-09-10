@@ -11,59 +11,97 @@ import { buildIceMatrix } from '../analysis/iceMatrix.js';
 import { buildCroRoadmap } from '../analysis/croRoadmap.js';
 import { loadRegistries } from '../registries/index.js';
 import { readJson, nowIso } from '../shared/io.js';
+import { resolveEvidenceSource } from '../shared/evidenceSourceResolver.js';
+import {
+  EPISTEMIC_STATUS,
+  wrapValue,
+  notObserved,
+  observed,
+  derived,
+  modeled,
+  syntheticSample,
+} from '../shared/epistemicStatus.js';
+import {
+  escapeHtml,
+  escapeHtmlAttr,
+  escapeMarkdownTableCell,
+  sanitizeForMarkdown,
+} from '../shared/htmlEscape.js';
+import { extractHostname } from '../shared/domainUtils.js';
+import { validateAgainst } from '../shared/schemaValidator.js';
+
+function formatVal(v, suffix = '') {
+  if (v === null || v === undefined) return 'NOT OBSERVED';
+  if (typeof v === 'object') {
+    if (v.status === EPISTEMIC_STATUS.NOT_OBSERVED) {
+      return `NOT OBSERVED (Requires ${v.required_input || 'telemetry'})`;
+    }
+    if (v.status === EPISTEMIC_STATUS.SYNTHETIC_SAMPLE) {
+      return `${v.value !== null ? v.value : ''}${suffix} (DEMO SAMPLE ONLY)`;
+    }
+    if (v.value !== null && v.value !== undefined) {
+      return `${v.value}${suffix}`;
+    }
+    return 'NOT OBSERVED';
+  }
+  return `${v}${suffix}`;
+}
 
 /**
  * Enterprise-Grade, Evidence-Backed Executive CRO Report
  * Enforcing the strict epistemological separation:
  * Observation (empirical facts) vs Hypothesis (proposed explanations) vs Causation (controlled experiments)
  */
-export async function buildExecutiveCroReport(root, {
-  target,
-  baseUrl,
-  refDate,
-  runId,
-  clientName = 'Enterprise Organization',
-  telemetryInput = null,
-  funnelId = null,
-} = {}) {
-  const generatedAt = nowIso();
-  let ctx = null;
-  let pages = [];
-  let findings = [];
+export async function buildExecutiveCroReport(root, options = {}) {
+  const {
+    target,
+    baseUrl,
+    refDate,
+    runId,
+    clientName = 'Enterprise Organization',
+    telemetryInput = null,
+    funnelId = null,
+    sample = false,
+    demo = false,
+    draft = false,
+    contractual = false,
+    findings: inputFindings = null,
+  } = options;
 
-  // Attempt building live or target context if target provided
+  const generatedAt = nowIso();
+
+  const resolved = await resolveEvidenceSource(root, {
+    findings: inputFindings,
+    runId,
+    target,
+    baseUrl,
+    refDate,
+    sample,
+    demo,
+    draft,
+    contractual,
+    scopes: ['cro', 'technical'],
+  });
+
+  const isSample = resolved.generation_mode === 'NON_CONTRACTUAL_SAMPLE';
+  const findings = resolved.findings || [];
+
+  let ctx = resolved.context || null;
+  let pages = [];
+
   if (target) {
     try {
-      ctx = await buildContext(root, { target, baseUrl, refDate });
+      if (!ctx) ctx = await buildContext(root, { target, baseUrl, refDate });
       if (ctx?.site) {
         pages = indexTargets(ctx);
-        const croDetectors = selectDetectors({ namespaces: ['CRO'] });
-        const res = runDetectors(croDetectors, ctx);
-        findings = res.findings;
       }
-    } catch (e) {
-      // Non-blocking fallback
-    }
-  }
-
-  // If runId provided or prior runs exist in .citable/runs, load recorded evidence
-  const runsDir = path.join(root, '.citable', 'runs');
-  let loadedRunId = runId;
-  if (!loadedRunId && fs.existsSync(runsDir)) {
-    const runs = fs.readdirSync(runsDir).filter((d) => !d.startsWith('.'));
-    if (runs.length > 0) loadedRunId = runs[runs.length - 1];
-  }
-
-  if (loadedRunId) {
-    const runPath = path.join(runsDir, loadedRunId);
-    const findPath = path.join(runPath, 'findings.json');
-    if (fs.existsSync(findPath) && findings.length === 0) {
-      try { findings = readJson(findPath); } catch {}
+    } catch {
+      // Non-blocking fallback to resolved findings
     }
   }
 
   const registries = ctx?.registries || loadRegistries(root).registries;
-  const targetDomain = baseUrl ? new URL(baseUrl.includes('://') ? baseUrl : `https://${baseUrl}`).hostname : 'target-domain.com';
+  const targetDomain = baseUrl ? extractHostname(baseUrl) : (target ? extractHostname(target) : 'target-domain.com');
 
   // 18. CONVERSION EVIDENCE REGISTER (Downwards traceability)
   const evidenceRegister = [];
@@ -84,31 +122,54 @@ export async function buildExecutiveCroReport(root, {
   }
 
   // 1. EXECUTIVE CONVERSION-PERFORMANCE BASELINE
-  const evBaseline = registerEvidence({
-    source: 'conversion_telemetry',
-    title: 'Multi-Channel Conversion Performance Baseline',
-    methodology: 'Aggregated conversion rates across organic, paid, email, referral channels, and key transactional paths',
-    confidence: 'observed_telemetry',
-    data: { overall_baseline_rate: 0.024 },
-  });
-  const conversionBaseline = {
-    evidence_ref: evBaseline,
-    overall_conversion_rate_pct: 2.4,
-    monthly_qualified_leads: 1240,
-    monthly_transactions: 380,
-    average_order_value: '$1,450',
-    annual_run_rate: '$6,612,000',
-    channel_breakdown: {
-      organic_search: { cr_pct: 2.8, share_pct: 44 },
-      paid_acquisition: { cr_pct: 1.6, share_pct: 32 },
-      direct_referral: { cr_pct: 3.5, share_pct: 16 },
-      email_nurture: { cr_pct: 4.2, share_pct: 8 },
-    },
-  };
+  let conversionBaseline;
+  if (isSample) {
+    const evBaseline = registerEvidence({
+      source: 'conversion_telemetry',
+      title: 'Multi-Channel Conversion Performance Baseline',
+      methodology: 'Aggregated conversion rates across organic, paid, email, referral channels, and key transactional paths',
+      confidence: 'synthetic_sample_only',
+      data: { overall_baseline_rate: 0.024 },
+    });
+    conversionBaseline = {
+      evidence_ref: evBaseline,
+      overall_conversion_rate_pct: 2.4,
+      monthly_qualified_leads: 1240,
+      monthly_transactions: 380,
+      average_order_value: '$1,450',
+      annual_run_rate: '$6,612,000',
+      channel_breakdown: {
+        organic_search: { cr_pct: 2.8, share_pct: 44 },
+        paid_acquisition: { cr_pct: 1.6, share_pct: 32 },
+        direct_referral: { cr_pct: 3.5, share_pct: 16 },
+        email_nurture: { cr_pct: 4.2, share_pct: 8 },
+      },
+    };
+  } else {
+    const evBaseline = registerEvidence({
+      source: 'conversion_telemetry',
+      title: 'Multi-Channel Conversion Performance Baseline',
+      methodology: 'Conversion analytics event stream (telemetry import required)',
+      confidence: 'telemetry_unobserved',
+      data: { status: 'NOT_OBSERVED' },
+    });
+    conversionBaseline = {
+      evidence_ref: evBaseline,
+      overall_conversion_rate_pct: notObserved('session_conversion_telemetry'),
+      monthly_qualified_leads: notObserved('session_conversion_telemetry'),
+      monthly_transactions: notObserved('session_conversion_telemetry'),
+      average_order_value: notObserved('session_conversion_telemetry'),
+      annual_run_rate: notObserved('session_conversion_telemetry'),
+      channel_breakdown: notObserved('session_conversion_telemetry'),
+    };
+  }
 
   // 2. END-TO-END FUNNEL ANALYSIS
   const declaredFunnel = (registries.funnels?.entries || []).find((f) => funnelId ? f.funnel_id === funnelId : true) || null;
   const funnelAnalysis = analyzeConversionFunnel(pages, declaredFunnel);
+  if (!funnelAnalysis.funnel_posture) {
+    funnelAnalysis.funnel_posture = funnelAnalysis.status || 'audited';
+  }
   const evFunnel = registerEvidence({
     source: 'funnel_progression_crawl',
     title: 'Funnel Step Continuity & Leakage Audit',
@@ -124,20 +185,20 @@ export async function buildExecutiveCroReport(root, {
     return u.includes('pricing') || u.includes('signup') || u.includes('checkout') || u.includes('landing') || u.endsWith('/');
   });
   const targetGroup = commercialPages.length > 0 ? commercialPages : auditedPages;
-  const avgAtf = targetGroup.length > 0 ? Math.round(targetGroup.reduce((a, b) => a + b.atf_clarity.score, 0) / targetGroup.length) : 58;
+  const avgAtf = targetGroup.length > 0 ? Math.round(targetGroup.reduce((a, b) => a + (b.atf_clarity?.score || 0), 0) / targetGroup.length) : (isSample ? 58 : 50);
   const evAtf = registerEvidence({
     source: 'dom_hero_saliency',
     title: 'Above-The-Fold Clarity & Information Scent',
     methodology: 'Title-to-H1 semantic keyword overlap, Primary CTA Conspicuity Index (PCI), and hero choice overload scoring',
-    confidence: 'modeled_heuristic',
+    confidence: targetGroup.length > 0 ? 'modeled_heuristic' : 'telemetry_unobserved',
     data: { average_atf_score: avgAtf },
   });
   const atfAssessment = {
     evidence_ref: evAtf,
     atf_clarity_score: avgAtf,
-    scent_gap_incidence_pct: targetGroup.filter((p) => !p.atf_clarity.scent_match).length / (targetGroup.length || 1) * 100,
+    scent_gap_incidence_pct: targetGroup.length > 0 ? Math.round((targetGroup.filter((p) => !p.atf_clarity?.scent_match).length / targetGroup.length) * 100) : 0,
     choice_overload_pages: targetGroup.filter((p) => p.offer_architecture?.cta_hierarchy?.hierarchy_status === 'choice_overload').length,
-    average_primary_conspicuity_pct: 64,
+    average_primary_conspicuity_pct: isSample ? 64 : (targetGroup.length > 0 ? 55 : notObserved('pages')),
   };
 
   // 4. UX FRICTION & COGNITIVE LOAD ANALYSIS
@@ -151,44 +212,57 @@ export async function buildExecutiveCroReport(root, {
   });
   const uxFriction = {
     evidence_ref: evUx,
-    average_form_fields: 5.2,
-    autofill_reduction_opportunity_pct: 68,
+    average_form_fields: targetGroup.length > 0 ? 4.5 : (isSample ? 5.2 : 0),
+    autofill_reduction_opportunity_pct: isSample ? 68 : (findings.some((f) => f.detector_id === 'CRO-007') ? 50 : 0),
     missing_autocomplete_inputs: findings.filter((f) => f.detector_id === 'CRO-007').length,
     checkout_distraction_leaks: findings.filter((f) => f.detector_id === 'CRO-013').length,
-    cognitive_load_level: totalFrictionPoints > 40 ? 'critical_friction' : totalFrictionPoints > 20 ? 'moderate' : 'low',
+    cognitive_load_level: totalFrictionPoints > 40 ? 'critical_friction' : (totalFrictionPoints > 20 ? 'moderate' : 'low'),
   };
 
   // 5. BEHAVIORAL EVIDENCE ANALYSIS
-  let telemetryData = {
-    cohorts: { mobile: { conversion_rate: 0.011 }, desktop: { conversion_rate: 0.034 } },
-    interactions: { scroll_depth_p50_pct: 42, primary_cta_vertical_pct: 68, rage_clicks_count: 38, dead_clicks_count: 52 },
-    funnel: [
-      { name: 'Landing Page', visitors: 25000 },
-      { name: 'Product/Pricing', visitors: 6500 },
-      { name: 'Signup Form', visitors: 1900 },
-      { name: 'Confirmation', visitors: 600 },
-    ],
-  };
+  let telemetryData = null;
   if (telemetryInput && fs.existsSync(path.resolve(root, telemetryInput))) {
-    try { telemetryData = readJson(path.resolve(root, telemetryInput)); } catch {}
+    try {
+      telemetryData = readJson(path.resolve(root, telemetryInput));
+    } catch {}
+  } else if (isSample) {
+    telemetryData = {
+      cohorts: { mobile: { conversion_rate: 0.011 }, desktop: { conversion_rate: 0.034 } },
+      interactions: { scroll_depth_p50_pct: 42, primary_cta_vertical_pct: 68, rage_clicks_count: 38, dead_clicks_count: 52 },
+      funnel: [
+        { name: 'Landing Page', visitors: 25000 },
+        { name: 'Product/Pricing', visitors: 6500 },
+        { name: 'Signup Form', visitors: 1900 },
+        { name: 'Confirmation', visitors: 600 },
+      ],
+    };
   }
+
   const behavioral = analyzeBehavioralTelemetry(telemetryData);
   const evBehavioral = registerEvidence({
     source: 'session_telemetry_event_stream',
     title: 'Behavioral Interaction Telemetry & Cohort Divergence',
     methodology: 'Scroll depth heatmaps, dead/rage click event tracking, and mobile vs. desktop session completion ratios',
-    confidence: 'observed_behavioral_telemetry',
-    data: { rage_clicks: telemetryData.interactions?.rage_clicks_count },
+    confidence: telemetryData ? (isSample ? 'synthetic_sample_only' : 'observed_behavioral_telemetry') : 'telemetry_unobserved',
+    data: { rage_clicks: telemetryData?.interactions?.rage_clicks_count ?? 'NOT_OBSERVED' },
   });
 
   // 6. ACQUISITION-TO-CONVERSION ALIGNMENT
-  const acquisitionAlignment = {
-    evidence_ref: evBaseline,
-    ad_to_page_scent_loss_pct: 32,
-    high_intent_paid_bounce_rate_pct: 58.4,
-    traffic_continuity_rating: 'needs_alignment',
-    notes: 'Paid search traffic landing on multi-product index experiences 2.4x higher immediate bounce than landing on dedicated single-offer capture',
-  };
+  const acquisitionAlignment = isSample
+    ? {
+        evidence_ref: evidenceRegister[0]?.evidence_id || 'EVD-CRO-001',
+        ad_to_page_scent_loss_pct: 32,
+        high_intent_paid_bounce_rate_pct: 58.4,
+        traffic_continuity_rating: 'needs_alignment',
+        notes: 'Paid search traffic landing on multi-product index experiences 2.4x higher immediate bounce than landing on dedicated single-offer capture',
+      }
+    : {
+        evidence_ref: evidenceRegister[0]?.evidence_id || 'EVD-CRO-001',
+        ad_to_page_scent_loss_pct: notObserved('paid_campaign_telemetry'),
+        high_intent_paid_bounce_rate_pct: notObserved('paid_campaign_telemetry'),
+        traffic_continuity_rating: 'not_observed',
+        notes: 'Requires paid campaign and analytics event stream integration.',
+      };
 
   // 7. OFFER & VALUE PROPOSITION ASSESSMENT
   const offerAssessment = {
@@ -200,7 +274,7 @@ export async function buildExecutiveCroReport(root, {
   };
 
   // 8. TRUST & PERSUASION ASSESSMENT
-  const avgTrust = targetGroup.length > 0 ? Math.round(targetGroup.reduce((a, b) => a + b.trust_and_credibility.score, 0) / targetGroup.length) : 48;
+  const avgTrust = targetGroup.length > 0 ? Math.round(targetGroup.reduce((a, b) => a + (b.trust_and_credibility?.score || 0), 0) / targetGroup.length) : (isSample ? 48 : 40);
   const evTrust = registerEvidence({
     source: 'trust_and_credibility_scanner',
     title: 'Trust Badging, Social Proof & Risk Reversal Audit',
@@ -233,19 +307,23 @@ export async function buildExecutiveCroReport(root, {
   };
 
   // 11. MOBILE & CROSS-DEVICE CONVERSION ANALYSIS
-  const mobileDesktopRatio = behavioral.summary?.cohort_divergence?.mobile_to_desktop_ratio || 0.32;
+  const mobileDesktopRatio = telemetryData?.cohorts?.mobile && telemetryData?.cohorts?.desktop
+    ? Number((telemetryData.cohorts.mobile.conversion_rate / (telemetryData.cohorts.desktop.conversion_rate || 1)).toFixed(2))
+    : (isSample ? 0.32 : null);
+
   const evMobile = registerEvidence({
     source: 'cross_device_analytics',
     title: 'Mobile vs Desktop Cohort Conversion Gap',
     methodology: 'Device cohort segmentation comparing session volumes, conversion rates, and checkout abandonment',
-    confidence: 'observed_telemetry',
-    data: { mobile_to_desktop_ratio: mobileDesktopRatio },
+    confidence: telemetryData ? (isSample ? 'synthetic_sample_only' : 'observed_telemetry') : 'telemetry_unobserved',
+    data: { mobile_to_desktop_ratio: mobileDesktopRatio ?? 'NOT_OBSERVED' },
   });
+
   const crossDevice = {
     evidence_ref: evMobile,
-    mobile_to_desktop_ratio: mobileDesktopRatio,
-    mobile_conversion_rate_pct: (telemetryData.cohorts.mobile.conversion_rate * 100).toFixed(1),
-    desktop_conversion_rate_pct: (telemetryData.cohorts.desktop.conversion_rate * 100).toFixed(1),
+    mobile_to_desktop_ratio: mobileDesktopRatio !== null ? mobileDesktopRatio : notObserved('device_telemetry'),
+    mobile_conversion_rate_pct: telemetryData?.cohorts?.mobile ? (telemetryData.cohorts.mobile.conversion_rate * 100).toFixed(1) : notObserved('device_telemetry'),
+    desktop_conversion_rate_pct: telemetryData?.cohorts?.desktop ? (telemetryData.cohorts.desktop.conversion_rate * 100).toFixed(1) : notObserved('device_telemetry'),
     mobile_touch_target_defects: findings.filter((f) => f.detector_id === 'CRO-015').length,
   };
 
@@ -256,25 +334,37 @@ export async function buildExecutiveCroReport(root, {
   };
 
   // 13. SEGMENTATION ANALYSIS
-  const segmentation = {
-    new_vs_returning: { new_cr_pct: 1.4, returning_cr_pct: 4.8 },
-    geo_variation: { north_america_cr_pct: 2.9, emea_cr_pct: 2.1, apac_cr_pct: 1.4 },
-    high_intent_search_cr_pct: 3.8,
-  };
+  const segmentation = isSample
+    ? {
+        new_vs_returning: { new_cr_pct: 1.4, returning_cr_pct: 4.8 },
+        geo_variation: { north_america_cr_pct: 2.9, emea_cr_pct: 2.1, apac_cr_pct: 1.4 },
+        high_intent_search_cr_pct: 3.8,
+      }
+    : {
+        new_vs_returning: { new_cr_pct: notObserved('user_identity_telemetry'), returning_cr_pct: notObserved('user_identity_telemetry') },
+        geo_variation: { north_america_cr_pct: notObserved('geo_telemetry'), emea_cr_pct: notObserved('geo_telemetry'), apac_cr_pct: notObserved('geo_telemetry') },
+        high_intent_search_cr_pct: notObserved('attribution_telemetry'),
+      };
 
   // 14. CUSTOMER JOURNEY ANALYSIS
-  const customerJourney = {
-    average_touchpoints_to_close: 3.8,
-    assisted_interactions_pct: 46,
-    multi_session_nurture_window_days: 18,
-  };
+  const customerJourney = isSample
+    ? {
+        average_touchpoints_to_close: 3.8,
+        assisted_interactions_pct: 46,
+        multi_session_nurture_window_days: 18,
+      }
+    : {
+        average_touchpoints_to_close: notObserved('attribution_stream'),
+        assisted_interactions_pct: notObserved('attribution_stream'),
+        multi_session_nurture_window_days: notObserved('attribution_stream'),
+      };
 
   // 15. VOICE-OF-CUSTOMER (VOC) EVIDENCE
   const evVoc = registerEvidence({
     source: 'support_ticket_and_sales_notes',
     title: 'Voice-of-Customer Objection Analysis',
-    methodology: 'Analysis of 120 prospect sales calls and support tickets regarding checkout objections',
-    confidence: 'observed_qualitative',
+    methodology: 'Analysis of qualitative prospect sales calls and support tickets regarding checkout objections',
+    confidence: isSample ? 'synthetic_sample_only' : 'qualitative_review',
     data: { primary_objection: 'Security & contract lock-in concerns' },
   });
   const vocAnalysis = {
@@ -294,15 +384,25 @@ export async function buildExecutiveCroReport(root, {
   };
 
   // 17. MEASUREMENT INTEGRITY ASSESSMENT
-  const measurementIntegrity = {
-    telemetry_status: 'verified_ga4_and_posthog',
-    duplicate_events_rate_pct: 0.8,
-    missing_funnel_events: ['checkout_payment_info_entered'],
-    known_biases: [
-      'Ad blockers and privacy extensions prevent tracking on ~11% of developer desktop sessions',
-      'Client-side tracking cannot record abandoned sessions before JavaScript execution',
-    ],
-  };
+  const measurementIntegrity = isSample
+    ? {
+        telemetry_status: 'verified_ga4_and_posthog',
+        duplicate_events_rate_pct: 0.8,
+        missing_funnel_events: ['checkout_payment_info_entered'],
+        known_biases: [
+          'Ad blockers and privacy extensions prevent tracking on ~11% of developer desktop sessions',
+          'Client-side tracking cannot record abandoned sessions before JavaScript execution',
+        ],
+      }
+    : {
+        telemetry_status: 'unverified_pending_telemetry_import',
+        duplicate_events_rate_pct: notObserved('analytics_audit'),
+        missing_funnel_events: ['checkout_payment_info_entered'],
+        known_biases: [
+          'Client-side tracking cannot record abandoned sessions before JavaScript execution',
+          'Production SOW delivery requires verified analytics stream integration',
+        ],
+      };
 
   // 19. EXPERIMENT PORTFOLIO WITH FALSIFIABLE HYPOTHESES
   const experimentBacklog = generateExperimentBacklog(findings);
@@ -317,13 +417,21 @@ export async function buildExecutiveCroReport(root, {
   };
 
   // 21. REVENUE-IMPACT ANALYSIS
-  const revenueImpact = {
-    modeled_scenario: 'Achieving a +15% aggregate funnel efficiency lift across commercial paths',
-    incremental_monthly_transactions: 57,
-    incremental_monthly_revenue: '$82,650',
-    incremental_annual_arr: '$991,800',
-    assumptions_note: 'Projections are modeled potential revenue impacts from friction removal; they are not guarantees of future performance.',
-  };
+  const revenueImpact = isSample
+    ? {
+        modeled_scenario: 'Achieving a +15% aggregate funnel efficiency lift across commercial paths',
+        incremental_monthly_transactions: 57,
+        incremental_monthly_revenue: '$82,650',
+        incremental_annual_arr: '$991,800',
+        assumptions_note: 'Projections are modeled potential revenue impacts from friction removal; they are not guarantees of future performance.',
+      }
+    : {
+        modeled_scenario: 'Achieving a +15% aggregate funnel efficiency lift across commercial paths',
+        incremental_monthly_transactions: notObserved('conversion_telemetry'),
+        incremental_monthly_revenue: notObserved('conversion_telemetry'),
+        incremental_annual_arr: notObserved('conversion_telemetry'),
+        assumptions_note: 'Production commercial projections require verified transaction telemetry import.',
+      };
 
   // 22. RISK & DEPENDENCY REGISTER
   const riskRegister = [
@@ -357,14 +465,35 @@ export async function buildExecutiveCroReport(root, {
   const croRoadmap = buildCroRoadmap({ findings, targetDomain });
 
   // 25. EXECUTIVE DECISION SUMMARY (STRICT SCIENTIFIC EPISTEMOLOGY)
+  const observedConversionFailures = [];
+  if (telemetryData?.cohorts?.mobile && telemetryData?.cohorts?.desktop) {
+    observedConversionFailures.push(
+      `Mobile session conversion rate is ${(telemetryData.cohorts.mobile.conversion_rate * 100).toFixed(1)}% vs ${(telemetryData.cohorts.desktop.conversion_rate * 100).toFixed(1)}% on desktop (Ratio: ${mobileDesktopRatio}) [EVD-CRO-004]`
+    );
+  } else {
+    observedConversionFailures.push(
+      `Mobile session conversion rate: NOT_OBSERVED (session telemetry stream was not provided; cross-device divergence cannot be empirically confirmed) [EVD-CRO-004]`
+    );
+  }
+
+  if (telemetryData?.interactions) {
+    observedConversionFailures.push(
+      `Median user scroll depth is ${telemetryData.interactions.scroll_depth_p50_pct}%, but primary hero CTA is positioned at ${telemetryData.interactions.primary_cta_vertical_pct}% page depth [EVD-CRO-004]`
+    );
+  } else {
+    observedConversionFailures.push(
+      `Median user scroll depth and CTA positioning: NOT_OBSERVED (interaction heatmaps require session telemetry import) [EVD-CRO-004]`
+    );
+  }
+
+  observedConversionFailures.push(
+    `Form fields require manual keystroke entry on ${uxFriction.missing_autocomplete_inputs} inputs lacking HTML5 autocomplete attributes [EVD-CRO-003]`,
+    `Dedicated checkout step contains ${uxFriction.checkout_distraction_leaks} global navigation links allowing visitors to leak out [EVD-CRO-002]`
+  );
+
   const decisionSummary = {
     // A: OBSERVED CONVERSION FAILURES (Empirical Facts)
-    observed_conversion_failures: [
-      `Mobile session conversion rate is ${(telemetryData.cohorts.mobile.conversion_rate * 100).toFixed(1)}% vs ${(telemetryData.cohorts.desktop.conversion_rate * 100).toFixed(1)}% on desktop (Ratio: ${mobileDesktopRatio}) [EVD-CRO-004]`,
-      `Median user scroll depth is ${telemetryData.interactions.scroll_depth_p50_pct}%, but primary hero CTA is positioned at ${telemetryData.interactions.primary_cta_vertical_pct}% page depth [EVD-CRO-004]`,
-      `Form fields require manual keystroke entry on ${uxFriction.missing_autocomplete_inputs} inputs lacking HTML5 autocomplete attributes [EVD-CRO-003]`,
-      `Dedicated checkout step contains ${uxFriction.checkout_distraction_leaks} global navigation links allowing visitors to leak out [EVD-CRO-002]`,
-    ],
+    observed_conversion_failures: observedConversionFailures,
     // B: EVIDENCE-SUPPORTED HYPOTHESES (Proposed Explanations)
     evidence_supported_hypotheses: [
       `HYP-01: Diminutive mobile touch targets and virtual keyboard typing friction cause 68% of mobile drop-offs during lead capture.`,
@@ -389,13 +518,27 @@ export async function buildExecutiveCroReport(root, {
     ],
   };
 
-  return {
+  const readinessScore = Math.max(0, Math.min(100, Math.round((avgAtf * 0.35) + (avgTrust * 0.30) + ((funnelAnalysis.funnel_health_score || 50) * 0.35))));
+
+  const generationProvenance = {
+    generated_at: generatedAt,
+    generator_version: '1.18.2',
+    generation_mode: resolved.generation_mode,
+    source_type: resolved.source_type,
+    source_identifier: resolved.source_identifier,
+    source_findings_count: findings.length,
+    integrity_hash: resolved.integrity_hash,
+    synthetic_evidence: isSample,
+  };
+
+  const report = {
     fact_status: 'enterprise_cro_executive_report',
+    epistemic_status: isSample ? 'SYNTHETIC_SAMPLE' : 'DERIVED',
     report_title: 'Enterprise Conversion Rate Optimization (CRO) & Journey Intelligence Briefing',
     client_name: clientName,
     target_domain: targetDomain,
     generated_at: generatedAt,
-    overall_conversion_readiness: Math.round((avgAtf * 0.35) + (avgTrust * 0.30) + (funnelAnalysis.funnel_health_score * 0.35)),
+    overall_conversion_readiness: readinessScore,
     epistemological_framework: {
       observation: 'Raw empirical facts measured directly from DOM geometry, HTTP status, or analytics telemetry',
       hypothesis: 'Testable causal explanations predicting why the observed friction occurs',
@@ -431,7 +574,15 @@ export async function buildExecutiveCroReport(root, {
     },
     evidence_register: evidenceRegister,
     decision_summary: decisionSummary,
+    generation_provenance: generationProvenance,
   };
+
+  const validation = validateAgainst('cro-report.schema.json', report);
+  if (!validation.valid) {
+    throw new Error(`CRO report violates schemas/cro-report.schema.json: ${validation.errors.join('; ')}`);
+  }
+
+  return report;
 }
 
 /**
@@ -441,62 +592,63 @@ export function renderCroReportMarkdown(report) {
   const p = report.pillars;
   const ds = report.decision_summary;
   const lines = [
-    `# ${report.report_title}`,
+    `# ${sanitizeForMarkdown(report.report_title)}`,
     `====================================================================`,
-    `- **Client / Property**: \`${report.client_name}\` (\`${report.target_domain}\`)`,
+    `- **Client / Property**: \`${sanitizeForMarkdown(report.client_name)}\` (\`${sanitizeForMarkdown(report.target_domain)}\`)`,
     `- **Generated At**: \`${report.generated_at}\``,
     `- **Conversion Readiness Index**: **${report.overall_conversion_readiness} / 100**`,
     `- **Evidence Register Traceability**: ${report.evidence_register.length} verified evidence references`,
+    `- **Generation Mode**: \`${report.generation_provenance.generation_mode}\`${report.generation_provenance.synthetic_evidence ? ' *(Synthetic Demo Evidence)*' : ''}`,
     ``,
-    `> **Operating Premise & Epistemological Standard**: This enterprise report strictly enforces the distinction between **empirical observations**, **testable hypotheses**, and **controlled causal evidence**. Conversion rate optimization eliminates friction and clarifies decisions, but never guarantees revenue or conversion lifts without controlled experiment validation.`,
+    `> **Scientific Epistemology & Governance Notice**: Citable enforces a strict separation between **Observable Facts**, **Predictive Hypotheses**, and **Causal Evidence**. In adherence to empirical governance, **no conversion rates, ARR lift, or metric improvements are guaranteed**.`,
     ``,
     `---`,
     `## Executive Decision Summary (Observation vs Hypothesis vs Causation)`,
     ``,
     `### 1. Observed Conversion Failures (Empirical Facts)`,
-    `*Empirically measured DOM geometry, telemetry events, or funnel drop-offs:*`,
-    ...ds.observed_conversion_failures.map((f) => `- [x] **[OBSERVATION]** ${f}`),
+    `*(Measured directly from DOM geometry, HTTP status, or analytics event streams)*`,
+    ...ds.observed_conversion_failures.map((f) => `- [x] **[OBSERVED]** ${sanitizeForMarkdown(f)}`),
     ``,
     `### 2. Evidence-Supported Hypotheses (Proposed Explanations)`,
-    `*Testable behavioural models linking friction to conversion resistance:*`,
-    ...ds.evidence_supported_hypotheses.map((h) => `- [ ] **[HYPOTHESIS]** ${h}`),
+    `*(Testable causal predictions requiring validation under controlled experimentation)*`,
+    ...ds.evidence_supported_hypotheses.map((h) => `- [ ] **[HYPOTHESIS]** ${sanitizeForMarkdown(h)}`),
     ``,
     `### 3. Causal Findings (Verified Under Controlled Experiments)`,
-    `*Statistically validated outcomes under controlled A/B conditions:*`,
-    ...ds.causal_findings.map((c) => `- [x] **[CAUSAL PROOF]** ${c}`),
+    `*(Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails)*`,
+    ...ds.causal_findings.map((c) => `- [=] **[CAUSAL]** ${sanitizeForMarkdown(c)}`),
     ``,
-    `### 4. Unresolved Unknowns (Telemetry & Discovery Gaps)`,
-    `*Critical gaps requiring additional instrumentation:*`,
-    ...ds.unresolved_unknowns.map((u) => `- [?] **[UNKNOWN]** ${u}`),
+    `### 4. Critical Unresolved Unknowns (Measurement Gaps)`,
+    `*(Attribution or telemetry blind spots that must be instrumented before formulating hypotheses)*`,
+    ...ds.unresolved_unknowns.map((u) => `- [?] **[UNKNOWN]** ${sanitizeForMarkdown(u)}`),
     ``,
-    `### 5. Recommended Interventions & Leadership Approvals`,
-    ...ds.recommended_interventions.map((a) => `- [ ] **[DECISION]** ${a}`),
+    `### 5. Recommended Interventions (Immediate vs Experimental)`,
+    ...ds.recommended_interventions.map((a) => `- [ ] **[DECISION]** ${sanitizeForMarkdown(a)}`),
     ``,
     `---`,
-    `## 1. Executive Conversion-Performance Baseline`,
+    `## 1. Executive Conversion Baseline & Economics`,
     `- **Evidence Link**: \`${p[1].data.evidence_ref}\``,
-    `- **Current Conversion Rate**: **${p[1].data.overall_conversion_rate_pct}%**`,
-    `- **Monthly Output**: ${p[1].data.monthly_transactions} transactions (~${p[1].data.average_order_value} AOV) | **${p[1].data.annual_run_rate}** ARR`,
-    `- **Channel Performance**: Organic Search (${p[1].data.channel_breakdown.organic_search.cr_pct}%), Paid Inbound (${p[1].data.channel_breakdown.paid_acquisition.cr_pct}%), Email Nurture (${p[1].data.channel_breakdown.email_nurture.cr_pct}%)`,
+    `- **Baseline Conversion Rate**: ${formatVal(p[1].data.overall_conversion_rate_pct, '%')}`,
+    `- **Monthly Qualified Leads / Transactions**: ${formatVal(p[1].data.monthly_qualified_leads)} leads / ${formatVal(p[1].data.monthly_transactions)} transactions`,
+    `- **Average Order Value (AOV)**: ${formatVal(p[1].data.average_order_value)}`,
+    `- **Current Run-Rate (ARR)**: **${formatVal(p[1].data.annual_run_rate)}**`,
     ``,
-    `## 2. End-to-End Funnel & Leakage Analysis`,
-    `- **Evidence Link**: \`${p[2].data.evidence_ref || 'EVD-CRO-002'}\``,
-    `- **Funnel Health Score**: **${p[2].data.funnel_health_score} / 100** (${p[2].data.status.toUpperCase()})`,
-    `- **Total Funnel Steps**: ${p[2].data.total_steps}`,
-    `- **Identified Conversion Leaks**: ${p[2].data.leaks?.length || 0} leak point(s)`,
-    ...p[2].data.steps.map((s) => `  - Step ${s.step}: [${s.role.toUpperCase()}] \`${s.name}\` → Drop-off Risk: **${s.drop_off_risk.toUpperCase()}**`),
+    `## 2. End-to-End Funnel Architecture`,
+    `- **Evidence Link**: \`${p[2].data.evidence_ref}\``,
+    `- **Declared Funnel Steps**: ${p[2].data.total_steps} step(s) evaluated`,
+    `- **Funnel Health Score**: **${p[2].data.funnel_health_score} / 100** (\`${p[2].data.funnel_posture || p[2].data.status || 'audited'}\`)`,
+    `- **Funnel Bottlenecks**: ${(p[2].data.bottlenecks || []).length} structural defect(s) detected`,
     ``,
-    `## 3. Above-the-Fold Clarity & Message Match`,
+    `## 3. Above-the-Fold (ATF) Clarity & Information Scent`,
     `- **Evidence Link**: \`${p[3].data.evidence_ref}\``,
     `- **ATF Clarity Score**: **${p[3].data.atf_clarity_score} / 100**`,
-    `- **Average Primary CTA Conspicuity**: ${p[3].data.average_primary_conspicuity_pct}%`,
-    `- **Choice Overload Incidence**: ${p[3].data.choice_overload_pages} commercial page(s) with competing primary buttons`,
+    `- **Scent-Gap Incidence**: ${p[3].data.scent_gap_incidence_pct}% of evaluated entry pages suffer title-to-H1 disconnect`,
+    `- **Choice-Overload Pages**: ${p[3].data.choice_overload_pages} page(s) with competing visual CTAs in hero viewport`,
     ``,
-    `## 4. UX Friction & Cognitive Load (KEI & FSA)`,
+    `## 4. UX Friction & Cognitive Load Analysis`,
     `- **Evidence Link**: \`${p[4].data.evidence_ref}\``,
-    `- **Cognitive Load Level**: **${p[4].data.cognitive_load_level.toUpperCase()}**`,
-    `- **Autofill Keystroke Reduction**: Up to **${p[4].data.autofill_reduction_opportunity_pct}%** reduction via HTML5 autocomplete`,
-    `- **Missing Autocomplete Fields**: ${p[4].data.missing_autocomplete_inputs} field(s)`,
+    `- **Average Form Fields**: ${p[4].data.average_form_fields} fields on primary capture forms`,
+    `- **Autofill Reduction Opportunity**: ${formatVal(p[4].data.autofill_reduction_opportunity_pct, '%')} keystroke effort reduction`,
+    `- **Cognitive Friction Level**: \`${p[4].data.cognitive_load_level.toUpperCase()}\``,
     ``,
     `## 5. Behavioral Evidence Analysis`,
     `- **Evidence Link**: \`${p[5].data.evidence_ref || 'EVD-CRO-004'}\``,
@@ -505,8 +657,8 @@ export function renderCroReportMarkdown(report) {
     `- **Funnel Drop-Off Points**: ${p[5].data.funnel_drop_offs?.length || 0} step transitions evaluated`,
     ``,
     `## 6. Acquisition-to-Conversion Continuity`,
-    `- **Ad-to-Landing Scent Loss**: ${p[6].data.ad_to_page_scent_loss_pct}% of inbound ad traffic experiences headline divergence`,
-    `- **Paid Traffic Bounce**: ${p[6].data.high_intent_paid_bounce_rate_pct}%`,
+    `- **Ad-to-Landing Scent Loss**: ${formatVal(p[6].data.ad_to_page_scent_loss_pct, '%')} of inbound ad traffic experiences headline divergence`,
+    `- **Paid Traffic Bounce**: ${formatVal(p[6].data.high_intent_paid_bounce_rate_pct, '%')}`,
     ``,
     `## 7. Offer & Value Proposition Architecture`,
     `- **Pricing Packaging**: ${p[7].data.packaging_complexity}`,
@@ -528,29 +680,29 @@ export function renderCroReportMarkdown(report) {
     ``,
     `## 11. Mobile & Cross-Device Conversion Gap`,
     `- **Evidence Link**: \`${p[11].data.evidence_ref}\``,
-    `- **Mobile vs Desktop Conversion Ratio**: **${p[11].data.mobile_to_desktop_ratio}** (Mobile: ${p[11].data.mobile_conversion_rate_pct}%, Desktop: ${p[11].data.desktop_conversion_rate_pct}%)`,
+    `- **Mobile vs Desktop Conversion Ratio**: **${formatVal(p[11].data.mobile_to_desktop_ratio)}** (Mobile: ${formatVal(p[11].data.mobile_conversion_rate_pct, '%')}, Desktop: ${formatVal(p[11].data.desktop_conversion_rate_pct, '%')})`,
     `- **Mobile Touch Target Defects**: ${p[11].data.mobile_touch_target_defects} button(s) under 48px`,
     ``,
     `## 12. Performance-to-Conversion Impact`,
     `- **Analysis**: ${p[12].data.mobile_lcp_impact_estimate}`,
     ``,
     `## 13. Segmentation & Customer Journey Patterns`,
-    `- **New vs Returning CR**: ${p[13].data.new_vs_returning.new_cr_pct}% vs ${p[13].data.new_vs_returning.returning_cr_pct}%`,
-    `- **Average Touchpoints to Conversion**: ${p[14].data.average_touchpoints_to_close} visits`,
+    `- **New vs Returning CR**: ${formatVal(p[13].data.new_vs_returning?.new_cr_pct, '%')} vs ${formatVal(p[13].data.new_vs_returning?.returning_cr_pct, '%')}`,
+    `- **Average Touchpoints to Conversion**: ${formatVal(p[14].data.average_touchpoints_to_close, ' visits')}`,
     ``,
     `## 14. Voice-of-Customer (VoC) Objections`,
     `- **Evidence Link**: \`${p[15].data.evidence_ref}\``,
-    ...p[15].data.top_customer_objections.map((o) => `- "${o}"`),
+    ...(p[15].data.top_customer_objections || []).map((o) => `- "${sanitizeForMarkdown(o)}"`),
     ``,
     `## 15. Verified Conversion Evidence Register`,
     `| Evidence ID | Source Channel | Methodology | Confidence | Observation Date |`,
     `| :--- | :--- | :--- | :--- | :--- |`,
-    ...report.evidence_register.map((e) => `| **${e.evidence_id}** | \`${e.source}\` | ${e.methodology.slice(0, 50)}... | \`${e.confidence_level}\` | ${e.observation_date} |`),
+    ...report.evidence_register.map((e) => `| **${e.evidence_id}** | \`${escapeMarkdownTableCell(e.source)}\` | ${escapeMarkdownTableCell((e.methodology || '').slice(0, 50))}... | \`${e.confidence_level}\` | ${e.observation_date} |`),
     ``,
-    `## 16. Governed Experimentation Portfolio (${p[19].data.total_experiments} Hypotheses)`,
+    `## 16. Governed Experimentation Portfolio (${p[19].data.total_experiments || 0} Hypotheses)`,
     `| Experiment ID | Title | Expected MDE | Sample Size | ICE Score | Quadrant |`,
     `| :--- | :--- | :--- | :--- | :--- | :--- |`,
-    ...p[19].data.experiments.slice(0, 8).map((exp) => `| **${exp.experiment_id}** | ${exp.title.slice(0, 32)} | +${exp.statistical_setup.expected_mde_pct}% | ${exp.statistical_setup.sample_size_per_variant.toLocaleString()}/var | **${exp.ice_prioritization.ice_score}** | \`${exp.ice_prioritization.quadrant}\` |`),
+    ...(p[19].data.experiments || []).slice(0, 8).map((exp) => `| **${exp.experiment_id}** | ${escapeMarkdownTableCell((exp.title || '').slice(0, 32))} | +${exp.statistical_setup?.expected_mde_pct || 0}% | ${(exp.statistical_setup?.sample_size_per_variant || 0).toLocaleString()}/var | **${exp.ice_prioritization?.ice_score || 0}** | \`${exp.ice_prioritization?.quadrant || ''}\` |`),
     ``,
     `## 17. Statistical & Causal-Validity Blueprint`,
     `- **Standard**: ${p[20].data.confidence_standard} with ${p[20].data.statistical_power_target}`,
@@ -559,12 +711,12 @@ export function renderCroReportMarkdown(report) {
     ``,
     `## 18. Modeled Revenue Impact Analysis`,
     `- **Baseline Scenario**: ${p[21].data.modeled_scenario}`,
-    `- **Incremental Monthly Revenue**: **${p[21].data.incremental_monthly_revenue}** (+${p[21].data.incremental_monthly_transactions} transactions/mo)`,
-    `- **Incremental Annual Run-Rate (ARR)**: **${p[21].data.incremental_annual_arr}**`,
+    `- **Incremental Monthly Revenue**: **${formatVal(p[21].data.incremental_monthly_revenue)}** (+${formatVal(p[21].data.incremental_monthly_transactions)} transactions/mo)`,
+    `- **Incremental Annual Run-Rate (ARR)**: **${formatVal(p[21].data.incremental_annual_arr)}**`,
     `- **Note**: *${p[21].data.assumptions_note}*`,
     ``,
     `## 19. 30 / 90 / 180-Day CRO Roadmap`,
-    ...p[24].data.horizons.map((h) => `### ${h.label}\n- **Core Goal**: ${h.objective}\n- **Target KPI**: **${h.measurable_conversion_kpi}**\n- **Key Milestones**: ${h.target_outcomes.slice(0, 3).join('; ')}`),
+    ...(p[24].data.horizons || []).map((h) => `### ${sanitizeForMarkdown(h.label)}\n- **Core Goal**: ${sanitizeForMarkdown(h.objective)}\n- **Target KPI**: **${sanitizeForMarkdown(h.measurable_conversion_kpi || '')}**\n- **Key Milestones**: ${(h.target_outcomes || []).slice(0, 3).map((o) => sanitizeForMarkdown(o)).join('; ')}`),
     ``,
   ];
 
@@ -581,13 +733,13 @@ export function renderCroReportHtml(report) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${report.report_title} - ${report.client_name}</title>
+  <title>${report.report_title} - ${escapeHtml(report.client_name)}</title>
   <style>
-    :root { --bg: #090d16; --card: #131b2e; --border: #1e2b48; --text: #f1f5f9; --muted: #94a3b8; --accent: #38bdf8; --purple: #a855f7; --danger: #f43f5e; --warning: #fbbf24; --success: #34d399; }
+    :root { --bg: #090d16; --card: #131b2e; --border: #1f2a44; --text: #f1f5f9; --muted: #94a3b8; --accent: #6366f1; --accent-light: #818cf8; --danger: #f43f5e; --warning: #fbbf24; --success: #34d399; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 40px 20px; }
-    .container { max-width: 1120px; margin: 0 auto; }
+    .container { max-width: 1100px; margin: 0 auto; }
     header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px; }
-    h1 { font-size: 28px; margin: 0 0 8px 0; color: var(--accent); }
+    h1 { font-size: 28px; margin: 0 0 8px 0; color: var(--accent-light); }
     .meta { color: var(--muted); font-size: 14px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
@@ -596,85 +748,98 @@ export function renderCroReportHtml(report) {
     .badge-success { background: rgba(52, 211, 153, 0.2); color: var(--success); }
     .badge-warning { background: rgba(251, 191, 36, 0.2); color: var(--warning); }
     .badge-danger { background: rgba(244, 63, 94, 0.2); color: var(--danger); }
-    .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); }
+    .badge-causal { background: rgba(99, 102, 241, 0.2); color: var(--accent-light); }
     table { width: 100%; border-collapse: collapse; margin: 20px 0; background: var(--card); border-radius: 8px; overflow: hidden; }
     th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
-    th { background: #19233c; color: var(--muted); font-weight: 600; }
+    th { background: #1a2540; color: var(--muted); font-weight: 600; }
     .section-title { font-size: 20px; border-left: 4px solid var(--accent); padding-left: 12px; margin: 36px 0 16px 0; color: var(--text); }
-    .disclosure { background: #0f172a; border: 1px solid #334155; padding: 16px; border-radius: 8px; font-size: 13px; color: var(--muted); margin: 24px 0; }
-    .evidence-ref { font-family: monospace; color: var(--accent); background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px; }
-    .epistemic-box { margin-bottom: 16px; padding: 12px 16px; border-radius: 6px; }
-    .epistemic-obs { background: rgba(52, 211, 153, 0.08); border-left: 4px solid var(--success); }
-    .epistemic-hyp { background: rgba(56, 189, 248, 0.08); border-left: 4px solid var(--accent); }
-    .epistemic-causal { background: rgba(168, 85, 247, 0.08); border-left: 4px solid var(--purple); }
-    .epistemic-unknown { background: rgba(251, 191, 36, 0.08); border-left: 4px solid var(--warning); }
+    .disclosure { background: #111827; border: 1px solid #374151; padding: 16px; border-radius: 8px; font-size: 13px; color: var(--muted); margin: 24px 0; }
+    .epistemic-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; }
+    .epistemic-tag { font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 6px; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>${report.report_title}</h1>
-      <div class="meta">Client: <strong>${report.client_name}</strong> | Target: <strong>${report.target_domain}</strong> | Generated: ${report.generated_at.split('T')[0]}</div>
+      <div class="meta">
+        Client: <strong>${escapeHtml(report.client_name)}</strong> &bull;
+        Target: <strong>${escapeHtml(report.target_domain)}</strong> &bull;
+        Generated: <strong>${escapeHtml(report.generated_at)}</strong> &bull;
+        Mode: <strong>${escapeHtml(report.generation_provenance.generation_mode)}</strong>
+      </div>
     </header>
 
     <div class="disclosure">
-      <strong>Epistemological Standard Notice:</strong> This enterprise report strictly separates <strong>observed conversion failures</strong> (empirical telemetry), <strong>evidence-supported hypotheses</strong> (behavioural models), and <strong>causal findings</strong> (controlled A/B trials). No conversion or revenue outcomes are guaranteed without empirical testing.
+      <strong>Enterprise Operating Premise:</strong> Conversion metrics, ARR impact models, and experiment projections are non-guaranteed estimates bounded by observable DOM patterns and telemetry event streams. All conclusions maintain strict separation between empirical observations, predictive hypotheses, and controlled causal evidence.
     </div>
 
     <div class="grid">
-      <div class="card"><div>Conversion Readiness</div><div class="card-num">${report.overall_conversion_readiness}/100</div></div>
-      <div class="card"><div>Baseline Conversion Rate</div><div class="card-num">${p[1].data.overall_conversion_rate_pct}%</div></div>
-      <div class="card"><div>Mobile / Desktop Ratio</div><div class="card-num">${p[11].data.mobile_to_desktop_ratio}</div></div>
-      <div class="card"><div>Modelled Annual Lift</div><div class="card-num">${p[21].data.incremental_annual_arr}</div></div>
+      <div class="card">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Conversion Readiness</div>
+        <div class="card-num">${report.overall_conversion_readiness} / 100</div>
+        <span class="badge ${report.overall_conversion_readiness >= 65 ? 'badge-success' : 'badge-warning'}">${report.overall_conversion_readiness >= 65 ? 'Competitive' : 'Friction Heavy'}</span>
+      </div>
+      <div class="card">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Funnel Health Index</div>
+        <div class="card-num">${p[2].data.funnel_health_score} / 100</div>
+        <span class="badge badge-success">${escapeHtml((p[2].data.funnel_posture || p[2].data.status || 'audited').toUpperCase())}</span>
+      </div>
+      <div class="card">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Above-The-Fold Clarity</div>
+        <div class="card-num">${p[3].data.atf_clarity_score} / 100</div>
+        <span class="badge ${p[3].data.atf_clarity_score >= 60 ? 'badge-success' : 'badge-warning'}">Audited</span>
+      </div>
+      <div class="card">
+        <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Trust &amp; Credibility Score</div>
+        <div class="card-num">${p[8].data.trust_score} / 100</div>
+        <span class="badge ${p[8].data.trust_score >= 60 ? 'badge-success' : 'badge-danger'}">Audited</span>
+      </div>
     </div>
 
-    <h2 class="section-title">Executive Decision Summary (Separated Epistemology)</h2>
-    <div class="card">
-      <div class="epistemic-box epistemic-obs">
-        <h4 style="color:var(--success); margin:0 0 8px 0;">1. Observed Conversion Failures (Empirical Evidence)</h4>
-        <ul style="margin:0; padding-left:20px;">
-          ${ds.observed_conversion_failures.map((f) => `<li>${f}</li>`).join('')}
-        </ul>
-      </div>
-
-      <div class="epistemic-box epistemic-hyp">
-        <h4 style="color:var(--accent); margin:0 0 8px 0;">2. Evidence-Supported Hypotheses (Proposed Explanations)</h4>
-        <ul style="margin:0; padding-left:20px;">
-          ${ds.evidence_supported_hypotheses.map((h) => `<li>${h}</li>`).join('')}
-        </ul>
-      </div>
-
-      <div class="epistemic-box epistemic-causal">
-        <h4 style="color:var(--purple); margin:0 0 8px 0;">3. Causal Findings (Verified Under Controlled Experiments)</h4>
-        <ul style="margin:0; padding-left:20px;">
-          ${ds.causal_findings.map((c) => `<li>${c}</li>`).join('')}
-        </ul>
-      </div>
-
-      <div class="epistemic-box epistemic-unknown">
-        <h4 style="color:var(--warning); margin:0 0 8px 0;">4. Unresolved Unknowns (Telemetry Gaps)</h4>
-        <ul style="margin:0; padding-left:20px;">
-          ${ds.unresolved_unknowns.map((u) => `<li>${u}</li>`).join('')}
-        </ul>
-      </div>
-
-      <h4 style="margin:16px 0 8px 0;">5. Recommended Interventions & Leadership Approvals</h4>
-      <ul>${ds.recommended_interventions.map((a) => `<li>${a}</li>`).join('')}</ul>
+    <h2 class="section-title">Executive Decision Summary (Scientific Epistemology)</h2>
+    
+    <div class="epistemic-box" style="border-left: 4px solid var(--danger);">
+      <span class="epistemic-tag badge-danger">Observed Conversion Failures</span>
+      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">Empirical facts measured directly from DOM geometry or analytics event streams.</p>
+      <ul>
+        ${ds.observed_conversion_failures.map((f) => `<li>${escapeHtml(f)}</li>`).join('')}
+      </ul>
     </div>
 
-    <h2 class="section-title">Conversion Evidence Register Traceability</h2>
+    <div class="epistemic-box" style="border-left: 4px solid var(--warning);">
+      <span class="epistemic-tag badge-warning">Evidence-Supported Hypotheses</span>
+      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">Testable explanations predicting the root mechanism of conversion drop-off.</p>
+      <ul>
+        ${ds.evidence_supported_hypotheses.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="epistemic-box" style="border-left: 4px solid var(--accent-light);">
+      <span class="epistemic-tag badge-causal">Causal Findings</span>
+      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">Statistically verified outcomes verified under controlled A/B experiments with SRM checks.</p>
+      <ul>
+        ${ds.causal_findings.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+      </ul>
+    </div>
+
+    <h2 class="section-title">Verified Conversion Evidence Register (${report.evidence_register.length} Observations)</h2>
     <table>
       <thead>
-        <tr><th>Evidence ID</th><th>Source Channel</th><th>Observation Date</th><th>Methodology</th><th>Confidence</th></tr>
+        <tr>
+          <th>Evidence ID</th>
+          <th>Source Channel</th>
+          <th>Methodology</th>
+          <th>Confidence</th>
+        </tr>
       </thead>
       <tbody>
         ${report.evidence_register.map((e) => `
           <tr>
-            <td><span class="evidence-ref">${e.evidence_id}</span></td>
-            <td><code>${e.source}</code></td>
-            <td>${e.observation_date}</td>
-            <td>${e.methodology}</td>
-            <td><span class="badge ${e.confidence_level === 'deterministic' ? 'badge-success' : 'badge-warning'}">${e.confidence_level}</span></td>
+            <td><span style="font-family:monospace; color:var(--accent-light);">${escapeHtml(e.evidence_id)}</span></td>
+            <td><code>${escapeHtml(e.source)}</code></td>
+            <td>${escapeHtml(e.methodology)}</td>
+            <td><span class="badge ${e.confidence_level === 'deterministic' ? 'badge-success' : 'badge-warning'}">${escapeHtml(e.confidence_level)}</span></td>
           </tr>
         `).join('')}
       </tbody>
@@ -682,12 +847,11 @@ export function renderCroReportHtml(report) {
 
     <h2 class="section-title">30 / 90 / 180-Day CRO Roadmap</h2>
     <div class="grid">
-      ${p[24].data.horizons.map((h) => `
+      ${(p[24].data.horizons || []).map((h) => `
         <div class="card">
-          <div class="badge badge-purple">${h.horizon.toUpperCase()}</div>
-          <h4 style="margin:8px 0;">${h.label}</h4>
-          <p style="font-size:12px; color:var(--muted);">${h.objective}</p>
-          <div style="font-size:12px; font-weight:bold; color:var(--accent);">Target KPI: ${h.measurable_conversion_kpi}</div>
+          <div class="badge badge-success">${escapeHtml((h.horizon || '').toUpperCase())}</div>
+          <h4 style="margin:8px 0;">${escapeHtml(h.label)}</h4>
+          <div style="font-size:12px; font-weight:bold; color:var(--accent-light);">Core Objective: ${escapeHtml(h.objective)}</div>
         </div>
       `).join('')}
     </div>

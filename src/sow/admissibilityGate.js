@@ -104,6 +104,7 @@ export function evaluateScopeAdmissibility(findings = [], {
   excludedDetectors = [],
   roleMapping = null,
   ownerMappingVersion = '1.0',
+  rejectTemplateDefaultOwner = false,
 } = {}) {
   const admitted = [];
   const refused = [];
@@ -259,12 +260,15 @@ export function evaluateScopeAdmissibility(findings = [], {
     } else if (f.owner && f.owner !== 'UNRESOLVED') {
       resolvedOwner = f.owner;
       ownerSource = 'finding.owner';
+    } else if (roleMapping && (roleMapping[disciplineKey] || roleMapping[detectorId])) {
+      resolvedOwner = roleMapping[disciplineKey] || roleMapping[detectorId];
+      ownerSource = 'engagement_role_mapping';
     } else if (effectiveRoles[disciplineKey] && effectiveRoles[disciplineKey] !== 'UNRESOLVED') {
       resolvedOwner = effectiveRoles[disciplineKey];
-      ownerSource = 'engagement_role_mapping';
+      ownerSource = 'built_in_template_default';
     } else if (effectiveRoles[detectorId] && effectiveRoles[detectorId] !== 'UNRESOLVED') {
       resolvedOwner = effectiveRoles[detectorId];
-      ownerSource = 'engagement_role_mapping';
+      ownerSource = 'built_in_template_default';
     }
 
     if (!resolvedOwner || resolvedOwner === 'UNRESOLVED' || resolvedOwner.toLowerCase() === 'unassigned') {
@@ -276,6 +280,19 @@ export function evaluateScopeAdmissibility(findings = [], {
         refusal_code: 'REFUSE-OWNER-UNRESOLVED',
         refusal_rationale: `Responsible delivery owner could not be resolved for finding ${findingId} (discipline: ${disciplineKey}).`,
         suggested_handling: 'Specify delivery_owner on finding or map discipline to accountable delivery role in SOW configuration.',
+      });
+      continue;
+    }
+
+    if (rejectTemplateDefaultOwner && ownerSource === 'built_in_template_default') {
+      refused.push({
+        finding_id: findingId,
+        detector_id: detectorId,
+        subject,
+        gate_failed: 'ownership_clarity',
+        refusal_code: 'REFUSE-TEMPLATE-DEFAULT-OWNER',
+        refusal_rationale: `Responsible delivery owner for finding ${findingId} relies on built-in template default. Contractual SOW requires an explicit finding owner or engagement role mapping.`,
+        suggested_handling: 'Specify delivery_owner on finding or map discipline in engagement role mapping.',
       });
       continue;
     }
@@ -340,6 +357,7 @@ export function evaluateScopeAdmissibility(findings = [], {
       confidence,
       recommendation: remediation,
       acceptance_test: f.verification?.acceptance_test || `Execute closed-loop verification: citable verify remediation --finding ${detectorToRerun} --target ${subject} (Expect status: RESOLVED, zero regressions)`,
+      acceptance_basis: f.verification?.method ? 'empirical_verification_method' : (f.verification?.detector_to_rerun ? 'automated_detector_rerun' : 'deterministic_remediation_test'),
       owner: resolvedOwner,
       owner_source: ownerSource,
       owner_mapping_version: ownerMappingVersion,

@@ -83,7 +83,7 @@ Any future implementation is gated on:
 
 Citable implements a strict pilot adapter (`citable connect mcp`) conforming to
 `schemas/mcp-transport-envelope.schema.json`. Only explicitly allowlisted servers
-(such as `citable-evidence-pilot`) and read-only tools are callable. Untrusted servers,
+(such as `citable-evidence-pilot` and `gsc-mcp`) and read-only tools are callable. Untrusted servers,
 state-changing tools, unverified remote endpoints, and private/loopback destinations
 fail closed.
 

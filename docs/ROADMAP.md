@@ -4,15 +4,15 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.18.1)
+## Current State (v1.18.2)
 
 | Metric | Value |
 |--------|-------|
 | Detectors | 181 across 19 namespaces |
-| Tests | 526 pass across 29 test suites |
+| Tests | 595 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 106 packaged files per provider; 4 managed Claude profiles |
+| Distribution | 108 packaged files per provider; 4 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and
@@ -20,7 +20,7 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 106 packaged skill files per provider
+The current development branch builds 108 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
 manifested four-profile discovery payload.

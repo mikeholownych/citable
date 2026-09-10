@@ -1,6 +1,6 @@
 ---
 command: /citable sow generate [--target <dir|url>] [--run <id>] [--budget <amount>] [--budget-minor <cents>] [--format md|html|json] [--output <path>] [--sample] [--draft]
-purpose: Generate a contractually binding, evidence-traceable enterprise Statement of Work (SOW) from verified audit findings through a formal 7-gate scope admissibility filter and 7-column traceability matrix.
+purpose: Generate a contractually binding, evidence-traceable enterprise Statement of Work (SOW) from verified audit findings through a formal 8-gate scope admissibility filter and 7-column traceability matrix.
 preconditions: [at least one finalized audit run with verified findings or live target; sample mode required for synthetic demonstrations]
 failure_behaviour: absent or unverified findings in contractual mode -> NoFindingsError; all findings refused -> NoAdmissibleRequirementsError; non-existent run -> RunNotFoundError; negative or sub-cent budget -> BudgetCalculationError; invariant drift -> SowInvariantError
 artifacts_created: [SOW.md, SOW.html, or SOW.json at specified output path]
@@ -34,7 +34,7 @@ Acceptance Test (automated closed-loop detector rerun)
 
 ## 2. The Scope Admissibility Gate
 
-Audit findings do NOT automatically become contractual obligations. Every candidate finding must pass 7 admissibility gates:
+Audit findings do NOT automatically become contractual obligations. Every candidate finding must pass 8 admissibility gates:
 
 | Gate | Verification Check | Failure Refusal Code | Contractual Handling |
 | :--- | :--- | :--- | :--- |

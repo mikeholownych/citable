@@ -1,4 +1,5 @@
 import { URL } from 'node:url';
+import { extractHostname, extractRegistrableDomain, extractPublicSuffix } from '../shared/domainUtils.js';
 
 const SPAM_TLDS = new Set([
   'top', 'work', 'gdn', 'click', 'monster', 'buzz', 'cfd', 'sbs',
@@ -6,27 +7,6 @@ const SPAM_TLDS = new Set([
 ]);
 
 const COMMERCIAL_SPAM_KEYWORDS = /\b(casino|viagra|cialis|payday\s*loans?|replica|cheap\s*essay|free\s*download|warez|crack|hack|gambling|betting|slots|crypto\s*airdrop)\b/i;
-
-function extractHostname(urlString) {
-  try {
-    return new URL(urlString).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-function extractRootDomain(hostname) {
-  if (!hostname) return null;
-  const parts = hostname.split('.');
-  if (parts.length <= 2) return hostname;
-  return parts.slice(-2).join('.');
-}
-
-function extractTld(hostname) {
-  if (!hostname) return null;
-  const parts = hostname.split('.');
-  return parts.at(-1) || null;
-}
 
 /**
  * Audit an inbound backlink profile for authority distribution and toxic domain risks.
@@ -59,18 +39,18 @@ export function auditBacklinkProfile(backlinks, { targetDomain = null } = {}) {
   for (const link of links) {
     const srcHost = extractHostname(link.source_url);
     if (!srcHost) continue;
-    const rootDomain = extractRootDomain(srcHost) || srcHost;
-    const tld = extractTld(srcHost);
+    const rootDomain = extractRegistrableDomain(srcHost) || srcHost;
+    const tld = extractPublicSuffix(srcHost);
     const anchor = (link.anchor_text || '').trim();
-    const rel = (link.rel || '').toLowerCase();
-    const isNofollow = rel.includes('nofollow');
-    const isUgc = rel.includes('ugc');
-    const isSponsored = rel.includes('sponsored');
+    const relTokens = (link.rel || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const isNofollow = relTokens.includes('nofollow');
+    const isUgc = relTokens.includes('ugc');
+    const isSponsored = relTokens.includes('sponsored');
 
     if (isNofollow) nofollowCount++;
-    else if (isUgc) ugcCount++;
-    else if (isSponsored) sponsoredCount++;
-    else dofollowCount++;
+    if (isUgc) ugcCount++;
+    if (isSponsored) sponsoredCount++;
+    if (!isNofollow && !isUgc && !isSponsored) dofollowCount++;
 
     // Deep link vs homepage
     const targetPath = link.target_url ? (() => { try { return new URL(link.target_url).pathname; } catch { return '/'; } })() : '/';
@@ -78,13 +58,13 @@ export function auditBacklinkProfile(backlinks, { targetDomain = null } = {}) {
     else deepLinksCount++;
 
     // Anchor categorization
-    if (normalizedTarget && (anchor.toLowerCase().includes(normalizedTarget) || normalizedTarget.includes(anchor.toLowerCase()))) {
+    if (anchor && normalizedTarget && (anchor.toLowerCase().includes(normalizedTarget) || (anchor.length >= 3 && normalizedTarget.includes(anchor.toLowerCase())))) {
       anchorTypes.branded++;
-    } else if (/^https?:\/\//i.test(anchor) || anchor.includes('www.') || anchor.includes('.com') || anchor.includes('.org')) {
+    } else if (anchor && (/^https?:\/\//i.test(anchor) || anchor.includes('www.') || anchor.includes('.com') || anchor.includes('.org'))) {
       anchorTypes.naked_url++;
-    } else if (GENERIC_ANCHORS.test(anchor)) {
+    } else if (anchor && GENERIC_ANCHORS.test(anchor)) {
       anchorTypes.generic++;
-    } else if (COMMERCIAL_SPAM_KEYWORDS.test(anchor) || /\b(buy|best|cheap|discount|order)\b/i.test(anchor)) {
+    } else if (anchor && (COMMERCIAL_SPAM_KEYWORDS.test(anchor) || /\b(buy|best|cheap|discount|order)\b/i.test(anchor))) {
       anchorTypes.exact_match_commercial++;
     } else {
       anchorTypes.other++;
@@ -166,8 +146,9 @@ export function auditBacklinkProfile(backlinks, { targetDomain = null } = {}) {
     }
   }
 
-  // Sort toxic domains by severity (critical first)
-  toxicDomains.sort((a, b) => (a.risk_tier === 'critical' ? -1 : 1));
+  // Sort flagged domains by severity (critical first) with deterministic secondary key
+  const tierWeight = { critical: 2, high: 1, clean: 0 };
+  toxicDomains.sort((a, b) => (tierWeight[b.risk_tier] || 0) - (tierWeight[a.risk_tier] || 0) || a.domain.localeCompare(b.domain));
 
   const totalLinks = links.length;
   const totalDomains = referringDomains.size;
@@ -197,6 +178,7 @@ export function auditBacklinkProfile(backlinks, { targetDomain = null } = {}) {
 
   return {
     fact_status: 'observable_risk_indicators',
+    epistemic_status: 'DERIVED',
     target_domain: targetDomain,
     profile_health: profileHealth,
     summary: {
@@ -219,6 +201,7 @@ export function auditBacklinkProfile(backlinks, { targetDomain = null } = {}) {
       over_optimization_risk: commercialAnchorPct > 25 ? 'elevated' : 'normal',
     },
     toxic_domains: toxicDomains,
+    risk_indicators: toxicDomains,
     disavow_export: disavowLines.join('\n'),
     limitations: [
       'Search engines do not disclose algorithmic penalty thresholds; toxic classifications reflect observable risk patterns.',

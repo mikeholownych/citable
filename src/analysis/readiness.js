@@ -217,10 +217,16 @@ export function evaluateAnswerEngineReadiness(page, ctx = {}) {
     });
   }
 
+  const boundedScore = Math.max(0, Math.min(100, Number.isFinite(compositeScore) ? Math.round(compositeScore) : 0));
+
   return {
     url: page.url,
-    fact_status: 'deterministic_engine_readiness_audit',
-    composite_readiness_score: compositeScore,
+    fact_status: 'modeled_extraction_readiness',
+    epistemic_status: 'MODELED',
+    evaluation_type: 'TECHNICAL_ELIGIBILITY',
+    score: boundedScore,
+    readiness_score: boundedScore,
+    composite_readiness_score: boundedScore,
     engines: {
       perplexity: {
         score: perplexityScore,

@@ -43,7 +43,10 @@ test('evaluateAnswerEngineReadiness scores highly on page optimized for Perplexi
   };
 
   const result = evaluateAnswerEngineReadiness(page, ctx);
-  assert.equal(result.fact_status, 'deterministic_engine_readiness_audit');
+  assert.equal(result.fact_status, 'modeled_extraction_readiness');
+  assert.equal(result.epistemic_status, 'MODELED');
+  assert.equal(result.score, result.composite_readiness_score);
+  assert.equal(result.readiness_score, result.composite_readiness_score);
   assert.ok(result.composite_readiness_score >= 80, `Expected >= 80, got ${result.composite_readiness_score}`);
   assert.equal(result.engines.perplexity.status, 'optimal');
   assert.equal(result.engines.bing_copilot.status, 'optimal');

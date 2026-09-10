@@ -15,6 +15,36 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.18.2 — 2026-09-10
+
+### Fixed — Executive Reporting, Evidence Provenance, and Commercial Artifact Hardening
+
+- **Eliminated Fabricated Metrics in Executive Reports**:
+  - `src/reporting/executiveSearchReport.js`: Replaced all hardcoded fallback percentages and default metrics across Visibility Baseline, Organic Performance, SERP Landscape, AEO/GEO, E-E-A-T, Competitive Intelligence, Backlinks, and Measurement Integrity with standardized `NOT_OBSERVED` epistemic status envelopes whenever underlying analytics or platform telemetry (GSC, GA4, GTM, backlink crawls) is absent.
+  - `src/reporting/executiveCroReport.js`: Refactored to separate empirical observations from predictive hypotheses and causal evidence across all 25 enterprise pillars. Telemetry metrics (e.g. bounce rates, rage clicks, cohort divergence) fail closed to `NOT_OBSERVED` when session event streams are not provided.
+  - Added strict JSON schemas: `schemas/search-report.schema.json` and `schemas/cro-report.schema.json` compiled and validated with Ajv.
+- **Unified Canonical Evidence Source Resolver & Run Verifier**:
+  - `src/shared/evidenceSourceResolver.js`: Unified evidence source resolution (`DIRECT_INPUT`, `EXPLICIT_RUN`, `LIVE_INSPECTION`, `LATEST_RECORDED_RUN`, `SAMPLE`) across SOW and Executive Reports with deterministic chronology and tie-breaking.
+  - `src/shared/runPackageVerifier.js`: Enforces checksum verification, file sha256 integrity, manifest schema validation, and run completion checks.
+- **Epistemic Invariant Envelopes**:
+  - `src/shared/epistemicStatus.js`: Defined standard epistemic status values (`OBSERVED`, `DERIVED`, `MODELED`, `HUMAN_REVIEWED`, `NOT_OBSERVED`, `NOT_APPLICABLE`, `UNRESOLVED`, `SYNTHETIC_SAMPLE`) and typed value wrappers ensuring missing facts are explicitly visible rather than silently substituted with plausible numbers.
+- **Domain & Public Suffix Boundary Parsing**:
+  - `src/shared/domainUtils.js`: Implemented multi-part public suffix extraction (`extractRegistrableDomain`, `extractPublicSuffix`, `isAuthoritativeDomain`) handling multi-part suffixes (e.g. `.co.uk`, `.com.au`, `.gov.uk`) and preventing substring boundary spoofing.
+  - `src/analysis/eeat.js`: Replaced naive substring matching with authoritative domain checks and enforced strict page-scoped claim filtering.
+  - `src/analysis/offpage.js`: Applied public suffix parsing to backlink profiles; empty anchor text is strictly categorized as `empty_anchor` rather than branded; corrected multi-token `rel` attribution (`nofollow`, `ugc`, `sponsored`).
+- **AEO Readiness Scoring & Null Safety**:
+  - `src/analysis/readiness.js`: Standardized score naming (`score`, `readiness_score`), eliminated NaN drift, reclassified checks as `MODELED_EXTRACTION_READINESS` (`epistemic_status: 'MODELED'`).
+  - `src/analysis/behavioral.js`: Fixed null-handling when telemetry streams are absent.
+- **Commercial SOW Contractual Mode Hardening**:
+  - `src/sow/generateSow.js` & `src/sow/admissibilityGate.js`: Refactored to use canonical source resolver and HTML escaping. In contractual mode, explicit commercial parameters and non-empty in-scope properties are strictly required; built-in template default owners are refused (`REFUSE-TEMPLATE-DEFAULT-OWNER`); `acceptance_basis` is recorded on every requirement; finding ID and requirement ID uniqueness invariants are enforced.
+- **HTML/Markdown Escaping & Injection Protection**:
+  - `src/shared/htmlEscape.js`: Implemented canonical escaping utilities (`escapeHtml`, `escapeHtmlAttr`, `sanitizeUrl`, `escapeMarkdownTableCell`, `sanitizeForMarkdown`) protecting all rendered client names, finding summaries, recommendations, and subjects against raw script and event handler injection.
+- **Customer Artifact Verification Tooling**:
+  - `src/artifacts/verifyCustomerArtifact.js`: Validates customer artifacts (SOW, Search Report, CRO Report) against schemas, verifies arithmetic invariants, enforces absence of synthetic/sample data in contractual mode, and detects unescaped script injections. Exposed via CLI command `citable artifacts verify-customer <file>`.
+- **Supply Chain Security & Schema Validation**:
+  - Pinned all GitHub Action steps across all 8 workflows to immutable commit SHAs.
+  - Added `npm run validate:schemas` compiling all 64 schemas cleanly with Ajv.
+
 ## 1.18.1 — 2026-09-10
 
 ### Fixed — SOW Evidence Traceability & Admissibility Gate Hardening

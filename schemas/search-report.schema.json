@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/search-report.schema.json",
+  "title": "Enterprise Search Intelligence & Governance Executive Report",
+  "type": "object",
+  "required": [
+    "fact_status",
+    "report_title",
+    "client_name",
+    "target_domain",
+    "generated_at",
+    "overall_readiness_score",
+    "pillars",
+    "evidence_register",
+    "decision_summary",
+    "generation_provenance"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "fact_status": { "type": "string" },
+    "epistemic_status": { "type": "string" },
+    "report_title": { "type": "string" },
+    "client_name": { "type": "string" },
+    "target_domain": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "overall_readiness_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "pillars": {
+      "type": "object",
+      "required": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"],
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "object",
+          "required": ["name", "data"],
+          "properties": {
+            "name": { "type": "string" },
+            "data": {}
+          }
+        }
+      }
+    },
+    "evidence_register": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["evidence_id", "source", "methodology", "confidence_level"],
+        "properties": {
+          "evidence_id": { "type": "string", "pattern": "^EVD-SRCH-[0-9]+$" },
+          "source": { "type": "string" },
+          "title": { "type": "string" },
+          "observation_date": { "type": "string" },
+          "methodology": { "type": "string" },
+          "confidence_level": { "type": "string" },
+          "data_snapshot": {}
+        }
+      }
+    },
+    "decision_summary": {
+      "type": "object",
+      "required": [
+        "confirmed_findings",
+        "inferred_opportunities",
+        "unresolved_unknowns",
+        "strategic_risks",
+        "actions_requiring_leadership_approval"
+      ],
+      "properties": {
+        "confirmed_findings": { "type": "array", "items": { "type": "string" } },
+        "inferred_opportunities": { "type": "array", "items": { "type": "string" } },
+        "unresolved_unknowns": { "type": "array", "items": { "type": "string" } },
+        "strategic_risks": { "type": "array", "items": { "type": "string" } },
+        "actions_requiring_leadership_approval": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "generation_provenance": {
+      "type": "object",
+      "required": [
+        "generated_at",
+        "generator_version",
+        "generation_mode",
+        "source_type",
+        "synthetic_evidence"
+      ],
+      "properties": {
+        "generated_at": { "type": "string" },
+        "generator_version": { "type": "string" },
+        "generation_mode": { "type": "string", "enum": ["CONTRACTUAL", "DRAFT", "NON_CONTRACTUAL_SAMPLE"] },
+        "source_type": { "type": "string" },
+        "source_identifier": { "type": ["string", "null"] },
+        "source_findings_count": { "type": "integer", "minimum": 0 },
+        "integrity_hash": { "type": ["string", "null"] },
+        "synthetic_evidence": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
