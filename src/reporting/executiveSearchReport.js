@@ -515,7 +515,9 @@ export async function buildExecutiveSearchReport(root, options = {}) {
       };
 
   // 14. MEASUREMENT INTEGRITY REVIEW
-  const hasGa4 = pages.some((p) => (p.html || '').includes('googletagmanager.com') || (p.html || '').includes('gtag'));
+  const gtmScriptRx = /<script\b[^>]*\bsrc=["'][^"']*?\bgoogletagmanager\.com\b/i;
+  const gtagRx = /\bgtag\s*\(/i;
+  const hasGa4 = pages.some((p) => gtmScriptRx.test(p.html || '') || gtagRx.test(p.html || ''));
   const hasGsc = Boolean(registries.connections?.entries?.some((c) => c.provider === 'gsc'));
 
   const measurementIntegrity = isSample

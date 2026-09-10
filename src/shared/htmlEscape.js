@@ -50,6 +50,7 @@ export function escapeMarkdownTableCell(str) {
   if (str === null || str === undefined) return '';
   return String(str)
     .replace(/\r?\n/g, ' ')
+    .replace(/\\/g, '\\\\')
     .replace(/\|/g, '\\|')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
@@ -57,8 +58,8 @@ export function escapeMarkdownTableCell(str) {
 
 export function sanitizeForMarkdown(str) {
   if (str === null || str === undefined) return '';
-  // Prevent raw script or malicious HTML injections in markdown
+  // Prevent raw script or malicious HTML tag injections in markdown by encoding brackets
   return String(str)
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
