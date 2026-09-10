@@ -23,11 +23,16 @@ add commands or evidence authority.
 | --- | --- | --- |
 | `citable plan-audit --target <dir\|url>` | Propose scopes and optional collectors | Plan only; no run is created |
 | `citable audit [scope] --target <dir\|url>` | Run the full or scoped detector set | Immutable audit package |
+| `citable sweep technical --target <dir\|url>` | Static Core Web Vitals sweep (LCP, INP, CLS) | Vitals readiness report |
 | `citable inspect <page>` | Profile one page | Page-level inspection |
+| `citable inspect eeat --target <dir\|url>` | On-page content & E-E-A-T evaluation (0-5 scale) | Trust & authority report |
+| `citable inspect readiness --target <dir\|url>` | Multi-engine answer extraction readiness | AEO readiness report |
+| `citable inspect cro <page> --target <dir>` | Conversion friction, forms, and CTA clarity | CRO diagnostic profile |
+| `citable audit backlinks --input <file>` | Off-page authority & toxic domain assessment | Disavow & authority audit |
 | `citable schema` | Validate deployed JSON-LD and derive a proposal | Validation plus registry-derived proposal |
 | `citable validate [mode]` | Validate registries, claims, evidence, schema, or links | Contract results for the selected mode |
 
-Audit scopes are `technical`, `seo`, `aeo`, `geo`, `architecture`, `entity`,
+Audit scopes are `technical`, `seo`, `aeo`, `geo`, `cro`, `architecture`, `entity`,
 `claims`, `evidence`, `schema`, `lifecycle`, and `corroboration`. A scoped audit
 can omit interactions that a full audit would expose.
 
@@ -57,18 +62,76 @@ citable observe <mode> [--target <url>] [--input <file>]
 
 See [Integrations](INTEGRATIONS.md) before adding an external source.
 
-## Turn findings into governed work
+## Closed-loop code remediation and delivery kits
 
 ```bash
-citable action-plan <run-id>
-citable apply --input <reviewed-remediation.json>
-citable compare-snapshots <run-a> <run-b>
-citable monitor <run-a> <run-b>
+citable remediate --finding <id> --target <file>        # dry run: diff + AST validation + confidence
+citable remediate --finding <id> --target <file> --write # gated write; snapshot created
+citable verify remediation --run <id> --finding <id> --target <file> --apply # re-runs detector
+citable kit export --run <id> --finding <id> --target <file> # exports client delivery kit
 ```
 
-`action-plan` does not modify the audited property. `apply` requires a reviewed,
-hash-locked specification. Comparison reports changes in captured evidence; it
-does not infer causality.
+- `remediate` uses AST parsing to calculate idempotent patches. Automated writes
+  require structural syntax validation, confidence score >= `0.85`, and an
+  automatic rollback snapshot under `.citable/remediation/snapshots/`.
+- Automated writes refuse semantic copy or editorial content (`CRO-012`, `COMP-003`).
+- `verify remediation` re-runs the source detector against the modified target to
+  confirm resolution with zero regressions before closing work.
+
+## Prioritization and strategic roadmaps
+
+```bash
+citable prioritize matrix --run <run-id>
+citable roadmap strategic --run <run-id>
+citable cro roadmap --run <run-id>
+citable cro backlog --run <run-id>
+citable check experiment <id> --observed-control 5000 --observed-variant 4980 --days-running 6
+```
+
+- `prioritize matrix` calculates Impact / Effort / Confidence (ICE) scores
+  balanced by Business Value (BV).
+- `roadmap strategic` and `cro roadmap` structure findings into 30-day (immediate
+  technical blockers), 90-day (structural/extraction fixes), and 180-day
+  (architecture & governance) horizons.
+- `cro backlog` compiles falsifiable test hypotheses with guardrails and stopping criteria.
+
+## Executive intelligence briefings
+
+```bash
+citable report search [--target <dir|url>] [--run <run-id>]
+citable report cro [--target <dir|url>] [--run <run-id>]
+```
+
+- **Enterprise Search Intelligence Briefing** (`citable report search`): 19 diagnostic
+  pillars covering technical search infrastructure, crawlability, CWV, organic demand,
+  SERP landscape, entity footprint, and multi-engine answer extraction readiness.
+- **Enterprise CRO & Customer Journey Briefing** (`citable report cro`): 25 diagnostic
+  pillars covering full-funnel drop-off, message match, cognitive friction, CTA
+  conspicuity (visual saliency), offer architecture, and experiment backlog.
+- Reports enforce strict fact/inference separation and never guarantee search rankings,
+  AI answer inclusion, or conversion revenue.
+
+## Enterprise Statement of Work (SOW) generation
+
+```bash
+citable sow generate [--run <id>] [--scope <domain>] [--budget-minor <cents>] [--out <file>]
+citable sow validate <sow-file.json>
+```
+
+- `sow generate` transforms empirical audit findings into contractually enforceable SOWs.
+- **7 Scope Admissibility Gates**: Enforces origin, host, subdomain, path boundaries,
+  resource types, ownership clarity, and verified rerun detectors before findings
+  become contractual scope. Refused findings are cataloged in `refusal_log` with
+  standard refusal codes.
+- **7-Column Traceability Matrix**: Finding ID → Recommendation → SOW Requirement ID →
+  Deliverable ID → Acceptance Test ID → Responsible Owner → Source Evidence.
+- **Integer Minor-Unit Currency**: Milestones and budgets are calculated in integer
+  cents (`USD`, exponent 2) to eliminate fractional pennies and commercial drift.
+- **Fail-Closed Contractual Generation**: In contractual mode, generation fails closed
+  (`NoFindingsError`) if audit findings or evidence items are absent. Synthetic
+  findings are strictly confined to explicit `--sample` / `--demo` mode.
+- `sow validate` validates the SOW artifact against `schemas/sow.schema.json` and
+  enforces cross-object commercial and deliverable invariants.
 
 ## Measurements and connectors
 
@@ -97,7 +160,6 @@ aggregation, sampling, privacy, attribution, and availability limits.
 | `corpus evaluate/publish/receipt/compare-receipts` | Govern acceptance evidence and reproducibility |
 | `artifacts export/verify/import` | Move sealed runs without changing canonical bytes |
 
-Executive reporting commands are listed by `citable --help`. They govern
-declared KPIs, outcomes, risks, decisions, assumptions, scenarios, priorities,
-and competitive evidence; they do not convert incomplete source evidence into
-fact.
+All Citable commands govern declared KPIs, outcomes, risks, decisions,
+assumptions, scenarios, priorities, and competitive evidence; they do not
+convert incomplete source evidence into fact.
