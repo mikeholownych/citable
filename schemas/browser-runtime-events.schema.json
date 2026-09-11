@@ -1,0 +1,112 @@
+{
+  "$id": "citable://schemas/browser-runtime-events.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Browser runtime events evidence artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "profile_id",
+    "collected_at",
+    "capture_policy",
+    "summary",
+    "events"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string" },
+    "profile_id": { "type": "string" },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "capture_policy": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_events", "by_source", "by_event_name", "truncated"],
+      "properties": {
+        "total_events": { "type": "integer", "minimum": 0 },
+        "filtered_events": { "type": "integer", "minimum": 0 },
+        "collector_status": { "enum": ["complete", "truncated", "failed"] },
+        "by_source": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "by_event_name": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "truncated": { "type": "boolean" },
+        "truncation_reason": { "type": ["string", "null"] },
+        "collector_health": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string" },
+            "queue_replaced": { "type": "boolean" },
+            "push_replaced": { "type": "boolean" },
+            "polling_fallback_used": { "type": "boolean" },
+            "supported_contexts": { "type": "array", "items": { "type": "string" } },
+            "unsupported_contexts": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "source_id",
+          "event_name",
+          "timing",
+          "correlation",
+          "payload"
+        ],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "source_id": { "type": "string" },
+          "event_name": { "type": "string" },
+          "occurrence_index": { "type": "integer", "minimum": 1 },
+          "timing": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["monotonic_offset_ms", "timestamp"],
+            "properties": {
+              "monotonic_offset_ms": { "type": "number", "minimum": 0 },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          },
+          "correlation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step_id", "step_sequence", "attribution_phase"],
+            "properties": {
+              "step_id": { "type": ["string", "null"] },
+              "step_sequence": { "type": ["integer", "null"] },
+              "checkpoint_id": { "type": ["string", "null"] },
+              "attribution_phase": { "enum": ["initial", "during_step", "between_steps", "post_journey", "ambiguous_async"] },
+              "initiated_step_id": { "type": ["string", "null"] },
+              "completed_step_id": { "type": ["string", "null"] },
+              "ambiguous_async": { "type": "boolean" }
+            }
+          },
+          "payload": {
+            "type": "object"
+          },
+          "disposition": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["capture_status", "redacted_count", "filtered_fields"],
+            "properties": {
+              "capture_status": { "enum": ["captured", "filtered", "redacted", "truncated"] },
+              "redacted_count": { "type": "integer", "minimum": 0 },
+              "filtered_fields": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

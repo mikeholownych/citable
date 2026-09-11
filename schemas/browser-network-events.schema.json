@@ -1,0 +1,142 @@
+{
+  "$id": "citable://schemas/browser-network-events.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Browser network activity evidence artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "profile_id",
+    "collected_at",
+    "capture_policy",
+    "summary",
+    "events"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string" },
+    "profile_id": { "type": "string" },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "capture_policy": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_requests", "successful_responses", "failed_requests", "filtered_requests", "truncated", "status_codes"],
+      "properties": {
+        "total_requests": { "type": "integer", "minimum": 0 },
+        "successful_responses": { "type": "integer", "minimum": 0 },
+        "failed_requests": { "type": "integer", "minimum": 0 },
+        "filtered_requests": { "type": "integer", "minimum": 0 },
+        "in_flight_requests": { "type": "integer", "minimum": 0 },
+        "collector_status": { "enum": ["complete", "truncated", "failed"] },
+        "truncated": { "type": "boolean" },
+        "truncation_reason": { "type": ["string", "null"] },
+        "status_codes": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "transaction_id",
+          "direction",
+          "phase",
+          "timing",
+          "correlation",
+          "request"
+        ],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "transaction_id": { "type": "string" },
+          "direction": { "enum": ["request", "response"] },
+          "phase": { "enum": ["request_sent", "response_received", "failed", "redirect"] },
+          "timing": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["monotonic_offset_ms", "timestamp"],
+            "properties": {
+              "monotonic_offset_ms": { "type": "number", "minimum": 0 },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          },
+          "correlation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step_id", "step_sequence", "attribution_phase"],
+            "properties": {
+              "step_id": { "type": ["string", "null"] },
+              "step_sequence": { "type": ["integer", "null"] },
+              "checkpoint_id": { "type": ["string", "null"] },
+              "attribution_phase": { "enum": ["initial", "during_step", "between_steps", "post_journey", "ambiguous_async"] },
+              "initiated_step_id": { "type": ["string", "null"] },
+              "completed_step_id": { "type": ["string", "null"] },
+              "ambiguous_async": { "type": "boolean" }
+            }
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "method", "scheme", "host", "path", "resource_type"],
+            "properties": {
+              "url": { "type": "string" },
+              "method": { "type": "string" },
+              "scheme": { "type": "string" },
+              "host": { "type": "string" },
+              "path": { "type": "string" },
+              "resource_type": { "type": "string" },
+              "query": { "type": ["object", "null"] },
+              "query_status": { "enum": ["captured", "not_requested", "filtered", "none_present", "redacted"] },
+              "headers": { "type": ["object", "null"] },
+              "headers_status": { "enum": ["captured", "not_requested", "filtered", "redacted"] },
+              "payload_hash": { "type": ["string", "null"] },
+              "payload_bytes": { "type": ["integer", "null"] },
+              "payload_fields": { "type": ["object", "null"] },
+              "payload_status": { "enum": ["not_requested", "captured", "filtered", "truncated", "unavailable", "hash_only"] }
+            }
+          },
+          "response": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "status": { "type": "integer" },
+              "status_text": { "type": "string" },
+              "headers": { "type": ["object", "null"] },
+              "headers_status": { "enum": ["captured", "not_requested", "filtered", "redacted"] },
+              "mime_type": { "type": ["string", "null"] },
+              "body_hash": { "type": ["string", "null"] },
+              "body_bytes": { "type": ["integer", "null"] },
+              "body_fields": { "type": ["object", "null"] },
+              "body_status": { "enum": ["not_requested", "captured", "filtered", "truncated", "unavailable", "hash_only"] },
+              "redirect_url": { "type": ["string", "null"] },
+              "from_cache": { "type": "boolean" }
+            }
+          },
+          "failure": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "error_text": { "type": "string" }
+            }
+          },
+          "disposition": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["capture_status", "redacted_count", "filtered_fields"],
+            "properties": {
+              "capture_status": { "enum": ["captured", "filtered", "redacted", "truncated", "error"] },
+              "redacted_count": { "type": "integer", "minimum": 0 },
+              "filtered_fields": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

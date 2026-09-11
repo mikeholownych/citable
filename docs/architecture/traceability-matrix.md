@@ -152,3 +152,19 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | Initiative prioritization with transparent scoring | C: `prioritize rank` — scoring formula and weights exposed in output; rejects `transformative` + `assumption` combination; T: test asserts |
 | Competitive intelligence provenance controls | R: competitors.yaml extended; V: `competitive-intel validate` requires `observation_date`, `source`, `claim_type`; unreliable sources require `independent_verification` |
 | Chief-of-staff routing with audit trail | C: `executive` routes 11 patterns; max depth 1; logs to `.citable/executive-log.yaml`; T: 7 routing tests |
+
+## ADR-003 — Browser Evidence Acquisition (Network, State, and Runtime Events)
+
+| Requirement | Controls |
+| --- | --- |
+| Network transaction capture with host allowlists | R: `schemas/browser-network-events.schema.json`; C: `src/observations/browser/networkCollector.js`; V: `host_allowlist` pattern filtering, redirects, status, timing; T: `tests/unit/browser-network.test.js` |
+| Bounded network headers, query params, and payloads | C: `src/observations/browser/sanitizer.js`, `networkCollector.js`; V: `max_events`, `max_body_bytes`, allowlist filtering, truncation indicators; T: `tests/unit/browser-network.test.js` |
+| Browser state checkpoints (navigation, cookies, storage, globals, DOM) | R: `schemas/browser-state-observations.schema.json`; C: `src/observations/browser/stateCollector.js`; V: `allowlisted_cookies`, `allowlisted_local_storage_keys`, `safe_globals`, `dom_queries`; T: `tests/unit/browser-state.test.js` |
+| Safe global variable evaluation without arbitrary code execution | C: `src/observations/browser/stateCollector.js`; V: strict regex identifier/bracket path parser, no `eval`, safe traversal; T: `tests/unit/browser-state.test.js` |
+| Generic runtime event listening (data layers & window events) | R: `schemas/browser-runtime-events.schema.json`; C: `src/observations/browser/runtimeEventCollector.js`; V: queue polling/patching, cycle-safe cloning, event/field allowlists, SHA-256 field hashing; T: `tests/unit/browser-runtime-events.test.js` |
+| Secret detection and unconditional redaction | C: `src/observations/browser/sanitizer.js`; V: Authorization/Bearer, cookies, passwords, API keys, cards, private keys unconditionally redacted to `[REDACTED_SECRET]`; T: `tests/unit/browser-sanitizer.test.js`, `tests/unit/browser-adversarial.test.js` |
+| Step correlation without false causal claims | C: `src/observations/browser/correlation.js`; V: monotonic timestamps, step sequences, phase classification (`during_step`, `between_steps`, `post_journey`), `ambiguous_async` flagging; T: `tests/unit/browser-correlation.test.js` |
+| Epistemic status separation for absent vs unobserved vs failed | R: `browser-network-events.schema.json`, `browser-state-observations.schema.json`, `browser-runtime-events.schema.json`; V: explicit `ABSENT`, `TRUNCATED`, `UNOBSERVABLE`, `FAILED` values; T: `tests/unit/browser-adversarial.test.js` |
+| Plan contract backward-compatibility | R: `schemas/browser-evidence-plan.schema.json`; V: optional `network_policy`, `state_policy`, `runtime_event_policy`, `action: "checkpoint"`; validated via `npm run validate:schemas` |
+| Partial evidence preservation on journey failure | C: `src/observations/browserJourney.js`; V: required step failure packages partial network, state, and runtime artifacts alongside error; T: `tests/integration/browser-journey-enhanced.test.js` |
+| Evidence envelope and schema validation gates | C: `src/observations/browserJourney.js`; V: `validateAgainst` Ajv compilation for all three artifacts, summary refs in `observation.schema.json` envelope; T: `tests/integration/browser-journey-enhanced.test.js` |

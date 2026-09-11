@@ -74,7 +74,7 @@ test('adversarial: tampered run package checksums fail closed with RunVerificati
     run_id: 'RUN-TAMPER-001',
     created_at: new Date().toISOString(),
     status: 'completed',
-    tool_version: '1.18.2',
+    tool_version: '1.19.0',
   };
   fs.writeFileSync(path.join(tmpDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
   fs.writeFileSync(path.join(tmpDir, 'findings.json'), JSON.stringify([{ id: 'F-1' }]));

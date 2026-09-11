@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "plan_id": "BROWSER-PLAN-ENHANCED-FIXTURE",
+  "target": "https://example.test/",
+  "semantic_impact_policy": {
+    "policy_id": "RENDER-POLICY-FIXTURE",
+    "review_owner": "Fixture Semantic Reviewer",
+    "min_text_retention_ratio": 0.8,
+    "require_heading_parity": true,
+    "require_link_parity": true,
+    "require_structured_data_parity": true,
+    "limitations": ["Deterministic parity checks do not replace semantic review."]
+  },
+  "network_policy": {
+    "enabled": true,
+    "allowed_host_patterns": ["example.test", "*.analytics.test"],
+    "allowed_methods": ["GET", "POST"],
+    "capture_request_headers": ["content-type", "accept", "authorization"],
+    "capture_response_headers": ["content-type", "cache-control"],
+    "capture_query_params": ["page", "token", "source"],
+    "capture_payload": {
+      "request_body": true,
+      "response_body": true,
+      "allowed_json_fields": ["event", "product_id", "user_key"],
+      "hash_only": false,
+      "max_bytes": 2048
+    },
+    "max_events": 50
+  },
+  "state_policy": {
+    "enabled": true,
+    "checkpoints": ["initial", "step", "final"],
+    "capture_url": true,
+    "allowed_query_params": ["source", "token"],
+    "capture_referrer": true,
+    "capture_navigation": true,
+    "cookies": {
+      "allowed_names": ["session_id", "cookie_consent"],
+      "mode": "allowlist_values"
+    },
+    "local_storage": {
+      "allowed_keys": ["theme", "user_auth"],
+      "mode": "allowlist_values"
+    },
+    "globals": [
+      { "name": "app_version", "expression": "window.APP_CONFIG.version", "mode": "scalar_value" }
+    ],
+    "dom_queries": [
+      { "name": "lead_heading", "selector": "h1", "property": "text_content" }
+    ]
+  },
+  "runtime_event_policy": {
+    "enabled": true,
+    "sources": [
+      {
+        "source_id": "data_layer",
+        "type": "global_array",
+        "global_name": "window.dataLayer",
+        "event_name_key": "event"
+      }
+    ],
+    "allowed_event_names": ["page_view", "generate_lead"],
+    "allowed_fields": ["event", "page_path", "lead_id", "secret_token"],
+    "max_events": 50
+  },
+  "profiles": [
+    {
+      "profile_id": "chromium-enhanced",
+      "browser": { "engine": "chromium", "expected_version": null },
+      "device": { "name": "Desktop", "viewport": { "width": 1280, "height": 900 }, "is_mobile": false },
+      "javascript_enabled": true,
+      "locale": "en-US",
+      "consent_state": "granted",
+      "authentication_state": "anonymous",
+      "steps": [
+        {
+          "step_id": "open-details",
+          "action": "click",
+          "locator": "summary",
+          "value_env": null,
+          "key": null,
+          "url": null,
+          "required": true,
+          "capture_screenshot": true,
+          "checkpoint_id": "chk-after-details"
+        },
+        {
+          "step_id": "state-checkpoint-step",
+          "action": "checkpoint",
+          "locator": null,
+          "value_env": null,
+          "key": null,
+          "url": null,
+          "required": true,
+          "capture_screenshot": false,
+          "checkpoint_id": "chk-explicit-step"
+        }
+      ],
+      "limitations": ["Fixture profile does not represent production browser populations."]
+    }
+  ],
+  "limitations": ["Enhanced plan collects bounded network, state, and runtime evidence without marketing correctness interpretation."]
+}
