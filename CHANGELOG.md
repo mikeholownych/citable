@@ -15,6 +15,52 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.19.0 — 2026-09-11
+
+### Added — Deterministic Bounded Browser-Journey Evidence Acquisition (ADR-003)
+
+- **Browser Network Activity Observation (`network-events.json` / `schemas/browser-network-events.schema.json`)**:
+  - Captured HTTP/HTTPS network transactions during journey execution via Playwright request/response/failure hooks.
+  - Implemented configurable host allowlist filtering (exact match and wildcard subdomains) to isolate target and partner traffic.
+  - Recorded request method, URL, status code, protocol, timings, body size, redirects, and failure errors.
+  - Deny-by-default payload capture: request and response bodies default to uncaptured (`request_body: false`, `response_body: false`); host allowlist alone never triggers body capture.
+  - Explicit status separation: headers, query params, and bodies record status (`not_requested`, `filtered`, `captured`, `truncated`, `unavailable`, `hash_only`, `redacted`).
+  - Added strict sanitization of allowlisted request/response headers, query parameters, and JSON payloads with bounded size limits (`max_body_bytes`, `max_field_size`).
+  - In-flight request tracking (`summary.in_flight_requests`) and optional bounded settling timeout (`network_policy.settling_timeout_ms`).
+  - Added deterministic transaction bounds (`max_events`) with explicit `truncated` flags and epistemic status (`ABSENT`, `TRUNCATED`, `UNOBSERVABLE`, `FAILED`).
+- **Browser State Observation (`state-observations.json` / `schemas/browser-state-observations.schema.json`)**:
+  - Captured multi-checkpoint state snapshots at journey stages (`initial`, `before_step`, `step`, `final`).
+  - Recorded final URL, allowlisted query parameters, referrer, and navigation type.
+  - Governed access to cookies, localStorage, and sessionStorage: dumps only explicitly named keys/cookies declared in policy, unconditionally blocking unlisted storage.
+  - HttpOnly cookie semantics: captures presence, length, and security flags (`http_only: true`, `secure: true`, `same_site`), while strictly suppressing raw plaintext values as `[POLICY_RESTRICTED_HTTPONLY]` in `allowlist_values` mode. Context-level failures are recorded in `unavailable_items`.
+  - Added safe global variable evaluation using strict AST identifier/bracket path validation (`[a-zA-Z0-9_$.[\]'"]+`) without `eval()` or arbitrary JavaScript execution. Throwing getters during evaluation fail closed to `unavailable_items` without asserting false absence.
+  - Extracted DOM query results (presence, text content, attributes) scoped strictly to allowlisted CSS selectors and attributes.
+- **Explicitly Configured Runtime Events (`runtime-events.json` / `schemas/browser-runtime-events.schema.json`)**:
+  - Generic listener for global array event queues (e.g. `window.dataLayer`, custom event queues) hooking queues via `Object.defineProperty(window, prop, ...)` to intercept queue reassignment (`window.dataLayer = []`) with polling fallback for unhooked mutations.
+  - Safe in-page and Node extraction protecting against hostile throwing getters (`[GETTER_ERROR]`).
+  - Detailed collector health reporting in `summary.collector_health` (`status`, `queue_replaced`, `push_replaced`, `polling_fallback_used`, `supported_contexts: ["top_level_main_frame"]`, `unsupported_contexts: ["cross_origin_iframes", "web_workers"]`).
+  - Window event listener for declared DOM events (`DOMContentLoaded`, `load`, custom events).
+  - Explicit event allowlists, field allowlists, sensitive key redaction, and SHA-256 field hashing.
+  - Bounded collection (`max_events`) with explicit truncation counters and `filtered_events` tracking.
+- **Monotonic Sequencing & Temporal Step Correlation**:
+  - `src/observations/browser/correlation.js`: Generates monotonically increasing event sequences and microsecond-precision offsets (`monotonic_offset_ms`) from journey start.
+  - Explicit phase classification: `during_step`, `between_steps`, and `post_journey`.
+  - Asynchronous transaction completion tagging (`ambiguous_async: true`): records `initiated_step_id` and `completed_step_id` when requests resolve across step boundaries or after journey completion.
+- **Mandatory Secret Sanitization & Residual Risk Disclosure (`src/observations/browser/sanitizer.js`)**:
+  - Unconditional redaction to `[REDACTED_SECRET]` for Authorization/Bearer headers, Cookie/Set-Cookie headers, basic auth credentials, passwords, session tokens, API keys, private keys, credit cards, and OAuth callback codes.
+  - Defense-in-depth regex redaction paired with structural minimization; documented residual risk for novel unstructured secrets in customer-allowlisted payload fields.
+  - Recursively applied across headers, query parameters, request/response bodies, state storage values, globals, and runtime event payloads.
+- **Strict ABSENT Epistemic Invariant**:
+  - Guarantees that absence (`ABSENT` / `exists: false`) is asserted only when target was in declared scope, collector was active full window, no truncation occurred, candidate was not filtered, and no collector errors occurred.
+- **Resilient Evidence Preservation**:
+  - In the event of a required journey step failure, captured partial network events, state observations, and runtime events are preserved and packaged into the failure evidence bundle alongside failure JSON and screenshots.
+- **Schema & Artifact Integration**:
+  - Evolved `schemas/browser-evidence-plan.schema.json` backward-compatibly with optional `network_policy`, `state_policy`, `runtime_event_policy`, and `action: "checkpoint"`.
+  - All artifacts validated strictly against compiled Ajv schemas via `validateAgainst`.
+  - Added summary objects (`network_summary`, `state_summary`, `runtime_events_summary`) and artifact references to the canonical observation envelope (`schemas/observation.schema.json`).
+
+
+
 ## 1.18.2 — 2026-09-10
 
 ### Fixed — Executive Reporting, Evidence Provenance, and Commercial Artifact Hardening

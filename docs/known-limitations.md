@@ -40,10 +40,12 @@ surface.
   screenshot, failed-request, and parity evidence when Playwright and Chromium
   are installed. Target-only interaction execution is limited to visible
   disclosure, inactive-tab, and load-more-like controls. Schema-validated plans
-  can execute Chromium, Firefox, and WebKit journeys, but browser binaries must
-  be installed. Authenticated states require a disclosed custom adapter;
-  consent state is recorded and changes only through explicit steps. Browser
-  differences do not establish semantic, retrieval, or citation impact.
+  can execute Chromium, Firefox, and WebKit journeys with bounded, deterministic
+  capture of network activity, state checkpoints, and generic runtime events, but browser
+  binaries must be installed. Authenticated states require a disclosed custom adapter;
+  consent state is recorded and changes only through explicit steps. Marketing correctness,
+  conversion attribution, and tag validation remain downstream concerns outside Citable core;
+  browser differences do not establish semantic, retrieval, or citation impact.
 - **Passage analysis is heuristic.** `observe passages` creates candidates and
   noise ratios, but semantic independence and support still require review.
 - **Citation correctness remains human-authoritative.** Citable normalizes
@@ -66,6 +68,44 @@ surface.
 - **URL-mode redirects/headers** are captured live, but static-dir mode
   depends on the optional `_citable-transport.json` sidecar; without it,
   status/header detectors see defaults (recorded in audit assumptions).
+
+## Browser journey evidence acquisition
+
+- **Network protocol coverage is bounded to HTTP/HTTPS.** Citable observes HTTP and
+  HTTPS network requests and responses initiated from the monitored browser page.
+  WebSockets (`ws://`, `wss://`), WebRTC data channels, internal Service Worker
+  background fetches not routed through page interception, and browser internal
+  transactions are outside observation scope and not captured in `network-events.json`.
+- **Runtime event boundaries cover the top-level main frame only.** Application event
+  queues (e.g., `window.dataLayer`) and DOM events are captured from the top-level
+  main frame execution context. Cross-origin iframes, sandboxed third-party embeds,
+  and Web Workers are unobserved and recorded in `collector_health.unsupported_contexts`.
+- **HttpOnly cookie semantics and policy restriction.** Playwright's `context.cookies()`
+  API operates at the browser context level and can observe HttpOnly cookies. Citable
+  records their presence, byte length, and security attributes (`http_only: true`,
+  `secure`, `same_site`), but strictly suppresses raw cookie values as
+  `[POLICY_RESTRICTED_HTTPONLY]` when `mode: "allowlist_values"` is configured.
+  Plaintext values of HttpOnly cookies are never recorded in evidence artifacts.
+  Technical unobservability is reserved strictly for browser context or connection failures.
+- **Strict ABSENT invariant.** Citable guarantees that `ABSENT` (or `exists: false`) is
+  asserted only when: (1) the target was explicitly declared in the collection policy,
+  (2) the collector was active throughout the observation window, (3) collection was
+  not truncated (`summary.truncated: false`), (4) the candidate was not excluded by
+  host, method, or name filters, and (5) no collector errors occurred. If observation
+  was filtered, truncated, unobserved, or failed, absence cannot be asserted.
+- **Defense-in-depth sanitization and residual secret risk.** Citable enforces
+  deny-by-default collection with mandatory sensitive-field protection, bounded
+  allowlisting, and regex redaction (`[REDACTED_SECRET]`). Standard credentials,
+  bearer tokens, OAuth codes, and common API key patterns are unconditionally redacted.
+  However, novel or unstructured secrets placed in customer-allowlisted payload fields
+  that do not match known sensitive key or token formats carry residual exposure risk.
+  To eliminate residual risk, operators must configure `hash_only: true` or omit body capture.
+- **Asynchronous request correlation and settling.** Requests initiated during journey
+  steps that complete across subsequent step boundaries or after journey completion
+  are attributed as `ambiguous_async` rather than falsely attributed to later actions.
+  In-flight requests unresolved at journey termination are accounted for in
+  `summary.in_flight_requests`. Bounded settling delays can be configured via
+  `network_policy.settling_timeout_ms` (0 to 5000ms, defaulting to 0).
 
 ## Release projections and representation drift
 

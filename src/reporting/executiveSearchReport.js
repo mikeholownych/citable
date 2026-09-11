@@ -613,7 +613,7 @@ export async function buildExecutiveSearchReport(root, options = {}) {
 
   const generationProvenance = {
     generated_at: generatedAt,
-    generator_version: '1.18.2',
+    generator_version: '1.19.0',
     generation_mode: resolved.generation_mode,
     source_type: resolved.source_type,
     source_identifier: resolved.source_identifier,

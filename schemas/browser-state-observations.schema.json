@@ -1,0 +1,97 @@
+{
+  "$id": "citable://schemas/browser-state-observations.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Browser state observations evidence artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "profile_id",
+    "collected_at",
+    "capture_policy",
+    "summary",
+    "checkpoints"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "plan_id": { "type": "string" },
+    "profile_id": { "type": "string" },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "capture_policy": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_checkpoints", "total_observations", "truncated"],
+      "properties": {
+        "total_checkpoints": { "type": "integer", "minimum": 0 },
+        "total_observations": { "type": "integer", "minimum": 0 },
+        "collector_status": { "enum": ["complete", "truncated", "failed"] },
+        "truncated": { "type": "boolean" },
+        "truncation_reason": { "type": ["string", "null"] }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checkpoint_id",
+          "sequence",
+          "timing",
+          "correlation",
+          "state"
+        ],
+        "properties": {
+          "checkpoint_id": { "type": "string" },
+          "sequence": { "type": "integer", "minimum": 1 },
+          "timing": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["monotonic_offset_ms", "timestamp"],
+            "properties": {
+              "monotonic_offset_ms": { "type": "number", "minimum": 0 },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          },
+          "correlation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step_id", "step_sequence"],
+            "properties": {
+              "step_id": { "type": ["string", "null"] },
+              "step_sequence": { "type": ["integer", "null"] }
+            }
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url"],
+            "properties": {
+              "url": { "type": "string" },
+              "query_params": { "type": ["object", "null"] },
+              "referrer": { "type": ["string", "null"] },
+              "navigation_type": { "type": ["string", "null"] },
+              "cookies": { "type": ["object", "null"] },
+              "local_storage": { "type": ["object", "null"] },
+              "session_storage": { "type": ["object", "null"] },
+              "globals": { "type": ["object", "null"] },
+              "dom_queries": { "type": ["object", "null"] }
+            }
+          },
+          "disposition": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["observation_status", "redacted_count", "unavailable_items"],
+            "properties": {
+              "observation_status": { "enum": ["observed", "partially_observed", "truncated", "unavailable"] },
+              "redacted_count": { "type": "integer", "minimum": 0 },
+              "unavailable_items": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -763,7 +763,7 @@ export async function generateSow(root, {
     // Machine-readable Provenance Envelope
     generation_provenance: {
       generated_at: generatedAt,
-      generator_version: '1.18.2',
+      generator_version: '1.19.0',
       generation_mode: generationMode,
       source_type: sourceProvenance.source_type || 'UNKNOWN',
       source_identifier: sourceProvenance.source_identifier || null,
