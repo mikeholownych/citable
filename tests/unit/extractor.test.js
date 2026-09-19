@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { extractPage } from '../../src/extractor/page.js';
 import { parseRobots, isAllowed } from '../../src/crawler/robots.js';
 import { parseSitemap } from '../../src/crawler/sitemap.js';
-import { fetchUrl, handlePublicBrowserRoute } from '../../src/crawler/fetch.js';
+import {
+  declareGuardedLookupTransport,
+  fetchUrl,
+  handlePublicBrowserRoute,
+} from '../../src/crawler/fetch.js';
 
 test('extractPage captures title, canonical, robots, headings, links, jsonld', () => {
   const html = `<!doctype html><html lang="en"><head><title>T</title>
@@ -94,6 +98,43 @@ test('sitemap parser rejects malformed closure ordering', () => {
   assert.match(sitemap.errors.join('\n'), /mismatched|unclosed/i);
 });
 
+test('sitemap parser treats sitemap element names as case-sensitive', () => {
+  const sitemap = parseSitemap('<URLSET><URL><LOC>https://x.test/a</LOC></URL></URLSET>');
+  assert.equal(sitemap.rootValid, false);
+  assert.match(sitemap.errors.join('\n'), /unexpected sitemap root/i);
+});
+
+test('sitemap parser requires whitespace between XML attributes', () => {
+  const sitemap = parseSitemap('<urlset xmlns="urn:test"id="joined"/>');
+  assert.equal(sitemap.rootValid, false);
+  assert.match(sitemap.errors.join('\n'), /malformed XML tag/i);
+});
+
+test('sitemap parser rejects duplicate XML attributes', () => {
+  const sitemap = parseSitemap('<urlset xmlns="urn:one" xmlns="urn:two"/>');
+  assert.equal(sitemap.rootValid, false);
+  assert.match(sitemap.errors.join('\n'), /malformed XML tag/i);
+});
+
+test('sitemap parser rejects raw and unknown entity references in text', () => {
+  for (const value of [
+    'https://x.test/search?a=1&b=2',
+    'https://x.test/search?value=&unknown;',
+    'https://x.test/search?value=&#38;',
+  ]) {
+    const sitemap = parseSitemap(`<urlset><url><loc>${value}</loc></url></urlset>`);
+    assert.equal(sitemap.rootValid, false, value);
+    assert.match(sitemap.errors.join('\n'), /entity reference/i, value);
+  }
+});
+
+test('sitemap parser decodes only the five predefined XML entities', () => {
+  const sitemap = parseSitemap(`
+    <urlset><url><loc>https://x.test/?a=1&amp;b=&quot;x&quot;&apos;y&apos;&lt;z&gt;</loc></url></urlset>`);
+  assert.equal(sitemap.rootValid, true);
+  assert.equal(sitemap.urls[0].loc, `https://x.test/?a=1&b="x"'y'<z>`);
+});
+
 test('sitemap parser reports a self-closing url entry with no loc', () => {
   const sitemap = parseSitemap('<urlset><url/></urlset>');
   assert.equal(sitemap.rootValid, true);
@@ -121,6 +162,19 @@ test('sitemap parser bounds retained entries while reporting the full entry coun
   assert.equal(sitemap.truncationReason, 'max_urls_exceeded');
 });
 
+test('sitemap parser has an independent raw-entry safety bound', () => {
+  const sitemap = parseSitemap(`
+    <urlset>
+      <url><loc>https://x.test/1</loc></url>
+      <url><loc>https://x.test/2</loc></url>
+      <url><loc>https://x.test/3</loc></url>
+    </urlset>`, { maxEntries: 2 });
+  assert.equal(sitemap.urls.length, 2);
+  assert.equal(sitemap.rawEntryCount, 3);
+  assert.equal(sitemap.truncated, true);
+  assert.equal(sitemap.truncationReason, 'max_entries_exceeded');
+});
+
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('fetchUrl refuses redirects outside the audited origin', async () => {
@@ -129,7 +183,9 @@ test('fetchUrl refuses redirects outside the audited origin', async () => {
     headers: { location: 'https://other.example/next' },
   });
   await assert.rejects(
-    fetchUrl('https://audit.example/', { fetchImpl, lookup: publicLookup }),
+    fetchUrl('https://audit.example/', {
+      fetchImpl, lookup: publicLookup, allowUnsafeCustomTransportForTest: true,
+    }),
     /redirect.*origin/i,
   );
 });
@@ -198,7 +254,9 @@ test('browser route guard allows safe local schemes and aborts private or unsupp
 test('fetchUrl rejects response bodies above the configured byte limit', async () => {
   const fetchImpl = async () => new Response('x'.repeat(32));
   await assert.rejects(
-    fetchUrl('https://audit.example/', { fetchImpl, lookup: publicLookup, maxBodyBytes: 16 }),
+    fetchUrl('https://audit.example/', {
+      fetchImpl, lookup: publicLookup, maxBodyBytes: 16, allowUnsafeCustomTransportForTest: true,
+    }),
     /body.*16 bytes/i,
   );
 });
@@ -219,8 +277,67 @@ test('fetchUrl applies a fresh timeout to every retry attempt', async () => {
       maxRetries: 2,
       retryDelayMs: 0,
       timeoutMs: 10,
+      allowUnsafeCustomTransportForTest: true,
     }),
     /abort|timeout/i,
   );
   assert.equal(attempts, 2);
+});
+
+test('fetchUrl rejects unguarded custom transports before they can execute', async () => {
+  let executed = false;
+  const fetchImpl = async () => {
+    executed = true;
+    return new Response('unsafe');
+  };
+
+  await assert.rejects(
+    fetchUrl('https://audit.example/', { fetchImpl, lookup: publicLookup }),
+    /custom transport.*guarded lookup/i,
+  );
+  assert.equal(executed, false);
+});
+
+test('fetchUrl accepts a declared custom transport that uses the guarded lookup hook', async () => {
+  let connectionLookups = 0;
+  const fetchImpl = declareGuardedLookupTransport(async (_url, { lookup }) => {
+    await new Promise((resolve, reject) => {
+      lookup('audit.example', { family: 0 }, (error) => {
+        if (error) reject(error);
+        else {
+          connectionLookups += 1;
+          resolve();
+        }
+      });
+    });
+    return new Response('safe');
+  });
+
+  const response = await fetchUrl('https://audit.example/', {
+    fetchImpl, lookup: publicLookup, maxRetries: 1,
+  });
+  assert.equal(response.body, 'safe');
+  assert.equal(connectionLookups, 1);
+});
+
+test('a declared custom transport refuses a private connection-time DNS rebound', async () => {
+  let resolutions = 0;
+  const lookup = async () => {
+    resolutions += 1;
+    return resolutions === 1
+      ? [{ address: '93.184.216.34', family: 4 }]
+      : [{ address: '127.0.0.1', family: 4 }];
+  };
+  const fetchImpl = declareGuardedLookupTransport(async (_url, options) => {
+    await new Promise((resolve, reject) => {
+      options.lookup('audit.example', { family: 0 }, (error) => error ? reject(error) : resolve());
+    });
+    return new Response('must not be returned');
+  });
+
+  await assert.rejects(
+    fetchUrl('https://audit.example/', { fetchImpl, lookup, maxRetries: 1 }),
+    /private|loopback|non-public/i,
+  );
+  assert.equal(resolutions, 2);
 });

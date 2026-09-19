@@ -6,6 +6,7 @@ import { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 
 const blockedAddresses = new net.BlockList();
+const GUARDED_LOOKUP_TRANSPORT = Symbol('citable.guardedLookupTransport');
 for (const [network, prefix] of [
   ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
   ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24],
@@ -95,6 +96,22 @@ function fetchWithGuardedLookup(url, { headers, signal, lookup }) {
   });
 }
 
+/**
+ * Declare that a custom transport uses the `lookup` callback passed by fetchUrl
+ * for its actual socket connection. Undeclared transports are rejected before
+ * execution because URL preflight alone does not prevent DNS rebinding.
+ */
+export function declareGuardedLookupTransport(fetchImpl) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('custom transport must be a function');
+  Object.defineProperty(fetchImpl, GUARDED_LOOKUP_TRANSPORT, {
+    value: true,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  return fetchImpl;
+}
+
 /** Enforce the public-network policy for each Playwright request. */
 export async function handlePublicBrowserRoute(route, { lookup = dns.promises.lookup } = {}) {
   const url = route.request().url();
@@ -159,13 +176,18 @@ export async function fetchUrl(url, {
   maxRetries = 3, retryDelayMs = 1000, maxBodyBytes = 5 * 1024 * 1024,
   responseType = 'text',
   fetchImpl, lookup = dns.promises.lookup,
+  allowUnsafeCustomTransportForTest = false,
 } = {}) {
   if (!['text', 'buffer'].includes(responseType)) throw new TypeError('responseType must be text or buffer');
   const requested = parseNetworkUrl(url);
   const allowedOrigin = requested.origin;
   const chain = [];
   let current = requested.href;
-  const effectiveFetch = !fetchImpl || fetchImpl === globalThis.fetch ? fetchWithGuardedLookup : fetchImpl;
+  const customFetch = fetchImpl && fetchImpl !== globalThis.fetch;
+  if (customFetch && allowUnsafeCustomTransportForTest !== true && fetchImpl[GUARDED_LOOKUP_TRANSPORT] !== true) {
+    throw new TypeError('custom transport must declare and implement the guarded lookup contract');
+  }
+  const effectiveFetch = customFetch ? fetchImpl : fetchWithGuardedLookup;
 
   for (let redirects = 0; redirects <= maxRedirects; redirects += 1) {
     let res;

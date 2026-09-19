@@ -6,10 +6,12 @@ const MAX_XML_DEPTH = 64;
 export function parseSitemap(xml, {
   maxUrls = DEFAULT_MAX_ENTRIES,
   maxChildren = DEFAULT_MAX_ENTRIES,
+  maxEntries = DEFAULT_MAX_ENTRIES,
   maxTokens = DEFAULT_MAX_TOKENS,
 } = {}) {
   assertBound(maxUrls, 'maxUrls', 0);
   assertBound(maxChildren, 'maxChildren', 0);
+  assertBound(maxEntries, 'maxEntries', 0);
   assertBound(maxTokens, 'maxTokens', 1);
 
   const text = String(xml ?? '');
@@ -24,6 +26,7 @@ export function parseSitemap(xml, {
   let tokenCount = 0;
   let urlCount = 0;
   let childCount = 0;
+  let rawEntryCount = 0;
   let truncated = false;
   let truncationReason = null;
 
@@ -34,13 +37,13 @@ export function parseSitemap(xml, {
 
   const closeFrame = (frame, matched = true) => {
     if (frame.role === 'loc' || frame.role === 'lastmod') {
-      const value = decodeXmlEntities(frame.text.trim());
+      const value = frame.text.trim();
       if (frame.entry && value) {
         if (frame.role === 'loc') frame.entry.locs.push(value);
         else frame.entry.lastmods.push(value);
       }
     } else if (frame.role === 'entry') {
-      if (!matched || !frame.direct) return;
+      if (!matched || !frame.direct || !frame.retain) return;
       if (frame.entry.locs.length === 0) {
         errors.push('entry missing <loc>');
         return;
@@ -85,12 +88,17 @@ export function parseSitemap(xml, {
       structuralError('unsupported XML declaration');
       continue;
     }
-    if (token.type === 'text') {
+    if (token.type === 'text' || token.type === 'cdata') {
+      if (token.type === 'text' && hasInvalidEntityReference(token.value)) {
+        structuralError('invalid or unescaped XML entity reference');
+      }
       if (stack.length === 0) {
         if (token.value.trim()) structuralError('non-whitespace content outside the sitemap root');
       } else {
         const frame = stack.at(-1);
-        if (frame.role === 'loc' || frame.role === 'lastmod') frame.text += token.value;
+        if (frame.role === 'loc' || frame.role === 'lastmod') {
+          frame.text += token.type === 'cdata' ? token.value : decodeXmlEntities(token.value);
+        }
         else if (frame.role === 'entry' && token.value.trim()) errors.push('unexpected text directly inside sitemap entry');
       }
       continue;
@@ -116,6 +124,11 @@ export function parseSitemap(xml, {
           role = 'entry';
           direct = true;
           entry = { locs: [], lastmods: [] };
+          rawEntryCount += 1;
+          if (rawEntryCount > maxEntries) {
+            truncated = true;
+            truncationReason ??= 'max_entries_exceeded';
+          }
         } else {
           structuralError(`unexpected <${token.name}>; <${expected}> entries must be direct children of <${rootName}>`);
         }
@@ -132,7 +145,15 @@ export function parseSitemap(xml, {
         structuralError(`XML nesting depth exceeds ${MAX_XML_DEPTH}`);
         break;
       }
-      const frame = { name: token.name, localName: token.localName, role, direct, entry, text: '' };
+      const frame = {
+        name: token.name,
+        localName: token.localName,
+        role,
+        direct,
+        entry,
+        retain: role !== 'entry' || rawEntryCount <= maxEntries,
+        text: '',
+      };
       stack.push(frame);
       if (token.selfClosing) {
         stack.pop();
@@ -165,6 +186,7 @@ export function parseSitemap(xml, {
     errors,
     urlCount,
     childCount,
+    rawEntryCount,
     truncated,
     truncationReason,
   };
@@ -195,7 +217,7 @@ function* scanXml(text) {
         yield { type: 'error', message: 'unclosed CDATA section' };
         return;
       }
-      yield { type: 'text', value: text.slice(opening + 9, end) };
+      yield { type: 'cdata', value: text.slice(opening + 9, end) };
       index = end + 3;
       continue;
     }
@@ -233,7 +255,7 @@ function* scanXml(text) {
       yield { type: 'error', message: `malformed XML tag <${raw}>` };
       return;
     }
-    const name = match[1].toLowerCase();
+    const name = match[1];
     const localName = name.split(':').at(-1);
     yield { type: closing ? 'close' : 'open', name, localName, selfClosing };
     index = end + 1;
@@ -253,31 +275,30 @@ function findTagEnd(text, start) {
 }
 
 function validAttributes(rawAttributes) {
-  let remaining = rawAttributes.trim();
-  while (remaining) {
-    const match = remaining.match(/^([A-Za-z_][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/u);
+  let remaining = rawAttributes;
+  const names = new Set();
+  while (remaining.trim()) {
+    const match = remaining.match(/^\s+([A-Za-z_][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/u);
     if (!match) return false;
-    remaining = remaining.slice(match[0].length).trim();
+    if (names.has(match[1]) || match[3].includes('<') || hasInvalidEntityReference(match[3])) return false;
+    names.add(match[1]);
+    remaining = remaining.slice(match[0].length);
   }
   return true;
 }
 
 function decodeXmlEntities(value) {
-  return value.replace(/&(#(?:x[0-9a-f]+|\d+)|amp|lt|gt|quot|apos);/gi, (match, entity) => {
-    const normalized = entity.toLowerCase();
-    if (normalized === 'amp') return '&';
-    if (normalized === 'lt') return '<';
-    if (normalized === 'gt') return '>';
-    if (normalized === 'quot') return '"';
-    if (normalized === 'apos') return "'";
-    const radix = normalized.startsWith('#x') ? 16 : 10;
-    const codePoint = Number.parseInt(normalized.slice(radix === 16 ? 2 : 1), radix);
-    try {
-      return String.fromCodePoint(codePoint);
-    } catch {
-      return match;
-    }
+  return value.replace(/&(amp|lt|gt|quot|apos);/g, (_match, entity) => {
+    if (entity === 'amp') return '&';
+    if (entity === 'lt') return '<';
+    if (entity === 'gt') return '>';
+    if (entity === 'quot') return '"';
+    return "'";
   });
+}
+
+function hasInvalidEntityReference(value) {
+  return String(value).replace(/&(amp|lt|gt|quot|apos);/g, '').includes('&');
 }
 
 function assertBound(value, name, minimum) {

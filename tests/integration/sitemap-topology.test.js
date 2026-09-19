@@ -127,6 +127,7 @@ test('collectSitemapTopology preserves compressed bytes when using the productio
   const fetcher = (url, options) => fetchUrl(url, {
     ...options,
     maxRetries: 1,
+    allowUnsafeCustomTransportForTest: true,
     lookup: async () => [{ address: '93.184.216.34', family: 4 }],
     fetchImpl: async () => new Response(compressed, {
       status: 200,
@@ -145,6 +146,7 @@ test('collectSitemapTopology does not double-decompress an HTTP gzip body alread
   const fetcher = (url, options) => fetchUrl(url, {
     ...options,
     maxRetries: 1,
+    allowUnsafeCustomTransportForTest: true,
     lookup: async () => [{ address: '93.184.216.34', family: 4 }],
     // Node fetch exposes decompressed response bytes while retaining this header.
     fetchImpl: async () => new Response(xml, {
@@ -323,6 +325,28 @@ test('collectSitemapTopology caps discovered page URLs without retaining the exc
   assert.match(result.limitations[0], /2-URL/);
 });
 
+test('discovered URL caps count only unique same-origin URLs', async () => {
+  const fetcher = routeFetcher({
+    '/sitemap.xml': response(`${ORIGIN}/sitemap.xml`, `
+      <urlset>
+        <url><loc>https://outside.test/ignored</loc></url>
+        <url><loc>${ORIGIN}/one</loc></url>
+        <url><loc>${ORIGIN}/one#duplicate</loc></url>
+        <url><loc>${ORIGIN}/two</loc></url>
+      </urlset>`),
+  });
+
+  const result = await collectSitemapTopology(`${ORIGIN}/sitemap.xml`, {
+    fetcher, origin: ORIGIN, maxDiscoveredUrls: 2,
+  });
+
+  assert.equal(result.status, 'indeterminate');
+  assert.deepEqual(result.stop_reasons, []);
+  assert.deepEqual(result.urls.map((entry) => entry.url), [`${ORIGIN}/one`, `${ORIGIN}/two`]);
+  assert.equal(result.documents[0].url_count, 4);
+  assert.equal(result.exclusions.length, 1);
+});
+
 test('collectSitemapTopology caps the queued document frontier from a single large index', async () => {
   const calls = [];
   const fetcher = routeFetcher({
@@ -348,7 +372,31 @@ test('collectSitemapTopology caps the queued document frontier from a single lar
   assert.match(result.limitations[0], /2-document/);
 });
 
-test('collectSitemapTopology bounds rejected entry declarations before growing exclusion arrays', async () => {
+test('queued-document caps count only unique same-origin sitemap documents', async () => {
+  const calls = [];
+  const fetcher = routeFetcher({
+    '/root.xml': response(`${ORIGIN}/root.xml`, `
+      <sitemapindex>
+        <sitemap><loc>https://outside.test/ignored.xml</loc></sitemap>
+        <sitemap><loc>${ORIGIN}/one.xml</loc></sitemap>
+        <sitemap><loc>${ORIGIN}/one.xml#duplicate</loc></sitemap>
+        <sitemap><loc>${ORIGIN}/two.xml</loc></sitemap>
+      </sitemapindex>`),
+    '/one.xml': response(`${ORIGIN}/one.xml`, '<urlset/>'),
+    '/two.xml': response(`${ORIGIN}/two.xml`, '<urlset/>'),
+  }, calls);
+
+  const result = await collectSitemapTopology(`${ORIGIN}/root.xml`, {
+    fetcher, origin: ORIGIN, maxQueuedDocuments: 2,
+  });
+
+  assert.equal(result.status, 'indeterminate');
+  assert.deepEqual(result.stop_reasons, []);
+  assert.deepEqual(calls, [`${ORIGIN}/root.xml`, `${ORIGIN}/one.xml`, `${ORIGIN}/two.xml`]);
+  assert.equal(result.exclusions.length, 1);
+});
+
+test('collectSitemapTopology uses an independent raw-entry bound for entry declarations', async () => {
   const result = await collectSitemapTopology([
     'https://other.test/one.xml',
     'https://other.test/two.xml',
@@ -357,11 +405,31 @@ test('collectSitemapTopology bounds rejected entry declarations before growing e
     fetcher: async () => { throw new Error('must not fetch'); },
     origin: ORIGIN,
     maxQueuedDocuments: 2,
+    maxRawEntries: 2,
   });
 
   assert.equal(result.status, 'truncated');
-  assert.deepEqual(result.stop_reasons, ['max_queued_documents_exceeded']);
+  assert.deepEqual(result.stop_reasons, ['max_raw_entries_exceeded']);
   assert.equal(result.exclusions.length, 2);
+});
+
+test('document fetch caps count only unique same-origin entry declarations', async () => {
+  const calls = [];
+  const fetcher = routeFetcher({
+    '/one.xml': response(`${ORIGIN}/one.xml`, '<urlset/>'),
+    '/two.xml': response(`${ORIGIN}/two.xml`, '<urlset/>'),
+  }, calls);
+  const result = await collectSitemapTopology([
+    'https://outside.test/ignored.xml',
+    `${ORIGIN}/one.xml`,
+    `${ORIGIN}/one.xml#duplicate`,
+    `${ORIGIN}/two.xml`,
+  ], { fetcher, origin: ORIGIN, maxDocuments: 2, maxQueuedDocuments: 2 });
+
+  assert.equal(result.status, 'indeterminate');
+  assert.deepEqual(result.stop_reasons, []);
+  assert.deepEqual(calls, [`${ORIGIN}/one.xml`, `${ORIGIN}/two.xml`]);
+  assert.equal(result.documents.length, 2);
 });
 
 test('collectSitemapTopology fails closed when gzip output exceeds the uncompressed limit', async () => {
@@ -389,6 +457,7 @@ test('collectSitemapTopology distinguishes the transport body cap from the uncom
   const fetcher = (url, options) => fetchUrl(url, {
     ...options,
     maxRetries: 1,
+    allowUnsafeCustomTransportForTest: true,
     lookup: async () => [{ address: '93.184.216.34', family: 4 }],
     fetchImpl: async () => new Response('x'.repeat(64), {
       status: 200,
@@ -421,6 +490,10 @@ test('collectSitemapTopology rejects nonsensical traversal bounds before fetchin
   await assert.rejects(
     collectSitemapTopology(`${ORIGIN}/sitemap.xml`, { fetcher, origin: ORIGIN, maxDepth: -1 }),
     /maxDepth/,
+  );
+  await assert.rejects(
+    collectSitemapTopology(`${ORIGIN}/sitemap.xml`, { fetcher, origin: ORIGIN, maxRawEntries: 0 }),
+    /maxRawEntries/,
   );
   assert.equal(fetched, false);
 });
@@ -566,7 +639,7 @@ test('whole-run time exhaustion during topology collection truncates topology an
   assert.deepEqual(site.sitemapTopology.stop_reasons, ['time_budget_exhausted']);
 });
 
-test('URL collection exposes sitemap max-depth truncation in legacy crawl metadata', async () => {
+test('URL collection keeps the legacy crawl enum while exposing sitemap max-depth truncation independently', async () => {
   const fetcher = routeFetcher({
     '/robots.txt': response(`${ORIGIN}/robots.txt`, `Sitemap: ${ORIGIN}/root.xml`, { type: 'text/plain' }),
     '/root.xml': response(`${ORIGIN}/root.xml`, `
@@ -576,12 +649,17 @@ test('URL collection exposes sitemap max-depth truncation in legacy crawl metada
 
   const site = await buildSiteFromUrl(`${ORIGIN}/`, { fetcher, sitemapMaxDepth: 0 });
 
-  assert.equal(site.crawl.stopReason, 'max_depth_exceeded');
-  assert.equal(site.crawl.truncated, true);
+  assert.equal(site.crawl.stopReason, 'frontier_exhausted');
+  assert.equal(site.crawl.truncated, false);
   assert.deepEqual(site.crawl.sitemapStopReasons, ['max_depth_exceeded']);
+  assert.deepEqual(site.crawl.sitemapTopology, {
+    status: 'truncated',
+    stopReasons: ['max_depth_exceeded'],
+    limitations: ['Sitemap topology collection reached the maximum depth of 0.'],
+  });
 });
 
-test('URL collection exposes sitemap max-document truncation in legacy crawl metadata', async () => {
+test('URL collection keeps the legacy crawl enum while exposing sitemap max-document truncation independently', async () => {
   const fetcher = routeFetcher({
     '/robots.txt': response(`${ORIGIN}/robots.txt`, `Sitemap: ${ORIGIN}/root.xml`, { type: 'text/plain' }),
     '/root.xml': response(`${ORIGIN}/root.xml`, `
@@ -591,7 +669,12 @@ test('URL collection exposes sitemap max-document truncation in legacy crawl met
 
   const site = await buildSiteFromUrl(`${ORIGIN}/`, { fetcher, sitemapMaxDocuments: 1 });
 
-  assert.equal(site.crawl.stopReason, 'max_documents_exceeded');
-  assert.equal(site.crawl.truncated, true);
+  assert.equal(site.crawl.stopReason, 'frontier_exhausted');
+  assert.equal(site.crawl.truncated, false);
   assert.deepEqual(site.crawl.sitemapStopReasons, ['max_documents_exceeded']);
+  assert.deepEqual(site.crawl.sitemapTopology, {
+    status: 'truncated',
+    stopReasons: ['max_documents_exceeded'],
+    limitations: ['Sitemap topology collection reached the 1-document limit.'],
+  });
 });

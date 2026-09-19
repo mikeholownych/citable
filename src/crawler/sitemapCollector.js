@@ -8,6 +8,7 @@ const DEFAULT_MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024;
 const DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 const DEFAULT_MAX_DISCOVERED_URLS = 50_000;
 const DEFAULT_MAX_QUEUED_DOCUMENTS = 1000;
+const DEFAULT_MAX_RAW_ENTRIES = 100_000;
 const DEFAULT_MAX_XML_TOKENS = 500_000;
 const DEFAULT_SITEMAP_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -20,6 +21,7 @@ export async function collectSitemapTopology(entryUrls, {
   maxTotalUncompressedBytes = DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES,
   maxDiscoveredUrls = DEFAULT_MAX_DISCOVERED_URLS,
   maxQueuedDocuments = DEFAULT_MAX_QUEUED_DOCUMENTS,
+  maxRawEntries = DEFAULT_MAX_RAW_ENTRIES,
   maxXmlTokens = DEFAULT_MAX_XML_TOKENS,
   sitemapMaxBytes = DEFAULT_SITEMAP_MAX_BYTES,
   origin,
@@ -32,6 +34,7 @@ export async function collectSitemapTopology(entryUrls, {
   assertInteger(maxTotalUncompressedBytes, 'maxTotalUncompressedBytes', 1);
   assertInteger(maxDiscoveredUrls, 'maxDiscoveredUrls', 1);
   assertInteger(maxQueuedDocuments, 'maxQueuedDocuments', 1);
+  assertInteger(maxRawEntries, 'maxRawEntries', 1);
   assertInteger(maxXmlTokens, 'maxXmlTokens', 1);
   assertInteger(sitemapMaxBytes, 'sitemapMaxBytes', 1);
   const entries = Array.isArray(entryUrls) ? entryUrls : [entryUrls];
@@ -82,10 +85,10 @@ export async function collectSitemapTopology(entryUrls, {
   };
 
   for (let index = 0; index < entries.length; index += 1) {
-    if (index >= maxQueuedDocuments) {
+    if (index >= maxRawEntries) {
       addStop(
-        'max_queued_documents_exceeded',
-        `Sitemap topology collection reached the ${maxQueuedDocuments}-document queued-frontier limit.`,
+        'max_raw_entries_exceeded',
+        `Sitemap topology collection reached the ${maxRawEntries}-entry raw-input safety limit.`,
       );
       break;
     }
@@ -118,6 +121,7 @@ export async function collectSitemapTopology(entryUrls, {
       parse_errors: [],
       url_count: 0,
       child_count: 0,
+      raw_entry_count: 0,
       status: 'failed',
       failure_reason: null,
       failure_stage: null,
@@ -161,14 +165,16 @@ export async function collectSitemapTopology(entryUrls, {
       }
       totalUncompressedBytes += decoded.uncompressedBytes;
       const parsed = parseSitemap(decoded.text, {
-        maxUrls: Math.max(0, maxDiscoveredUrls - urls.length),
-        maxChildren: Math.max(0, maxQueuedDocuments - queue.length),
+        maxUrls: maxRawEntries,
+        maxChildren: maxRawEntries,
+        maxEntries: maxRawEntries,
         maxTokens: maxXmlTokens,
       });
       record.parsed = parsed;
       record.parse_errors = [...parsed.errors];
       record.url_count = parsed.urlCount;
       record.child_count = parsed.childCount;
+      record.raw_entry_count = parsed.rawEntryCount;
       record.status = parsed.errors.length ? 'malformed' : 'fetched';
       if (parsed.errors.length) {
         record.failure_reason = 'sitemap_parse_error';
@@ -176,11 +182,9 @@ export async function collectSitemapTopology(entryUrls, {
         errors.push({ url: item.url, reason: record.failure_reason, details: [...parsed.errors] });
       }
       if (parsed.truncated) {
-        const [reason, limitation] = parsed.truncationReason === 'max_urls_exceeded'
-          ? ['max_discovered_urls_exceeded', `Sitemap topology collection reached the ${maxDiscoveredUrls}-URL discovery limit.`]
-          : parsed.truncationReason === 'max_children_exceeded'
-            ? ['max_queued_documents_exceeded', `Sitemap topology collection reached the ${maxQueuedDocuments}-document queued-frontier limit.`]
-            : ['max_xml_tokens_exceeded', `Sitemap parsing reached the ${maxXmlTokens}-token structural limit.`];
+        const [reason, limitation] = parsed.truncationReason === 'max_tokens_exceeded'
+          ? ['max_xml_tokens_exceeded', `Sitemap parsing reached the ${maxXmlTokens}-token structural limit.`]
+          : ['max_raw_entries_exceeded', `Sitemap parsing reached the ${maxRawEntries}-entry raw-input safety limit.`];
         markTruncated(record, reason);
         addStop(reason, limitation);
       }
@@ -251,6 +255,7 @@ export async function collectSitemapTopology(entryUrls, {
       max_total_uncompressed_bytes: maxTotalUncompressedBytes,
       max_discovered_urls: maxDiscoveredUrls,
       max_queued_documents: maxQueuedDocuments,
+      max_raw_entries: maxRawEntries,
       max_xml_tokens: maxXmlTokens,
       sitemap_max_bytes: sitemapMaxBytes,
     },
