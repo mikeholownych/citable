@@ -437,6 +437,44 @@ test('fetchUrl retries timeout errors and records the timeout outcome', async ()
   assert.equal(response.attempts[1].status, 200);
 });
 
+test('fetchUrl does not retry a non-retryable 501 response', async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return new Response('not implemented', { status: 501 });
+  };
+  const response = await fetchUrl('https://audit.example/', {
+    fetchImpl, lookup: publicLookup, maxRetries: 3, retryDelayMs: 0,
+    allowUnsafeCustomTransportForTest: true,
+  });
+  assert.equal(calls, 1);
+  assert.equal(response.status, 501);
+  assert.equal(response.attempts.length, 1);
+  assert.equal(response.attempts[0].retryDecision, 'stop');
+});
+
+test('fetchUrl records permanent DNS preflight failure as an attempt', async () => {
+  let transportCalls = 0;
+  const lookup = async () => {
+    throw Object.assign(new Error('host not found'), { code: 'ENOTFOUND' });
+  };
+  await assert.rejects(
+    fetchUrl('https://missing.example/', {
+      lookup,
+      fetchImpl: async () => { transportCalls += 1; return new Response('unexpected'); },
+      maxRetries: 3,
+      allowUnsafeCustomTransportForTest: true,
+    }),
+    (error) => {
+      assert.equal(transportCalls, 0);
+      assert.deepEqual(error.attempts.map(({ attempt, outcome, status, errorCode, retryDecision }) => ({ attempt, outcome, status, errorCode, retryDecision })), [
+        { attempt: 1, outcome: 'error', status: null, errorCode: 'ENOTFOUND', retryDecision: 'stop' },
+      ]);
+      return true;
+    },
+  );
+});
+
 test('fetchUrl attaches sanitized attempt provenance to permanent failures', async () => {
   const fetchImpl = async () => {
     throw Object.assign(new Error('token=do-not-record'), { code: 'ENETUNREACH' });
@@ -516,4 +554,26 @@ test('buildSiteFromUrl attaches resource validity, URL identity, and retrieval m
   assert.equal(page.fetchAttempts.length, 1);
   assert.equal(site.sitemaps.length, 0);
   assert.equal(site.sitemapTopology.documents[0].resourceValidity, undefined);
+});
+
+test('buildSiteFromUrl preserves the original requested URL spelling for page identity', async () => {
+  const fetcher = async (url) => {
+    if (url.endsWith('/robots.txt')) return { url, status: 200, headers: { 'content-type': 'text/plain' }, body: '', redirectChain: [] };
+    if (url.endsWith('/sitemap.xml')) return { url, status: 404, headers: { 'content-type': 'application/xml' }, body: '', redirectChain: [] };
+    return {
+      url: 'https://mixed.example/Path?Q=One',
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+      body: '<html><body><p>Substantive content for the mixed-case URL identity integration test.</p></body></html>',
+      redirectChain: [],
+    };
+  };
+  const site = await buildSiteFromUrl('HTTPS://MiXeD.Example:443/Path?Q=One#section', { fetcher, maxPages: 1 });
+  const [page] = site.pages;
+  assert.equal(page.requestedUrl, 'HTTPS://MiXeD.Example:443/Path?Q=One');
+  assert.equal(page.url, 'https://mixed.example/Path?Q=One');
+  assert.deepEqual(page.urlIdentity.requested, {
+    url: 'HTTPS://MiXeD.Example:443/Path?Q=One',
+    normalized_url: 'HTTPS://MiXeD.Example/Path?Q=One',
+  });
 });

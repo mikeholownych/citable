@@ -77,6 +77,18 @@ test('classifyResource does not treat incidental numbers or matches beyond its b
   assert.equal(beyondWindow.state, 'valid_resource');
 });
 
+test('classifyResource does not label a script-only response valid when the bounded sample cuts through the script', () => {
+  const result = classifyResource({
+    status: 200,
+    headers: htmlHeaders,
+    body: `<html><body><script>${'const payload = "script only";'.repeat(12_000)}</script></body></html>`,
+  });
+  assert.equal(result.signals.pattern_scan_truncated, true);
+  assert.equal(result.signals.raw_text_element_truncated, true);
+  assert.equal(result.state, 'indeterminate');
+  assert.ok(result.reason_codes.includes('pattern_scan_incomplete_markup'));
+});
+
 test('classifyResource accepts a complete substantive HTML response', () => {
   const result = classifyResource({
     status: 200,

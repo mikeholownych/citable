@@ -24,13 +24,18 @@ function bodyByteLength(body, converted) {
 function visibleText(html) {
   const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body\s*>/i);
   return (bodyMatch?.[1] ?? html)
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
+    .replace(/<script\b[^>]*>[\s\S]*?(?:<\/script\s*>|$)/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?(?:<\/style\s*>|$)/gi, ' ')
     .replace(/<!--[^]*?-->/g, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/&(?:nbsp|#160);/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function hasUnclosedRawTextElement(sample) {
+  const lower = sample.toLowerCase();
+  return ['script', 'style'].some((tag) => lower.lastIndexOf(`<${tag}`) > lower.lastIndexOf(`</${tag}`));
 }
 
 function scanWallSignals(sample) {
@@ -65,6 +70,8 @@ export function classifyResource({
   const sample = rawBody.slice(0, PATTERN_SCAN_MAX_CHARS);
   const walls = scanWallSignals(sample);
   const text = visibleText(sample);
+  const patternScanTruncated = rawBody.length > PATTERN_SCAN_MAX_CHARS;
+  const rawTextElementTruncated = patternScanTruncated && hasUnclosedRawTextElement(sample);
   const signals = {
     http_status: Number.isInteger(status) ? status : null,
     content_type: contentType,
@@ -73,7 +80,8 @@ export function classifyResource({
     body_bytes: bodyByteLength(body, rawBody),
     substantive_text_chars: text.length,
     pattern_scan_max_chars: PATTERN_SCAN_MAX_CHARS,
-    pattern_scan_truncated: rawBody.length > PATTERN_SCAN_MAX_CHARS,
+    pattern_scan_truncated: patternScanTruncated,
+    raw_text_element_truncated: rawTextElementTruncated,
     challenge_wall: walls.challenge,
     login_wall: walls.login,
     consent_wall: walls.consent,
@@ -89,6 +97,9 @@ export function classifyResource({
   if (contentType && !signals.html_mime) return { state: 'invalid_resource', reason_codes: ['unexpected_mime'], signals };
   if (!rawBody.trim()) return { state: 'indeterminate', reason_codes: ['empty_body'], signals };
   if (!contentType) return { state: 'indeterminate', reason_codes: ['content_type_missing'], signals };
+  if (rawTextElementTruncated) {
+    return { state: 'indeterminate', reason_codes: ['pattern_scan_incomplete_markup'], signals };
+  }
 
   const wallReasons = [];
   if (walls.challenge) wallReasons.push('challenge_wall_signal');

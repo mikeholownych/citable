@@ -162,17 +162,24 @@ export async function buildSiteFromUrl(startUrl, {
   const seen = new Set();
   const queued = new Set();
   const queue = [];
-  const enqueuePage = (rawUrl, source) => {
+  const enqueuePage = (rawUrl, source, base = origin) => {
     let url;
+    let requestedUrl;
     try {
-      url = new URL(rawUrl, origin);
+      const raw = String(rawUrl).trim();
+      url = new URL(raw, base);
       url.hash = '';
+      const fragmentAt = raw.indexOf('#');
+      const withoutFragment = fragmentAt === -1 ? raw : raw.slice(0, fragmentAt);
+      if (/^[A-Za-z][A-Za-z\d+.-]*:\/\//.test(withoutFragment)) requestedUrl = withoutFragment;
+      else if (withoutFragment.startsWith('//')) requestedUrl = `${new URL(base).protocol}${withoutFragment}`;
+      else requestedUrl = url.href;
     } catch {
       return;
     }
     if (url.origin !== origin || isProviderUtilityPath(url.pathname) || seen.has(url.href) || queued.has(url.href)) return;
     queued.add(url.href);
-    queue.push({ url: url.href, source });
+    queue.push({ url: url.href, requestedUrl, source });
   };
   enqueuePage(startUrl, 'start');
   for (const entry of sitemapTopology.urls) enqueuePage(entry.url, 'sitemap');
@@ -193,7 +200,7 @@ export async function buildSiteFromUrl(startUrl, {
         headers: response.headers, redirectChain: response.redirectChain,
       });
       attachResourceMetadata(page, {
-        requestedUrl: next.url,
+        requestedUrl: next.requestedUrl,
         bodyComplete: response.bodyComplete ?? true,
         fetchAttempts: response.attempts ?? [],
       });
@@ -203,10 +210,7 @@ export async function buildSiteFromUrl(startUrl, {
       if (String(response.headers['content-type'] || '').includes('text/html')) {
         for (const link of page.links) {
           if (timeBudgetStopped()) break;
-          try {
-            const target = new URL(link.href, response.url);
-            enqueuePage(target.href, 'link');
-          } catch { /* unresolvable href — surfaced by LINK detectors */ }
+          enqueuePage(link.href, 'link', response.url);
         }
       }
       if (stopReason === 'time_budget_exhausted') break;

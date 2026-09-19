@@ -190,6 +190,10 @@ function attemptUrl(url) {
   return parsed.href;
 }
 
+function isRetryableResponseStatus(status) {
+  return status === 500 || status === 502 || status === 503 || status === 504;
+}
+
 function attachAttempts(error, attempts) {
   const target = error instanceof Error ? error : new Error('request failed');
   Object.defineProperty(target, 'attempts', {
@@ -226,9 +230,19 @@ export async function fetchUrl(url, {
     let lastError;
     let responseStartedAtMs = null;
     for (let attempt = 0; attempt < Math.max(1, maxRetries); attempt += 1) {
-      await validatePublicUrl(current, { lookup });
       attemptNumber += 1;
       const startedAtMs = performance.now();
+      try {
+        await validatePublicUrl(current, { lookup });
+      } catch (error) {
+        const endedAtMs = performance.now();
+        attempts.push({
+          attempt: attemptNumber, url: attemptUrl(current), startedAtMs, endedAtMs,
+          elapsedMs: Math.max(0, endedAtMs - startedAtMs), outcome: 'error', status: null,
+          errorCode: errorCode(error), retryDecision: 'stop',
+        });
+        throw attachAttempts(error, attempts);
+      }
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(timeoutError(timeoutMs)), timeoutMs);
       try {
@@ -238,7 +252,7 @@ export async function fetchUrl(url, {
           signal: controller.signal,
           lookup: createGuardedLookup(lookup),
         });
-        const retry = res.status >= 500 && attempt < Math.max(1, maxRetries) - 1;
+        const retry = isRetryableResponseStatus(res.status) && attempt < Math.max(1, maxRetries) - 1;
         if (!retry) {
           lastError = null;
           responseStartedAtMs = startedAtMs;
