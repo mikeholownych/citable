@@ -149,6 +149,9 @@ export async function buildSiteFromUrl(startUrl, {
       if (r.status === 200) sitemaps.push({ source: sm, parsed: parseSitemap(r.body) });
     } catch { /* absence handled by TECH detectors */ }
   }
+  if (stopReason === 'frontier_exhausted' && timeExpired()) {
+    stopReason = 'time_budget_exhausted';
+  }
   const pendingUrls = [...new Set(queue.map((url) => url.replace(/#.*$/, '')).filter((url) => !seen.has(url)))];
   const crawl = {
     maxPages,

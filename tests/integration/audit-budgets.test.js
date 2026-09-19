@@ -253,6 +253,69 @@ test('URL collector stops adding discovered links once the time budget elapses',
   assert.deepEqual(site.crawl.pendingUrls, []);
 });
 
+test('robots fetch consuming the final time budget records terminal exhaustion without sitemap declarations', async () => {
+  let elapsedMs = 0;
+  const fetched = [];
+  const site = await buildSiteFromUrl('https://fixture.test/', {
+    timeBudgetSeconds: 1,
+    now: () => elapsedMs,
+    fetcher: async (url) => {
+      const pathname = new URL(url).pathname;
+      fetched.push(pathname);
+      if (pathname === '/robots.txt') {
+        elapsedMs = 1000;
+        return response(url, 'User-agent: *\nAllow: /', 'text/plain');
+      }
+      return response(url);
+    },
+  });
+  assert.deepEqual(fetched, ['/', '/robots.txt']);
+  assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
+  assert.equal(site.crawl.truncated, true);
+});
+
+test('final sitemap fetch consuming the time budget records terminal exhaustion and incomplete crawl metadata', async () => {
+  let elapsedMs = 0;
+  const fetched = [];
+  const site = await buildSiteFromUrl('https://fixture.test/', {
+    timeBudgetSeconds: 1,
+    now: () => elapsedMs,
+    fetcher: async (url) => {
+      const pathname = new URL(url).pathname;
+      fetched.push(pathname);
+      if (pathname === '/robots.txt') return { ...response(url, '', 'text/plain'), status: 404 };
+      if (pathname === '/sitemap.xml') {
+        elapsedMs = 1000;
+        return response(url, '<?xml version="1.0"?><urlset></urlset>', 'application/xml');
+      }
+      return response(url);
+    },
+  });
+  assert.deepEqual(fetched, ['/', '/robots.txt', '/sitemap.xml']);
+  assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
+  assert.equal(site.crawl.truncated, true);
+});
+
+test('terminal time expiry does not override an earlier page budget stop', async () => {
+  let elapsedMs = 0;
+  const site = await buildSiteFromUrl('https://fixture.test/', {
+    maxPages: 1,
+    timeBudgetSeconds: 1,
+    now: () => elapsedMs,
+    fetcher: async (url) => {
+      const pathname = new URL(url).pathname;
+      if (pathname === '/') return response(url, '<a href="/second">Second</a>');
+      if (pathname === '/robots.txt') {
+        elapsedMs = 1000;
+        return response(url, 'User-agent: *\nAllow: /', 'text/plain');
+      }
+      return response(url, '', 'application/xml');
+    },
+  });
+  assert.equal(site.crawl.stopReason, 'page_budget_exhausted');
+  assert.equal(site.crawl.truncated, true);
+});
+
 test('init writes explicit safe audit budget defaults', () => {
   const root = project();
   const config = readYaml(path.join(root, '.citable', 'config.yaml'));
