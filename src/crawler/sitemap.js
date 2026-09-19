@@ -1,6 +1,11 @@
 const DEFAULT_MAX_ENTRIES = 100_000;
 const DEFAULT_MAX_TOKENS = 500_000;
 const MAX_XML_DEPTH = 64;
+const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
+const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
+const PREDEFINED_ENTITIES = [
+  ['&amp;', '&'], ['&lt;', '<'], ['&gt;', '>'], ['&quot;', '"'], ['&apos;', "'"],
+];
 
 /** Bounded structural XML sitemap parser (urlset + sitemapindex). */
 export function parseSitemap(xml, {
@@ -29,6 +34,8 @@ export function parseSitemap(xml, {
   let rawEntryCount = 0;
   let truncated = false;
   let truncationReason = null;
+  let declarationAllowed = true;
+  let xmlDeclarationSeen = false;
 
   const structuralError = (message) => {
     structuralErrors.push(message);
@@ -83,12 +90,29 @@ export function parseSitemap(xml, {
       structuralError(token.message);
       break;
     }
-    if (token.type === 'comment' || token.type === 'processing') continue;
+    if (token.type === 'processing') {
+      if (token.target.toLowerCase() === 'xml') {
+        if (token.target !== 'xml' || !declarationAllowed || xmlDeclarationSeen || !validXmlDeclaration(token.data)) {
+          structuralError('XML declaration must appear at the document start before the root');
+        } else {
+          xmlDeclarationSeen = true;
+        }
+      }
+      declarationAllowed = false;
+      continue;
+    }
+    if (token.type === 'comment') {
+      declarationAllowed = false;
+      continue;
+    }
     if (token.type === 'declaration') {
+      declarationAllowed = false;
       structuralError('unsupported XML declaration');
       continue;
     }
     if (token.type === 'text' || token.type === 'cdata') {
+      const declarationPrefix = tokenCount === 1 ? token.value.replace(/^\uFEFF/u, '') : token.value;
+      if (declarationPrefix.length > 0) declarationAllowed = false;
       if (token.type === 'text' && hasInvalidEntityReference(token.value)) {
         structuralError('invalid or unescaped XML entity reference');
       }
@@ -105,6 +129,33 @@ export function parseSitemap(xml, {
     }
     if (token.type === 'open') {
       const parent = stack.at(-1) ?? null;
+      declarationAllowed = false;
+      const namespaces = new Map(parent?.namespaces ?? [['xml', XML_NAMESPACE]]);
+      for (const attribute of token.attributes) {
+        if (attribute.name === 'xmlns') {
+          if (attribute.value === XMLNS_NAMESPACE || attribute.value === XML_NAMESPACE) {
+            structuralError('reserved XML namespaces cannot be default namespaces');
+          }
+          namespaces.set('', attribute.value);
+        } else if (attribute.prefix === 'xmlns') {
+          if (attribute.localName === 'xmlns' || attribute.value === XMLNS_NAMESPACE
+            || (attribute.localName === 'xml' && attribute.value !== XML_NAMESPACE)
+            || (attribute.localName !== 'xml' && attribute.value === XML_NAMESPACE)
+            || attribute.value === '') {
+            structuralError(`invalid namespace binding for prefix ${attribute.localName}`);
+          } else {
+            namespaces.set(attribute.localName, attribute.value);
+          }
+        }
+      }
+      if (token.prefix === 'xmlns' || (token.prefix && !namespaces.has(token.prefix))) {
+        structuralError(`unbound namespace prefix ${token.prefix ?? 'xmlns'} on <${token.name}>`);
+      }
+      for (const attribute of token.attributes) {
+        if (attribute.prefix && attribute.prefix !== 'xmlns' && !namespaces.has(attribute.prefix)) {
+          structuralError(`unbound namespace prefix ${attribute.prefix} on attribute ${attribute.name}`);
+        }
+      }
       let role = 'ignored';
       let direct = false;
       let entry = parent?.entry ?? null;
@@ -152,6 +203,7 @@ export function parseSitemap(xml, {
         direct,
         entry,
         retain: role !== 'entry' || rawEntryCount <= maxEntries,
+        namespaces,
         text: '',
       };
       stack.push(frame);
@@ -227,7 +279,13 @@ function* scanXml(text) {
         yield { type: 'error', message: 'unclosed XML processing instruction' };
         return;
       }
-      yield { type: 'processing' };
+      const rawInstruction = text.slice(opening + 2, end);
+      const instruction = rawInstruction.match(/^([A-Za-z_][\w:.-]*)([\s\S]*)$/u);
+      if (!instruction || (instruction[2] && !/^\s/u.test(instruction[2]))) {
+        yield { type: 'error', message: 'malformed XML processing instruction' };
+        return;
+      }
+      yield { type: 'processing', target: instruction[1], data: instruction[2] };
       index = end + 2;
       continue;
     }
@@ -251,13 +309,21 @@ function* scanXml(text) {
     const selfClosing = !closing && raw.endsWith('/');
     const tag = (closing ? raw.slice(1) : selfClosing ? raw.slice(0, -1) : raw).trim();
     const match = tag.match(/^([A-Za-z_][\w:.-]*)([\s\S]*)$/u);
-    if (!match || (closing && match[2].trim()) || (!closing && !validAttributes(match[2]))) {
+    const qualifiedName = match ? splitQualifiedName(match[1]) : null;
+    const attributes = !closing && match ? parseAttributes(match[2]) : [];
+    if (!match || !qualifiedName || (closing && match[2].trim()) || (!closing && !attributes)) {
       yield { type: 'error', message: `malformed XML tag <${raw}>` };
       return;
     }
     const name = match[1];
-    const localName = name.split(':').at(-1);
-    yield { type: closing ? 'close' : 'open', name, localName, selfClosing };
+    yield {
+      type: closing ? 'close' : 'open',
+      name,
+      localName: qualifiedName.localName,
+      prefix: qualifiedName.prefix,
+      selfClosing,
+      attributes,
+    };
     index = end + 1;
   }
 }
@@ -274,31 +340,101 @@ function findTagEnd(text, start) {
   return -1;
 }
 
-function validAttributes(rawAttributes) {
+function parseAttributes(rawAttributes) {
   let remaining = rawAttributes;
   const names = new Set();
+  const attributes = [];
   while (remaining.trim()) {
     const match = remaining.match(/^\s+([A-Za-z_][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/u);
-    if (!match) return false;
-    if (names.has(match[1]) || match[3].includes('<') || hasInvalidEntityReference(match[3])) return false;
+    const qualifiedName = match ? splitQualifiedName(match[1]) : null;
+    if (!match || !qualifiedName) return null;
+    if (names.has(match[1]) || match[3].includes('<') || hasInvalidEntityReference(match[3])) return null;
     names.add(match[1]);
+    attributes.push({
+      name: match[1],
+      localName: qualifiedName.localName,
+      prefix: qualifiedName.prefix,
+      value: decodeXmlEntities(match[3]),
+    });
     remaining = remaining.slice(match[0].length);
   }
-  return true;
+  return attributes;
 }
 
 function decodeXmlEntities(value) {
-  return value.replace(/&(amp|lt|gt|quot|apos);/g, (_match, entity) => {
-    if (entity === 'amp') return '&';
-    if (entity === 'lt') return '<';
-    if (entity === 'gt') return '>';
-    if (entity === 'quot') return '"';
-    return "'";
-  });
+  let decoded = '';
+  let cursor = 0;
+  while (cursor < value.length) {
+    const ampersand = value.indexOf('&', cursor);
+    if (ampersand === -1) return decoded + value.slice(cursor);
+    decoded += value.slice(cursor, ampersand);
+    const reference = parseEntityReference(value, ampersand);
+    if (!reference) return decoded + value.slice(ampersand);
+    decoded += reference.value;
+    cursor = ampersand + reference.length;
+  }
+  return decoded;
 }
 
 function hasInvalidEntityReference(value) {
-  return String(value).replace(/&(amp|lt|gt|quot|apos);/g, '').includes('&');
+  const text = String(value);
+  let cursor = 0;
+  while (cursor < text.length) {
+    const ampersand = text.indexOf('&', cursor);
+    if (ampersand === -1) return false;
+    const reference = parseEntityReference(text, ampersand);
+    if (!reference) return true;
+    cursor = ampersand + reference.length;
+  }
+  return false;
+}
+
+function parseEntityReference(value, offset) {
+  for (const [source, decoded] of PREDEFINED_ENTITIES) {
+    if (value.startsWith(source, offset)) return { length: source.length, value: decoded };
+  }
+  if (!value.startsWith('&#', offset)) return null;
+  const end = value.indexOf(';', offset + 2);
+  if (end === -1) return null;
+  const hexadecimal = value[offset + 2] === 'x';
+  const start = offset + (hexadecimal ? 3 : 2);
+  const digits = value.slice(start, end);
+  if (!digits || !(hexadecimal ? /^[0-9A-Fa-f]+$/u : /^\d+$/u).test(digits)) return null;
+  const significant = digits.replace(/^0+/u, '') || '0';
+  if (significant.length > (hexadecimal ? 6 : 7)) return null;
+  const codePoint = Number.parseInt(significant, hexadecimal ? 16 : 10);
+  if (!isValidXmlCodePoint(codePoint)) return null;
+  return { length: end - offset + 1, value: String.fromCodePoint(codePoint) };
+}
+
+function isValidXmlCodePoint(codePoint) {
+  return codePoint === 0x9 || codePoint === 0xA || codePoint === 0xD
+    || (codePoint >= 0x20 && codePoint <= 0xD7FF)
+    || (codePoint >= 0xE000 && codePoint <= 0xFFFD)
+    || (codePoint >= 0x10000 && codePoint <= 0x10FFFF);
+}
+
+function splitQualifiedName(name) {
+  const parts = name.split(':');
+  if (parts.length > 2 || parts.some((part) => !part)) return null;
+  return { prefix: parts.length === 2 ? parts[0] : null, localName: parts.at(-1) };
+}
+
+function validXmlDeclaration(data) {
+  if (data.includes('&')) return false;
+  const attributes = parseAttributes(data);
+  if (!attributes || attributes.length < 1 || attributes.length > 3) return false;
+  if (attributes[0].name !== 'version' || !['1.0', '1.1'].includes(attributes[0].value)) return false;
+  let index = 1;
+  if (attributes[index]?.name === 'encoding') {
+    if (!/^[A-Za-z][A-Za-z0-9._-]*$/u.test(attributes[index].value)) return false;
+    index += 1;
+  }
+  if (attributes[index]?.name === 'standalone') {
+    if (!['yes', 'no'].includes(attributes[index].value)) return false;
+    index += 1;
+  }
+  return index === attributes.length;
 }
 
 function assertBound(value, name, minimum) {

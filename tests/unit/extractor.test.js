@@ -120,7 +120,6 @@ test('sitemap parser rejects raw and unknown entity references in text', () => {
   for (const value of [
     'https://x.test/search?a=1&b=2',
     'https://x.test/search?value=&unknown;',
-    'https://x.test/search?value=&#38;',
   ]) {
     const sitemap = parseSitemap(`<urlset><url><loc>${value}</loc></url></urlset>`);
     assert.equal(sitemap.rootValid, false, value);
@@ -128,11 +127,62 @@ test('sitemap parser rejects raw and unknown entity references in text', () => {
   }
 });
 
-test('sitemap parser decodes only the five predefined XML entities', () => {
+test('sitemap parser decodes valid decimal and hexadecimal numeric character references', () => {
+  const sitemap = parseSitemap(`
+    <urlset><url><loc>https://x.test/?a=1&#38;b=2&#x26;c=3</loc></url></urlset>`);
+  assert.equal(sitemap.rootValid, true);
+  assert.equal(sitemap.urls[0].loc, 'https://x.test/?a=1&b=2&c=3');
+});
+
+test('sitemap parser rejects malformed and out-of-range numeric character references', () => {
+  for (const reference of ['&#;', '&#x;', '&#-1;', '&#x110000;', '&#55296;', '&#0;']) {
+    const sitemap = parseSitemap(`<urlset><url><loc>https://x.test/${reference}</loc></url></urlset>`);
+    assert.equal(sitemap.rootValid, false, reference);
+    assert.match(sitemap.errors.join('\n'), /entity reference/i, reference);
+  }
+});
+
+test('sitemap parser decodes the five predefined XML entities', () => {
   const sitemap = parseSitemap(`
     <urlset><url><loc>https://x.test/?a=1&amp;b=&quot;x&quot;&apos;y&apos;&lt;z&gt;</loc></url></urlset>`);
   assert.equal(sitemap.rootValid, true);
   assert.equal(sitemap.urls[0].loc, `https://x.test/?a=1&b="x"'y'<z>`);
+});
+
+test('sitemap parser accepts prefixed elements only when their namespace prefix is bound', () => {
+  const sitemap = parseSitemap(`
+    <sm:urlset xmlns:sm="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <sm:url><sm:loc>https://x.test/bound</sm:loc></sm:url>
+    </sm:urlset>`);
+  assert.equal(sitemap.rootValid, true);
+  assert.deepEqual(sitemap.urls.map((entry) => entry.loc), ['https://x.test/bound']);
+
+  const unbound = parseSitemap('<sm:urlset><sm:url><sm:loc>https://x.test/no</sm:loc></sm:url></sm:urlset>');
+  assert.equal(unbound.rootValid, false);
+  assert.match(unbound.errors.join('\n'), /unbound namespace prefix.*sm/i);
+});
+
+test('sitemap parser preserves default namespace behavior', () => {
+  const sitemap = parseSitemap(`
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><loc>https://x.test/default</loc></url>
+    </urlset>`);
+  assert.equal(sitemap.rootValid, true);
+  assert.deepEqual(sitemap.urls.map((entry) => entry.loc), ['https://x.test/default']);
+});
+
+test('sitemap parser permits an XML declaration only at the start before the root', () => {
+  const inside = parseSitemap('<urlset><?xml version="1.0"?></urlset>');
+  assert.equal(inside.rootValid, false);
+  assert.match(inside.errors.join('\n'), /XML declaration.*before.*root/i);
+
+  const afterWhitespace = parseSitemap(' \n<?xml version="1.0"?><urlset/>');
+  assert.equal(afterWhitespace.rootValid, false);
+  assert.match(afterWhitespace.errors.join('\n'), /XML declaration.*start/i);
+
+  const ordinary = parseSitemap('<urlset><?audit bounded?><url><loc>https://x.test/pi</loc></url></urlset>');
+  assert.equal(ordinary.rootValid, true);
+  assert.deepEqual(ordinary.urls.map((entry) => entry.loc), ['https://x.test/pi']);
 });
 
 test('sitemap parser reports a self-closing url entry with no loc', () => {
