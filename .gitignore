@@ -16,3 +16,4 @@ tasks/lessons.md
 .DS_Store
 Thumbs.db
 .claude/
+.worktrees/
