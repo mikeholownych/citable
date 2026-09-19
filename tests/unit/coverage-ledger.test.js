@@ -256,6 +256,84 @@ test('canonical output is independent of discovery insertion order', () => {
   assert.deepEqual(build([a, b, c]), build([c, b, a]));
 });
 
+test('snapshots nested caller metadata instead of retaining mutable references', () => {
+  const coverage = ledger();
+  const url = 'https://example.test/isolated';
+  const discoveryMetadata = { context: { parents: ['/original'] } };
+  const attemptMetadata = { transport: { errors: ['first'] } };
+  const responseMetadata = { identity: { aliases: ['canonical'] } };
+  const evaluationMetadata = { detectors: { completed: ['TECH-001'] } };
+
+  coverage.discover(url, 'html_link', discoveryMetadata);
+  coverage.attempt(url, attemptMetadata);
+  coverage.retrieve(url, responseMetadata);
+  coverage.classify(url, 'valid_resource');
+  coverage.evaluate(url, evaluationMetadata);
+
+  discoveryMetadata.context.parents.push('/mutated');
+  attemptMetadata.transport.errors[0] = 'mutated';
+  responseMetadata.identity.aliases.push('mutated');
+  evaluationMetadata.detectors.completed.length = 0;
+
+  const resource = coverage.finalize('frontier_exhausted').resources[0];
+  assert.deepEqual(resource.discovery_sources[0].metadata, {
+    context: { parents: ['/original'] },
+  });
+  assert.deepEqual(resource.attempt_history[0], {
+    transport: { errors: ['first'] },
+  });
+  assert.deepEqual(resource.retrieval, {
+    identity: { aliases: ['canonical'] },
+  });
+  assert.deepEqual(resource.evaluation, {
+    detectors: { completed: ['TECH-001'] },
+  });
+});
+
+test('successful finalization seals every mutating ledger operation', () => {
+  const coverage = ledger();
+  const url = 'https://example.test/finalized';
+  coverage.discover(url, 'start_url');
+  coverage.attempt(url, {});
+  coverage.retrieve(url, { status: 200 });
+  coverage.classify(url, 'valid_resource');
+  coverage.evaluate(url, {});
+  coverage.finalize('frontier_exhausted');
+
+  const mutations = [
+    () => coverage.discover('https://example.test/new', 'html_link'),
+    () => coverage.exclude(url, 'late'),
+    () => coverage.attempt(url, {}),
+    () => coverage.retrieve(url, {}),
+    () => coverage.classify(url, 'valid_resource'),
+    () => coverage.evaluate(url, {}),
+    () => coverage.fail(url, {}),
+    () => coverage.markIndeterminate(url, {}),
+    () => coverage.markValidButUnevaluated(url, {}),
+    () => coverage.finalize('frontier_exhausted'),
+  ];
+  for (const mutate of mutations) assert.throws(mutate, /already finalized/);
+});
+
+test('a refused finalization leaves the ledger open for valid completion', () => {
+  const coverage = ledger();
+  const url = 'https://example.test/recoverable';
+  coverage.discover(url, 'start_url');
+  coverage.attempt(url, { attempt: 1 });
+
+  assert.throws(
+    () => coverage.finalize('frontier_exhausted'),
+    /unresolved state attempted/,
+  );
+
+  coverage.retrieve(url, { status: 200 });
+  coverage.classify(url, 'valid_resource');
+  coverage.evaluate(url, { detector_count: 1 });
+  const result = coverage.finalize('frontier_exhausted');
+  assert.equal(result.coverage_status, 'complete');
+  assert.equal(result.populations.evaluated, 1);
+});
+
 test('final coverage object validates against the audit coverage schema', () => {
   const coverage = ledger();
   coverage.discover('https://example.test/', 'start_url');
