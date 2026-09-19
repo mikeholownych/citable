@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { readJson, writeJson, sha256, nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { downstreamEnvelope } from '../evidence/downstream.js';
+import { REQUIREMENTS, evaluateRequirement } from '../evidence/determination.js';
 import { checklistItem, toStringArray } from '../shared/checklist.js';
 
 const SEVERITY = { critical: 0, high: 1, medium: 2, low: 3, informational: 3, experimental: 3 };
@@ -46,6 +48,7 @@ function renderPlan(plan) {
     '# Citable action plan', '',
     `- Source audit: \`${plan.source_run_id}\``,
     `- Actions: ${plan.summary.total_actions}; ready: ${plan.summary.ready}; blocked: ${plan.summary.blocked}`,
+    `- Evidence coverage: ${plan.source_coverage.coverage_status}; determination: ${plan.source_coverage.determination_status}`,
     '',
     '> This plan prioritizes observed findings. It does not guarantee ranking, citation, recommendation, or conversion outcomes.',
     '',
@@ -61,6 +64,7 @@ function renderPlan(plan) {
       lines.push(`- Decision owner: ${action.decision_owner ?? 'unassigned'}`);
       lines.push(`- Dependencies: ${action.depends_on_action_ids.length ? action.depends_on_action_ids.join(', ') : 'none established'}`);
       if (action.required_input.length) lines.push(`- Required input: ${action.required_input.join(', ')}`);
+      if (action.limitations.length) lines.push(`- Evidence limitations: ${action.limitations.join('; ')}`);
       if (action.semantic_gates.length) lines.push(`- Semantic gates: ${action.semantic_gates.join(', ')}`);
       lines.push(`- Failure condition: ${action.failure_condition}`);
       lines.push(`- Leading indicators: ${action.leading_indicators.length ? action.leading_indicators.join(', ') : 'none established'}`);
@@ -81,10 +85,34 @@ export function actionPlan(root, { runId } = {}) {
   const rawFindings = fs.readFileSync(findingsFile, 'utf8');
   const findings = JSON.parse(rawFindings);
   const manifest = readJson(path.join(sourceDir, 'manifest.json'));
+  const coveragePath = path.join(sourceDir, 'coverage.json');
+  const coverage = fs.existsSync(coveragePath) ? readJson(coveragePath) : null;
+  const sourceCoverage = downstreamEnvelope(coverage, {
+    artifact: coverage ? 'coverage.json' : null,
+  });
   const target = manifest.target?.location;
   const actions = findings.map((finding) => {
     const owner = finding.remediation.owner ?? null;
-    const blocked = finding.remediation.review_required && !owner;
+    const findingScope = finding.evidence_scope || {
+      requirement: 'evaluated_subset',
+      satisfaction: sourceCoverage.determination_status,
+      coverage_ref: coverage ? 'coverage.json' : null,
+      resource_ids: [],
+    };
+    const requirement = findingScope.requirement || REQUIREMENTS.EVALUATED_SUBSET;
+    let requirementResult;
+    try {
+      requirementResult = evaluateRequirement(requirement, coverage, finding.subject);
+    } catch (error) {
+      requirementResult = { status: 'indeterminate', reason: `invalid_evidence_requirement: ${error.message}` };
+    }
+    const scopeSatisfied = ['supported', 'qualified'].includes(requirementResult.status);
+    const effectiveDetermination = sourceCoverage.determination_status === 'indeterminate'
+      || sourceCoverage.determination_status === 'not_applicable'
+      || !scopeSatisfied
+      ? 'indeterminate'
+      : (sourceCoverage.determination_status === 'qualified' || requirementResult.status === 'qualified' ? 'qualified' : 'supported');
+    const blocked = (finding.remediation.review_required && !owner) || !scopeSatisfied || effectiveDetermination === 'indeterminate';
     const scope = finding.discipline.length === 1 && ['aeo', 'geo', 'seo'].includes(finding.discipline[0]) ? ` ${finding.discipline[0]}` : '';
     return {
       action_id: `ACT-${finding.finding_id.replace(/^F-/, '')}`,
@@ -97,7 +125,18 @@ export function actionPlan(root, { runId } = {}) {
       owner,
       decision_owner: owner,
       status: blocked ? 'blocked' : 'ready',
-      required_input: blocked ? toStringArray([checklistItem('owner', 'accountable owner')]) : [],
+      evidence_scope: { ...findingScope, satisfaction: effectiveDetermination },
+      coverage_status: sourceCoverage.coverage_status,
+      determination_status: effectiveDetermination,
+      limitations: [
+        ...sourceCoverage.limitations,
+        ...(finding.reasoning?.limitations || []),
+        ...(requirementResult.reason ? [`evidence requirement: ${requirementResult.reason}`] : []),
+      ].filter((item, index, all) => all.indexOf(item) === index),
+      required_input: blocked ? toStringArray([
+        ...(finding.remediation.review_required && !owner ? [checklistItem('owner', 'accountable owner')] : []),
+        ...(!scopeSatisfied || effectiveDetermination === 'indeterminate' ? ['sufficient comparable evidence for the declared scope'] : []),
+      ]) : [],
       semantic_gates: semanticGates(finding),
       unsafe_shortcuts: finding.remediation.unsafe_shortcuts || [],
       failure_condition: `${finding.verification.detector_to_rerun} still reports the exact subject, or verification cannot complete with sufficient evidence`,
@@ -120,6 +159,7 @@ export function actionPlan(root, { runId } = {}) {
       ready: actions.filter((action) => action.status === 'ready').length,
       blocked: actions.filter((action) => action.status === 'blocked').length,
     },
+    source_coverage: sourceCoverage,
     actions,
   };
   const validation = validateAgainst('action-plan.schema.json', plan);

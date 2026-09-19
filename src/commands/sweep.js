@@ -4,6 +4,7 @@ import { parse as parseHtml } from 'node-html-parser';
 import { buildContext } from './context.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors, indexTargets, pageSubject, safePath } from '../detectors/framework.js';
+import { downstreamEnvelope, scoreFromCoverage, completeLocalCoverage } from '../evidence/downstream.js';
 
 /**
  * CWV standard thresholds per Google / web.dev guidance
@@ -223,6 +224,9 @@ export async function sweepTechnical(root, { target, baseUrl, refDate, page: pag
     if (!pages.length) throw new Error(`page not found in audited output: ${pageFilter}`);
   }
 
+  const coverage = ctx.coverage || (pages.length > 0 ? completeLocalCoverage(pages, ctx.site.baseUrl) : null);
+  const evidence = downstreamEnvelope(coverage);
+
   // 3. Aggregate Core Web Vitals across audited pages
   const pageVitals = [];
   let totalLcpBlockers = 0;
@@ -269,6 +273,8 @@ export async function sweepTechnical(root, { target, baseUrl, refDate, page: pag
   } else if (highFindings.length > 0 || totalLcpBlockers > 3 || totalClsRisks > 5) {
     overallHealth = 'needs_attention';
   }
+  if (evidence.determination_status === 'indeterminate') overallHealth = 'not_established';
+  else if (evidence.determination_status === 'qualified' && overallHealth === 'optimal') overallHealth = 'qualified';
 
   const result = {
     target: ctx.site.baseUrl || target,
@@ -291,7 +297,9 @@ export async function sweepTechnical(root, { target, baseUrl, refDate, page: pag
         total_inp_risks: totalInpRisks,
         unsized_images: totalUnsizedImages,
         total_images: totalImagesCount,
-        image_dimension_coverage_pct: totalImagesCount > 0 ? Math.round(((totalImagesCount - totalUnsizedImages) / totalImagesCount) * 100) : 100,
+        image_dimension_coverage_pct: evidence.determination_status === 'supported' && totalImagesCount > 0
+          ? scoreFromCoverage(totalImagesCount - totalUnsizedImages, { ...coverage, populations: { ...coverage.populations, evaluated: totalImagesCount } })
+          : null,
       },
       pages: pageVitals,
     },
@@ -310,6 +318,10 @@ export async function sweepTechnical(root, { target, baseUrl, refDate, page: pag
       summary: f.observation.summary,
       remediation: f.remediation?.preferred,
     })),
+    coverage_status: evidence.coverage_status,
+    determination_status: evidence.determination_status,
+    evidence_scope: evidence.evidence_scope,
+    limitations: evidence.limitations,
   };
 
   return result;
@@ -325,6 +337,7 @@ export function formatSweepOutput(r) {
     `Target: ${r.target}`,
     `Pages Audited: ${r.total_pages_audited}`,
     `Overall Health: ${r.overall_health.toUpperCase()}`,
+    `Evidence Determination: ${(r.determination_status || 'not_established').toUpperCase()} (coverage: ${r.coverage_status || 'unknown'})`,
     ``,
     `CRAWL & INDEXABILITY:`,
     `  HTTP 200 OK: ${r.crawl_and_indexability.status_200_count}/${r.total_pages_audited}`,
@@ -335,7 +348,7 @@ export function formatSweepOutput(r) {
     `CORE WEB VITALS READINESS (Deterministic Static Audit):`,
     `  LCP Readiness: ${r.core_web_vitals.summary.lcp_readiness.toUpperCase()} (${r.core_web_vitals.summary.total_lcp_blockers} potential render blocker(s))`,
     `  INP Readiness: ${r.core_web_vitals.summary.inp_readiness.toUpperCase()} (${r.core_web_vitals.summary.total_inp_risks} DOM complexity risk(s))`,
-    `  CLS Readiness: ${r.core_web_vitals.summary.cls_readiness.toUpperCase()} (${r.core_web_vitals.summary.unsized_images}/${r.core_web_vitals.summary.total_images} images lack dimensions; ${r.core_web_vitals.summary.image_dimension_coverage_pct}% coverage)`,
+    `  CLS Readiness: ${r.core_web_vitals.summary.cls_readiness.toUpperCase()} (${r.core_web_vitals.summary.unsized_images}/${r.core_web_vitals.summary.total_images} images lack dimensions; ${r.core_web_vitals.summary.image_dimension_coverage_pct == null ? 'not evidenced' : `${r.core_web_vitals.summary.image_dimension_coverage_pct}%`} coverage)`,
     ``,
     `CWV Threshold Standards:`,
     `  - LCP: <= ${CWV_THRESHOLDS.lcp.good}s (Good), <= ${CWV_THRESHOLDS.lcp.needs_improvement}s (Needs Improvement)`,

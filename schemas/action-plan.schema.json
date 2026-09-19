@@ -4,11 +4,23 @@
   "title": "Finding action plan",
   "type": "object",
   "additionalProperties": false,
-  "required": ["source_run_id", "source_findings_hash", "generated_at", "summary", "actions"],
+  "required": ["source_run_id", "source_findings_hash", "generated_at", "summary", "actions", "source_coverage"],
   "properties": {
     "source_run_id": { "type": "string", "minLength": 1 },
     "source_findings_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "generated_at": { "type": "string" },
+    "source_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_status", "determination_status", "evidence_scope", "limitations"],
+      "properties": {
+        "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "not_applicable"] },
+        "determination_status": { "type": "string", "enum": ["supported", "qualified", "indeterminate", "not_applicable"] },
+        "artifact": { "type": ["string", "null"] },
+        "evidence_scope": { "$ref": "#/definitions/evidenceScope" },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,
@@ -40,6 +52,10 @@
           "owner": { "type": ["string", "null"] },
           "decision_owner": { "type": ["string", "null"] },
           "status": { "type": "string", "enum": ["ready", "blocked"] },
+          "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "not_applicable"] },
+          "determination_status": { "type": "string", "enum": ["supported", "qualified", "indeterminate", "not_applicable"] },
+          "evidence_scope": { "$ref": "#/definitions/evidenceScope" },
+          "limitations": { "type": "array", "items": { "type": "string" } },
           "required_input": { "type": "array", "items": { "type": "string" } },
           "semantic_gates": { "type": "array", "items": { "type": "string" } },
           "unsafe_shortcuts": { "type": "array", "items": { "type": "string" } },
@@ -62,6 +78,27 @@
             }
           }
         }
+      }
+    }
+  },
+  "definitions": {
+    "evidenceScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement", "satisfaction", "coverage_ref", "resource_ids"],
+      "properties": {
+        "requirement": { "type": "string", "minLength": 1 },
+        "satisfaction": { "type": "string", "enum": ["supported", "qualified", "indeterminate", "not_applicable"] },
+        "coverage_ref": { "type": ["string", "null"] },
+        "resource_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "population": { "type": "string", "enum": ["evaluated_subset", "none_observed"] },
+        "evaluated": { "type": ["integer", "null"], "minimum": 0 },
+        "eligible": { "type": ["integer", "null"], "minimum": 0 },
+        "excluded": { "type": ["integer", "null"], "minimum": 0 },
+        "failed": { "type": ["integer", "null"], "minimum": 0 },
+        "indeterminate": { "type": ["integer", "null"], "minimum": 0 },
+        "unvisited": { "type": ["integer", "null"], "minimum": 0 },
+        "denominator": { "type": ["integer", "null"], "minimum": 0 }
       }
     }
   }
