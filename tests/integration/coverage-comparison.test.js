@@ -102,3 +102,42 @@ test('incomparable evaluator envelopes do not produce resolution', () => {
   assert.equal(result.not_comparable.length, 1);
   assert.equal(result.not_comparable[0].comparison_state, 'not_comparable');
 });
+
+test('redirected resources compare by resource identity, not canonical URL or raw subject text', () => {
+  const root = fixture();
+  const redirected = {
+    ...finding(),
+    subject: {
+      type: 'page', identifier: `${ORIGIN}/old`, resource_id: 'RESOURCE-REDIRECT',
+      urlIdentity: {
+        resource_id: 'RESOURCE-REDIRECT',
+        requested: { normalized_url: `${ORIGIN}/old` },
+        effective: { normalized_url: `${ORIGIN}/200` },
+        canonical: { normalized_url: `${ORIGIN}/canonical` },
+      },
+    },
+  };
+  const current = {
+    ...finding(),
+    subject: {
+      type: 'page', identifier: `${ORIGIN}/200`, resource_id: 'RESOURCE-REDIRECT',
+      urlIdentity: {
+        resource_id: 'RESOURCE-REDIRECT',
+        requested: { normalized_url: `${ORIGIN}/200` },
+        effective: { normalized_url: `${ORIGIN}/200` },
+        canonical: { normalized_url: `${ORIGIN}/canonical` },
+      },
+    },
+  };
+  run(root, 'A', [redirected], coverage({ url: `${ORIGIN}/200` }));
+  run(root, 'B', [current], coverage({ url: `${ORIGIN}/200` }));
+  let result = compareSnapshots(root, { runA: 'A', runB: 'B' });
+  assert.equal(result.persisting.length, 1, 'requested/effective redirect identity must persist');
+
+  const canonicalOnly = { ...current, subject: { type: 'page', identifier: `${ORIGIN}/canonical`, urlIdentity: { canonical: { normalized_url: `${ORIGIN}/canonical` } } } };
+  run(root, 'C', [canonicalOnly], coverage({ url: `${ORIGIN}/canonical` }));
+  result = compareSnapshots(root, { runA: 'A', runB: 'C' });
+  assert.equal(result.persisting.length, 0, 'canonical URL must not stand in for evaluated resource identity');
+  assert.equal(result.new.length, 1);
+  assert.equal(result.not_reobserved.length, 1);
+});

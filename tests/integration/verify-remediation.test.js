@@ -128,3 +128,22 @@ test('verify remediation never calls a missing recheck resource resolved', async
   assert.equal(result.verdict.comparison_state, 'not_reobserved');
   assert.equal(result.comparison.coverage_status, 'not_available');
 });
+
+test('verify remediation refuses a resolution from a non-comparable source envelope', async (t) => {
+  const dir = project();
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const siteDir = site(dir);
+  const run = await audit(dir, { target: siteDir, baseUrl: 'https://example.test', refDate: '2026-09-08' });
+  const manifestPath = path.join(run.dir, 'manifest.json');
+  const manifest = readJson(manifestPath);
+  manifest.tool_version = '0.0.0-uncomparable';
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const result = await verifyRemediation(dir, {
+    run: run.runId, finding: 'CRO-007', recheckTarget: siteDir,
+    baseUrl: 'https://example.test', refDate: '2026-09-08',
+  });
+  assert.equal(result.status, 'not_comparable');
+  assert.equal(result.verdict.resolved, false);
+  assert.equal(result.verdict.comparison_state, 'not_comparable');
+  assert.equal(result.comparison.comparability.dimensions.tool_changed, true);
+});

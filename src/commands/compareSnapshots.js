@@ -7,15 +7,45 @@ export const COMPARISON_STATES = Object.freeze([
   'persisted', 'resolved', 'new', 'changed', 'not_comparable', 'not_reobserved', 'indeterminate',
 ]);
 
-function subjectIdentity(finding) {
-  const subject = finding?.subject || {};
-  const raw = subject.url || subject.identifier || subject.source_file || null;
-  if (!raw) return null;
-  try { return normalizeUrlIdentity(String(raw)); } catch { return String(raw); }
+function normalizeCandidate(value) {
+  if (!value) return null;
+  try { return normalizeUrlIdentity(String(value)); } catch { return String(value); }
+}
+
+/** Keep effective/requested identity distinct; canonical is never fetch identity. */
+export function resourceIdentityFor(findingOrPage) {
+  const subject = findingOrPage?.subject || findingOrPage || {};
+  const identity = subject.urlIdentity || subject.url_identity || {};
+  const ids = new Set([
+    subject.resource_id, identity.resource_id,
+    subject.classification?.resource_id, subject.evaluation?.resource_id,
+    ...(findingOrPage?.evidence_scope?.resource_ids || []),
+  ].filter(Boolean).map(String));
+  const requested = normalizeCandidate(identity.requested?.normalized_url || identity.requested?.url || subject.requested_url);
+  const effective = normalizeCandidate(identity.effective?.normalized_url || identity.effective?.url
+    || subject.effective_url || subject.normalized_url || subject.url || subject.identifier);
+  const canonical = normalizeCandidate(identity.canonical?.normalized_url || identity.canonical?.url || subject.canonical_url);
+  const fallback = new Set([requested, effective, normalizeCandidate(subject.url || subject.identifier)].filter(Boolean));
+  return { resourceIds: ids, requested, effective, canonical, fallbackUrls: fallback };
+}
+
+export function sameResourceIdentity(left, right) {
+  const a = resourceIdentityFor(left); const b = resourceIdentityFor(right);
+  if (a.resourceIds.size && b.resourceIds.size) {
+    return [...a.resourceIds].some((id) => b.resourceIds.has(id));
+  }
+  if (a.effective && b.effective) return a.effective === b.effective;
+  if (a.requested && b.requested) return a.requested === b.requested;
+  // URL fallback is allowed only when each side has exactly one candidate.
+  return a.fallbackUrls.size === 1 && b.fallbackUrls.size === 1
+    && [...a.fallbackUrls][0] === [...b.fallbackUrls][0];
 }
 
 function findingKey(finding) {
-  return `${finding?.detector_id || ''}|${subjectIdentity(finding) || JSON.stringify(finding?.subject || {})}`;
+  const identity = resourceIdentityFor(finding);
+  const id = identity.resourceIds.size ? [...identity.resourceIds].sort().join(',')
+    : identity.effective || identity.requested || (identity.fallbackUrls.size === 1 ? [...identity.fallbackUrls][0] : JSON.stringify(finding?.subject || {}));
+  return `${finding?.detector_id || ''}|${id}`;
 }
 
 function loadCoverage(dir) {
@@ -24,13 +54,15 @@ function loadCoverage(dir) {
 }
 
 function coverageResource(coverage, finding) {
-  const identity = subjectIdentity(finding);
-  if (!identity || !Array.isArray(coverage?.resources)) return null;
-  return coverage.resources.find((resource) => {
-    const candidate = resource?.normalized_url || resource?.url;
-    if (!candidate) return false;
-    try { return normalizeUrlIdentity(String(candidate)) === identity; } catch { return String(candidate) === identity; }
-  }) || null;
+  if (!Array.isArray(coverage?.resources)) return null;
+  const target = resourceIdentityFor(finding);
+  const byId = coverage.resources.filter((resource) => {
+    const ids = resourceIdentityFor(resource).resourceIds;
+    return [...target.resourceIds].some((id) => ids.has(id));
+  });
+  if (target.resourceIds.size) return byId.length === 1 ? byId[0] : null;
+  const byUrl = coverage.resources.filter((resource) => sameResourceIdentity(finding, resource));
+  return byUrl.length === 1 ? byUrl[0] : null;
 }
 
 export function assessReobservation(finding, coverage) {
@@ -94,15 +126,19 @@ export function compareSnapshots(root, { runA, runB } = {}) {
   };
   const a = load(runA); const b = load(runB);
   const comparability = comparabilityFor(a, b);
-  const aFindings = new Map(a.findings.map((f) => [findingKey(f), f]));
-  const bFindings = new Map(b.findings.map((f) => [findingKey(f), f]));
+  const aFindings = a.findings;
+  const bFindings = b.findings;
+  const matchedA = new Set();
   const result = {
     runA, runB, baseline_timestamp: a.manifest.timestamp, comparison_timestamp: b.manifest.timestamp,
     regressions: [], resolved: [], persisting: [], new: [], changed: [], not_comparable: [], not_reobserved: [], indeterminate: [],
     comparability,
   };
-  for (const [key, finding] of bFindings) {
-    const prior = aFindings.get(key);
+  for (const finding of bFindings) {
+    const priorIndex = aFindings.findIndex((candidate, index) => !matchedA.has(index)
+      && candidate.detector_id === finding.detector_id && sameResourceIdentity(candidate, finding));
+    const prior = priorIndex >= 0 ? aFindings[priorIndex] : null;
+    if (priorIndex >= 0) matchedA.add(priorIndex);
     if (!prior) {
       const item = withState(finding, 'new', 'finding_not_present_in_baseline');
       result.new.push(item); result.regressions.push(item); continue;
@@ -111,8 +147,9 @@ export function compareSnapshots(root, { runA, runB } = {}) {
     else if (JSON.stringify(prior.observation) !== JSON.stringify(finding.observation)) result.changed.push(withState(finding, 'changed', 'finding_observation_changed'));
     else result.persisting.push(withState(finding, 'persisted', 'finding_observation_persisted'));
   }
-  for (const [key, finding] of aFindings) {
-    if (bFindings.has(key)) continue;
+  for (let index = 0; index < aFindings.length; index += 1) {
+    const finding = aFindings[index];
+    if (matchedA.has(index)) continue;
     if (!comparability.comparable) { result.not_comparable.push(withState(finding, 'not_comparable', 'run_envelopes_not_comparable')); continue; }
     const state = assessReobservation(finding, b.coverage);
     const item = withState(finding, state.state, state.reason, {
