@@ -157,7 +157,7 @@ export function reconcileCoverage(coverage) {
   return { valid: errors.length === 0, errors };
 }
 
-export function coverageStatusFor(stopReason, populations, discoveryStatus = 'complete') {
+export function coverageStatusFor({ stopReason, discoveryStatus = 'complete', populations }) {
   if (!STOP_REASONS.has(stopReason)) throw new Error(`unknown stop reason: ${stopReason}`);
   if (!DISCOVERY_STATUSES.has(discoveryStatus)) {
     throw new Error(`unknown discovery status: ${discoveryStatus}`);
@@ -396,7 +396,7 @@ export function createCoverageLedger({
       populations,
       resources: outputResources,
       stop_reason: stopReason,
-      coverage_status: coverageStatusFor(stopReason, populations, discoveryStatus),
+      coverage_status: coverageStatusFor({ stopReason, discoveryStatus, populations }),
       reconciliation: { valid: false, errors: ['not reconciled'] },
       limitations: sortedUniqueStrings(limitations, 'limitations'),
     };

@@ -135,7 +135,69 @@ test('failure and indeterminate resources prevent complete frontier coverage', (
   assert.equal(result.populations.failed, 1);
   assert.equal(result.populations.indeterminate, 1);
   assert.equal(result.coverage_status, 'indeterminate');
-  assert.equal(coverageStatusFor('fatal_collection_failure', result.populations, 'complete'), 'indeterminate');
+  assert.equal(coverageStatusFor({
+    stopReason: 'fatal_collection_failure',
+    discoveryStatus: 'complete',
+    populations: result.populations,
+  }), 'indeterminate');
+});
+
+test('frontier exhaustion is indeterminate when discovery is incomplete or URLs remain unvisited', () => {
+  for (const discoveryStatus of ['truncated', 'indeterminate']) {
+    const coverage = ledger();
+    coverage.discover('https://example.test/evaluated', 'start_url');
+    coverage.attempt('https://example.test/evaluated', {});
+    coverage.retrieve('https://example.test/evaluated', { status: 200 });
+    coverage.classify('https://example.test/evaluated', 'valid_resource');
+    coverage.evaluate('https://example.test/evaluated', {});
+    assert.equal(
+      coverage.finalize('frontier_exhausted', { discoveryStatus }).coverage_status,
+      'indeterminate',
+    );
+  }
+
+  const coverage = ledger();
+  coverage.discover('https://example.test/unvisited', 'start_url');
+  const result = coverage.finalize('frontier_exhausted');
+  assert.equal(result.populations.unvisited, 1);
+  assert.equal(result.coverage_status, 'indeterminate');
+});
+
+test('finalize rejects every unresolved intermediate resource state', () => {
+  const cases = [
+    {
+      expectedState: 'attempted',
+      arrange(coverage, url) {
+        coverage.attempt(url, {});
+      },
+    },
+    {
+      expectedState: 'retrieved',
+      arrange(coverage, url) {
+        coverage.attempt(url, {});
+        coverage.retrieve(url, { status: 200 });
+      },
+    },
+    {
+      expectedState: 'valid_resource',
+      arrange(coverage, url) {
+        coverage.attempt(url, {});
+        coverage.retrieve(url, { status: 200 });
+        coverage.classify(url, 'valid_resource');
+      },
+    },
+  ];
+
+  for (const { expectedState, arrange } of cases) {
+    const coverage = ledger();
+    const url = `https://example.test/${expectedState}`;
+    coverage.discover(url, 'start_url');
+    arrange(coverage, url);
+    assert.throws(
+      () => coverage.finalize('frontier_exhausted'),
+      new RegExp(`unresolved state ${expectedState}`),
+    );
+  }
 });
 
 test('records evaluator failure as valid-but-unevaluated', () => {
