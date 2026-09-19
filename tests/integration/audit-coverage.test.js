@@ -7,6 +7,7 @@ import { init } from '../../src/commands/init.js';
 import { audit } from '../../src/commands/audit.js';
 import { readJson } from '../../src/shared/io.js';
 import { validateAgainst } from '../../src/shared/schemaValidator.js';
+import { ALL_DETECTORS } from '../../src/detectors/index.js';
 
 const ORIGIN = 'https://coverage-fixture.test';
 
@@ -55,6 +56,33 @@ test('coverage is persisted before summaries and separates execution from trunca
   assert.equal(result.summary.posture.retrieval_eligibility.result, 'qualified');
   assert.match(result.report, /Coverage status: \*\*truncated\*\*/i);
   assert.ok(fs.statSync(coveragePath).mtimeMs <= fs.statSync(path.join(result.dir, 'summary.json')).mtimeMs);
+});
+
+test('detectors observe schema-valid provisional coverage before evaluation begins', async () => {
+  const root = project();
+  const detector = ALL_DETECTORS.find(({ id }) => id === 'TECH-001');
+  const originalCheck = detector.check;
+  let observed = false;
+  detector.check = (ctx) => {
+    const coveragePath = path.join(root, '.citable', 'runs', ctx.runId, 'coverage.json');
+    assert.equal(fs.existsSync(coveragePath), true, 'coverage must be durable before detector execution');
+    const provisional = readJson(coveragePath);
+    assert.equal(validateAgainst('audit-coverage.schema.json', provisional).valid, true);
+    assert.ok(provisional.populations.valid_but_unevaluated >= 1);
+    observed = true;
+    return originalCheck(ctx);
+  };
+  try {
+    await audit(root, {
+      target: ORIGIN,
+      scope: 'technical',
+      maxPages: 1,
+      fetcher: fetcherFor(),
+    });
+  } finally {
+    detector.check = originalCheck;
+  }
+  assert.equal(observed, true);
 });
 
 test('fetch failures are represented in coverage and cannot produce complete coverage', async () => {
