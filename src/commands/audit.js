@@ -51,15 +51,31 @@ export async function audit(root, {
     );
   }
 
+  // Establish and persist the collection contract before detectors execute.
+  // Detectors receive this exact provisional evidence envelope through ctx so
+  // they cannot infer completeness from page-array length or legacy crawl data.
+  let coverage = null;
+  if (ctx.site?.previewCoverage) {
+    try {
+      coverage = ctx.site.previewCoverage();
+      run.manifest.coverage_status = coverage.coverage_status;
+      run.writeArtifact('coverage.json', coverage);
+      ctx.coverage = coverage;
+    } catch (error) {
+      run.manifest.execution_status = 'failed';
+      run.manifest.errors.push(`coverage: ${error.message}`);
+      run.finalize('failed');
+      throw error;
+    }
+  }
+
   const { findings, detectorsRun, detectorsSkipped, errors } = runDetectors(detectors, ctx);
   run.manifest.detectors_run = detectorsRun;
   run.manifest.detectors_skipped = detectorsSkipped;
   run.manifest.errors.push(...errors);
 
-  // Coverage is finalized and persisted before any aggregate summary is derived.
-  // This prevents report consumers from having to reconstruct completeness from
-  // legacy crawl fields or from an incomplete findings array.
-  let coverage = null;
+  // Seal the ledger after detector evaluation so the same artifact records
+  // evaluated resources while retaining the pre-detector persistence proof.
   if (ctx.site?.finalizeCoverage) {
     try {
       coverage = ctx.site.finalizeCoverage({ evaluated: true });

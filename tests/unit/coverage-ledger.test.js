@@ -351,6 +351,24 @@ test('final coverage object validates against the audit coverage schema', () => 
   assert.equal('timestamp' in result, false);
 });
 
+test('preview coverage is non-sealing and can be persisted before evaluation', () => {
+  const coverage = ledger();
+  const url = 'https://example.test/pending';
+  coverage.discover(url, 'start_url');
+  coverage.attempt(url, {});
+  coverage.retrieve(url, { status: 200 });
+  coverage.classify(url, 'valid_resource');
+
+  const preview = coverage.preview('frontier_exhausted');
+  assert.equal(preview.populations.valid_but_unevaluated, 1);
+  assert.equal(preview.coverage_status, 'indeterminate');
+
+  coverage.evaluate(url, { evaluator: 'test' });
+  const final = coverage.finalize('frontier_exhausted');
+  assert.equal(final.populations.evaluated, 1);
+  assert.equal(final.coverage_status, 'complete');
+});
+
 test('reconciliation reports every mutated population equation', () => {
   const coverage = ledger();
   coverage.discover('https://example.test/', 'start_url');

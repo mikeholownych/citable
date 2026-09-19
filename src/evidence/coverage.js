@@ -354,11 +354,21 @@ export function createCoverageLedger({
       discoveryMethods,
       discoveryLimitations = [],
       limitations = [],
+      preview = false,
     } = options;
     if (!DISCOVERY_STATUSES.has(discoveryStatus)) {
       throw new Error(`unknown discovery status: ${discoveryStatus}`);
     }
 
+    const provisional = [];
+    if (preview) {
+      for (const resource of resources.values()) {
+        if (resource.classification?.state === 'valid_resource' && !resource.evaluation && !resource.validButUnevaluated) {
+          resource.validButUnevaluated = { reason: 'evaluation_pending' };
+          provisional.push(resource);
+        }
+      }
+    }
     const outputResources = [...resources.values()]
       .map(resourceOutput)
       .sort((a, b) => compareStrings(a.normalized_url, b.normalized_url));
@@ -408,7 +418,8 @@ export function createCoverageLedger({
     if (!schemaValidation.valid) {
       throw new Error(`audit coverage invalid: ${schemaValidation.errors.join('; ')}`);
     }
-    finalized = true;
+    for (const resource of provisional) resource.validButUnevaluated = null;
+    if (!preview) finalized = true;
     return coverage;
   }
 
@@ -431,6 +442,7 @@ export function createCoverageLedger({
     markIndeterminate,
     markValidButUnevaluated,
     stateFor,
+    preview: (stopReason, options = {}) => finalize(stopReason, { ...options, preview: true }),
     finalize,
   };
 }

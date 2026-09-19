@@ -331,6 +331,7 @@ export async function buildSiteFromUrl(startUrl, {
     discoveryLimitations: [...sitemapTopology.limitations],
     limitations: [...sitemapTopology.limitations],
   };
+  site.previewCoverage = () => coverageLedger.preview(stopReason, site.coverageOptions);
   site.finalizeCoverage = ({ evaluated = true } = {}) => {
     if (evaluated) {
       for (const page of pages) {
