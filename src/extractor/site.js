@@ -62,19 +62,35 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
 
 /** Build a SiteModel by fetching a deployed URL set (target URL + same-origin discovery, bounded). */
 export async function buildSiteFromUrl(startUrl, {
-  maxPages = 50, userAgent, pageMaxBytes = 5 * 1024 * 1024,
+  maxPages = 500, timeBudgetSeconds = 1800, userAgent, pageMaxBytes = 5 * 1024 * 1024,
   robotsMaxBytes = 512 * 1024, sitemapMaxBytes = 5 * 1024 * 1024,
   fetcher = fetchUrl,
+  now = () => performance.now(),
 } = {}) {
   const origin = new URL(startUrl).origin;
+  const startedAt = now();
+  const timeExpired = () => now() - startedAt >= timeBudgetSeconds * 1000;
   const seen = new Set();
   const queue = [startUrl];
   const pages = [];
   const errors = [];
-  while (queue.length && pages.length < maxPages) {
-    const url = queue.shift();
+  let stopReason = 'frontier_exhausted';
+  while (queue.length) {
+    if (timeExpired()) {
+      stopReason = 'time_budget_exhausted';
+      break;
+    }
+    const url = queue[0];
     const key = url.replace(/#.*$/, '');
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      queue.shift();
+      continue;
+    }
+    if (seen.size >= maxPages) {
+      stopReason = 'page_budget_exhausted';
+      break;
+    }
+    queue.shift();
     seen.add(key);
     try {
       const res = await fetcher(url, { userAgent, maxBodyBytes: pageMaxBytes });
@@ -83,8 +99,16 @@ export async function buildSiteFromUrl(startUrl, {
       });
       page.requestedUrl = url;
       pages.push(page);
+      if (timeExpired()) {
+        stopReason = 'time_budget_exhausted';
+        break;
+      }
       if (String(res.headers['content-type'] || '').includes('text/html')) {
         for (const l of page.links) {
+          if (timeExpired()) {
+            stopReason = 'time_budget_exhausted';
+            break;
+          }
           try {
             const u = new URL(l.href, res.url);
             u.hash = '';
@@ -92,18 +116,29 @@ export async function buildSiteFromUrl(startUrl, {
           } catch { /* unresolvable href — surfaced by LINK detectors */ }
         }
       }
+      if (stopReason === 'time_budget_exhausted') break;
     } catch (err) {
       errors.push(`${url}: ${err.message}`);
     }
   }
   let robotsText = null;
   const sitemaps = [];
-  try {
-    const r = await fetcher(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
-    if (r.status === 200) robotsText = r.body;
-  } catch { /* recorded as missing robots */ }
+  if (stopReason !== 'time_budget_exhausted') {
+    if (timeExpired()) {
+      stopReason = 'time_budget_exhausted';
+    } else {
+      try {
+        const r = await fetcher(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
+        if (r.status === 200) robotsText = r.body;
+      } catch { /* recorded as missing robots */ }
+    }
+  }
   const smUrls = robotsText ? parseRobots(robotsText).sitemaps : [new URL('/sitemap.xml', origin).href];
-  for (const sm of smUrls) {
+  for (const sm of stopReason === 'time_budget_exhausted' ? [] : smUrls) {
+    if (timeExpired()) {
+      stopReason = 'time_budget_exhausted';
+      break;
+    }
     try {
       const sitemapUrl = new URL(sm, origin);
       if (sitemapUrl.origin !== origin) {
@@ -117,8 +152,10 @@ export async function buildSiteFromUrl(startUrl, {
   const pendingUrls = [...new Set(queue.map((url) => url.replace(/#.*$/, '')).filter((url) => !seen.has(url)))];
   const crawl = {
     maxPages,
+    timeBudgetSeconds,
+    stopReason,
     pagesFetched: pages.length,
-    truncated: pages.length >= maxPages && pendingUrls.length > 0,
+    truncated: stopReason === 'page_budget_exhausted' || stopReason === 'time_budget_exhausted',
     pendingUrlCount: pendingUrls.length,
     pendingUrls,
   };

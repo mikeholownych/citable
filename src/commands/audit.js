@@ -12,8 +12,13 @@ import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
-export async function audit(root, { target, scope, baseUrl, refDate, viewport = null } = {}) {
-  const ctx = await buildContext(root, { target, baseUrl, refDate, viewport });
+export async function audit(root, {
+  target, scope, baseUrl, refDate, viewport = null,
+  maxPages, timeBudgetSeconds, fetcher,
+} = {}) {
+  const ctx = await buildContext(root, {
+    target, baseUrl, refDate, viewport, maxPages, timeBudgetSeconds, fetcher,
+  });
   const detectors = selectDetectors({ scope });
 
   const run = createRun(root, {
@@ -36,9 +41,13 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
   if (ctx.site?.fetchErrors?.length) {
     run.manifest.errors.push(...ctx.site.fetchErrors);
   }
-  if (ctx.site?.crawl?.truncated) {
+  if (ctx.site?.crawl?.stopReason === 'page_budget_exhausted') {
     run.manifest.incomplete_checks.push(
       `URL collection reached the ${ctx.site.crawl.maxPages}-page limit with ${ctx.site.crawl.pendingUrlCount} discovered URL(s) pending; sitemap absence checks are incomplete.`
+    );
+  } else if (ctx.site?.crawl?.stopReason === 'time_budget_exhausted') {
+    run.manifest.incomplete_checks.push(
+      `URL collection reached the ${ctx.site.crawl.timeBudgetSeconds}-second time budget; sitemap absence checks are incomplete.`
     );
   }
 

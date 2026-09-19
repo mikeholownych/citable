@@ -89,7 +89,14 @@ export function init(root, { force = false, seed = null } = {}) {
         package_manager: detected.package_manager,
         build_command: detected.build_commands[0] ?? null, test_command: detected.test_commands[0] ?? null,
       },
-      audit: { index_target_default: true, max_crawl_depth: 4, thin_content_words: 120, fetch_external: false },
+      audit: {
+        index_target_default: true,
+        max_pages: 500,
+        time_budget_seconds: 1800,
+        max_crawl_depth: 4,
+        thin_content_words: 120,
+        fetch_external: false,
+      },
     };
     const { valid, errors } = validateAgainst('config.schema.json', config);
     if (!valid) throw new Error(`generated config invalid: ${errors.join('; ')}`);

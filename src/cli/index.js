@@ -185,6 +185,8 @@ Commands
 
 Options
   --target <dir|url>        Built output directory or deployed URL to audit
+  --max-pages <count>       Maximum unique page URLs attempted for a URL audit (default: 500)
+  --time-budget-seconds <seconds>  Whole-run URL collection limit (default: 1800)
   --base-url <url>          Base URL for path resolution of a built output dir
   --ref-date <YYYY-MM-DD>   Reference date for expiry/staleness checks (default: today)
   --input <file>            Import evidence, remediation, or browser plan
@@ -233,7 +235,7 @@ Options
 No output of this tool guarantees crawling, indexing, ranking, citation,
 recommendation, inclusion, sentiment, or conversion outcomes.`;
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -243,6 +245,8 @@ function parseArgs(argv) {
     else if (a === '--interactions') args.interactions = true;
     else if (a === '--lighthouse') args.lighthouse = true;
     else if (a === '--target') args.target = argv[++i];
+    else if (a === '--max-pages') args.maxPages = Number(argv[++i]);
+    else if (a === '--time-budget-seconds') args.timeBudgetSeconds = Number(argv[++i]);
     else if (a === '--base-url') args.baseUrl = argv[++i];
     else if (a === '--ref-date') args.refDate = argv[++i];
     else if (a === '--viewport') args.viewport = argv[++i];
@@ -411,7 +415,15 @@ ${r.findings.map((f) => `  [${f.rule_id}] (${f.severity}) ${f.summary}\n    Fix:
           break;
         }
         const scope = args._[0];
-        const r = await audit(root, { target: args.target, scope, baseUrl: args.baseUrl, refDate: args.refDate, viewport: args.viewport });
+        const r = await audit(root, {
+          target: args.target,
+          scope,
+          baseUrl: args.baseUrl,
+          refDate: args.refDate,
+          viewport: args.viewport,
+          maxPages: args.maxPages,
+          timeBudgetSeconds: args.timeBudgetSeconds,
+        });
         out(args, `Audit ${r.runId}: ${r.summary.total} finding(s) [${Object.entries(r.summary.by_severity).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nReport: ${path.join(r.dir, 'report.md')}\nStatus: ${r.manifest.status}${r.manifest.incomplete_checks.length ? `\nIncomplete: ${r.manifest.incomplete_checks.join('; ')}` : ''}`, { runId: r.runId, dir: r.dir, summary: r.summary, status: r.manifest.status });
         break;
       }

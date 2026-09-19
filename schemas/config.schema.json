@@ -30,6 +30,8 @@
       "type": "object",
       "properties": {
         "index_target_default": { "type": "boolean" },
+        "max_pages": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "time_budget_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
         "max_crawl_depth": { "type": "integer", "minimum": 1 },
         "thin_content_words": { "type": "integer", "minimum": 1 },
         "fetch_external": { "type": "boolean" },
