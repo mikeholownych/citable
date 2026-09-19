@@ -1,6 +1,11 @@
 import { sha256 } from '../shared/io.js';
 import { fileURLToPath } from 'node:url';
 import { readJson } from '../shared/io.js';
+import {
+  REQUIREMENTS,
+  evaluateRequirement,
+  requirementForDetector,
+} from '../evidence/determination.js';
 
 const TOOL_VERSION = readJson(new URL('../../package.json', import.meta.url)).version;
 
@@ -31,6 +36,12 @@ export function defineDetector(def) {
     false_positive_conditions: [],
     false_negative_conditions: [],
     applicable_requirement: '',
+    // Every detector carries an explicit evidence contract. Page/url hits are
+    // narrowed to the evaluated resource at emission time; site and registry
+    // detectors default to the evaluated subset unless they opt into a
+    // stronger contract such as exhaustive_requested_scope.
+    coverage_requirement: def.coverage_requirement
+      ?? (def.requires?.includes('site') ? REQUIREMENTS.EVALUATED_SUBSET : REQUIREMENTS.PROVIDER_BOUNDED),
     ...def,
   };
 }
@@ -65,7 +76,13 @@ export function runDetectors(detectors, ctx) {
     detectorsRun.push(d.id);
     for (const hit of hits) {
       const idSeed = `${d.id}|${hit.subject?.identifier ?? ''}|${hit.summary}`;
+      const coverageRequirement = requirementForDetector(d, hit);
+      const scope = ctx.coverage
+        ? evaluateRequirement(coverageRequirement, ctx.coverage, hit.subject)
+        : null;
+      const resourceIds = scope?.resource_id ? [scope.resource_id] : [];
       findings.push({
+        ...(ctx.coverage ? { schema_version: 2 } : {}),
         finding_id: `F-${sha256(idSeed).slice(0, 12)}`,
         detector_id: d.id,
         detector_name: d.name,
@@ -118,6 +135,14 @@ export function runDetectors(detectors, ctx) {
             : 'heuristic judgment; human semantic review required before acting',
           revalidation_required: d.deterministic ? 'on_next_audit' : 'human_review_before_action',
         },
+        ...(ctx.coverage ? {
+          evidence_scope: {
+            requirement: coverageRequirement,
+            satisfaction: scope.status,
+            resource_ids: resourceIds,
+            coverage_ref: 'coverage.json',
+          },
+        } : {}),
         status: { state: 'open', first_seen: ts, last_seen: ts, resolved_at: null },
       });
     }
