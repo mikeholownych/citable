@@ -154,12 +154,13 @@ test('collection result rejects invalid totals, statuses, and unknown envelope f
   assert.equal(validateAgainst('collection-result.schema.json', unknownEnvelopeField).valid, false);
 });
 
-test('version-2 runs require independent execution and coverage statuses', () => {
+test('version-2 runs require independent execution, coverage, and determination statuses', () => {
   const v2 = {
     ...validLegacyRun(),
     schema_version: 2,
     execution_status: 'completed_with_warnings',
     coverage_status: 'truncated',
+    determination_status: 'qualified',
   };
   assert.equal(validateAgainst('run.schema.json', v2).valid, true);
 
@@ -171,8 +172,15 @@ test('version-2 runs require independent execution and coverage statuses', () =>
   delete missingCoverage.coverage_status;
   assert.equal(validateAgainst('run.schema.json', missingCoverage).valid, false);
 
+  const missingDetermination = { ...v2 };
+  delete missingDetermination.determination_status;
+  assert.equal(validateAgainst('run.schema.json', missingDetermination).valid, false);
+
   const mixedStatusVocabulary = { ...v2, execution_status: 'indeterminate' };
   assert.equal(validateAgainst('run.schema.json', mixedStatusVocabulary).valid, false);
+
+  const invalidDetermination = { ...v2, determination_status: 'pass' };
+  assert.equal(validateAgainst('run.schema.json', invalidDetermination).valid, false);
 });
 
 test('legacy run manifests remain valid without semantic-completeness fields', () => {

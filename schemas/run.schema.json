@@ -34,7 +34,8 @@
     "warnings": { "type": "array", "items": { "type": "string" } },
     "status": { "type": "string", "enum": ["completed", "completed_with_warnings", "incomplete", "failed"] },
     "execution_status": { "type": "string", "enum": ["completed", "completed_with_warnings", "failed"] },
-    "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "not_applicable"] }
+    "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "not_applicable"] },
+    "determination_status": { "type": "string", "enum": ["supported", "qualified", "indeterminate", "not_applicable"] }
   },
   "allOf": [
     {
@@ -42,7 +43,7 @@
         "required": ["schema_version"],
         "properties": { "schema_version": { "const": 2 } }
       },
-      "then": { "required": ["execution_status", "coverage_status"] }
+      "then": { "required": ["execution_status", "coverage_status", "determination_status"] }
     }
   ]
 }
