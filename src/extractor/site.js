@@ -75,11 +75,13 @@ export async function buildSiteFromUrl(startUrl, {
   const pages = [];
   const errors = [];
   let stopReason = 'frontier_exhausted';
+  const timeBudgetStopped = () => {
+    if (!timeExpired()) return false;
+    if (stopReason === 'frontier_exhausted') stopReason = 'time_budget_exhausted';
+    return true;
+  };
   while (queue.length) {
-    if (timeExpired()) {
-      stopReason = 'time_budget_exhausted';
-      break;
-    }
+    if (timeBudgetStopped()) break;
     const url = queue[0];
     const key = url.replace(/#.*$/, '');
     if (seen.has(key)) {
@@ -99,16 +101,10 @@ export async function buildSiteFromUrl(startUrl, {
       });
       page.requestedUrl = url;
       pages.push(page);
-      if (timeExpired()) {
-        stopReason = 'time_budget_exhausted';
-        break;
-      }
+      if (timeBudgetStopped()) break;
       if (String(res.headers['content-type'] || '').includes('text/html')) {
         for (const l of page.links) {
-          if (timeExpired()) {
-            stopReason = 'time_budget_exhausted';
-            break;
-          }
+          if (timeBudgetStopped()) break;
           try {
             const u = new URL(l.href, res.url);
             u.hash = '';
@@ -124,9 +120,7 @@ export async function buildSiteFromUrl(startUrl, {
   let robotsText = null;
   const sitemaps = [];
   if (stopReason !== 'time_budget_exhausted') {
-    if (timeExpired()) {
-      stopReason = 'time_budget_exhausted';
-    } else {
+    if (!timeBudgetStopped()) {
       try {
         const r = await fetcher(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
         if (r.status === 200) robotsText = r.body;
@@ -135,10 +129,7 @@ export async function buildSiteFromUrl(startUrl, {
   }
   const smUrls = robotsText ? parseRobots(robotsText).sitemaps : [new URL('/sitemap.xml', origin).href];
   for (const sm of stopReason === 'time_budget_exhausted' ? [] : smUrls) {
-    if (timeExpired()) {
-      stopReason = 'time_budget_exhausted';
-      break;
-    }
+    if (timeBudgetStopped()) break;
     try {
       const sitemapUrl = new URL(sm, origin);
       if (sitemapUrl.origin !== origin) {
@@ -149,9 +140,7 @@ export async function buildSiteFromUrl(startUrl, {
       if (r.status === 200) sitemaps.push({ source: sm, parsed: parseSitemap(r.body) });
     } catch { /* absence handled by TECH detectors */ }
   }
-  if (stopReason === 'frontier_exhausted' && timeExpired()) {
-    stopReason = 'time_budget_exhausted';
-  }
+  if (stopReason === 'frontier_exhausted') timeBudgetStopped();
   const pendingUrls = [...new Set(queue.map((url) => url.replace(/#.*$/, '')).filter((url) => !seen.has(url)))];
   const crawl = {
     maxPages,

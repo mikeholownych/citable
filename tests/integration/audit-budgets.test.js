@@ -296,22 +296,29 @@ test('final sitemap fetch consuming the time budget records terminal exhaustion 
   assert.equal(site.crawl.truncated, true);
 });
 
-test('terminal time expiry does not override an earlier page budget stop', async () => {
+test('robots time expiry before a declared sitemap does not override an earlier page budget stop', async () => {
   let elapsedMs = 0;
+  const fetched = [];
   const site = await buildSiteFromUrl('https://fixture.test/', {
     maxPages: 1,
     timeBudgetSeconds: 1,
     now: () => elapsedMs,
     fetcher: async (url) => {
       const pathname = new URL(url).pathname;
+      fetched.push(pathname);
       if (pathname === '/') return response(url, '<a href="/second">Second</a>');
       if (pathname === '/robots.txt') {
         elapsedMs = 1000;
-        return response(url, 'User-agent: *\nAllow: /', 'text/plain');
+        return response(
+          url,
+          'User-agent: *\nAllow: /\nSitemap: https://fixture.test/sitemap.xml',
+          'text/plain',
+        );
       }
       return response(url, '', 'application/xml');
     },
   });
+  assert.deepEqual(fetched, ['/', '/robots.txt']);
   assert.equal(site.crawl.stopReason, 'page_budget_exhausted');
   assert.equal(site.crawl.truncated, true);
 });
