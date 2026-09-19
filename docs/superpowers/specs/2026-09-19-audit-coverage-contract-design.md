@@ -125,7 +125,7 @@ The aggregate invariant is:
 
 ```text
 discovered = excluded + eligible
-eligible = evaluated + failed + indeterminate + unvisited
+eligible = evaluated + valid_but_unevaluated + failed + indeterminate + unvisited
 attempted = retrieved + failed
 retrieved = valid_resource + indeterminate
 valid_resource = evaluated + valid_but_unevaluated
