@@ -62,12 +62,12 @@ export async function handlePublicBrowserRoute(route, { lookup = dns.promises.lo
   }
 }
 
-async function readBodyLimited(res, maxBodyBytes) {
+async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
   const declared = Number(res.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBodyBytes) {
     throw new Error(`response body exceeds ${maxBodyBytes} bytes`);
   }
-  if (!res.body) return '';
+  if (!res.body) return responseType === 'buffer' ? Buffer.alloc(0) : '';
   const reader = res.body.getReader();
   const chunks = [];
   let total = 0;
@@ -85,15 +85,17 @@ async function readBodyLimited(res, maxBodyBytes) {
   const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  return new TextDecoder().decode(bytes);
+  return responseType === 'buffer' ? Buffer.from(bytes) : new TextDecoder().decode(bytes);
 }
 
 /** Fetch a public URL with bounded retries, redirects, time, and response size. */
 export async function fetchUrl(url, {
   userAgent = 'CitableAudit/0.1', maxRedirects = 10, timeoutMs = 20000,
   maxRetries = 3, retryDelayMs = 1000, maxBodyBytes = 5 * 1024 * 1024,
+  responseType = 'text',
   fetchImpl = globalThis.fetch, lookup = dns.promises.lookup,
 } = {}) {
+  if (!['text', 'buffer'].includes(responseType)) throw new TypeError('responseType must be text or buffer');
   const requested = await validatePublicUrl(url, { lookup });
   const allowedOrigin = requested.origin;
   const chain = [];
@@ -142,7 +144,7 @@ export async function fetchUrl(url, {
       await res.body?.cancel();
       continue;
     }
-    const body = await readBodyLimited(res, maxBodyBytes);
+    const body = await readBodyLimited(res, maxBodyBytes, responseType);
     return { url: current, requestedUrl: url, status: res.status, headers, body, redirectChain: chain };
   }
   throw new Error(`redirect chain exceeded ${maxRedirects} hops for ${url}`);

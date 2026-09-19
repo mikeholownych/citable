@@ -235,13 +235,13 @@ test('whole-run time budget deterministically prevents scheduling or fetching mo
       return response(url, '<a href="/second">Second</a>');
     },
   });
-  assert.deepEqual(fetched, ['/']);
+  assert.deepEqual(fetched, ['/robots.txt']);
   assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
   assert.equal(site.crawl.timeBudgetSeconds, 1);
   assert.equal(site.crawl.truncated, true);
 });
 
-test('URL collector stops adding discovered links once the time budget elapses', async () => {
+test('URL collector leaves the start URL pending when topology work exhausts the time budget', async () => {
   const clockValues = [0, 0, 0, 1000];
   let clockIndex = 0;
   const site = await buildSiteFromUrl('https://fixture.test/', {
@@ -250,7 +250,7 @@ test('URL collector stops adding discovered links once the time budget elapses',
     fetcher: async (url) => response(url, '<a href="/second">Second</a><a href="/third">Third</a>'),
   });
   assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
-  assert.deepEqual(site.crawl.pendingUrls, []);
+  assert.deepEqual(site.crawl.pendingUrls, ['https://fixture.test/']);
 });
 
 test('robots fetch consuming the final time budget records terminal exhaustion without sitemap declarations', async () => {
@@ -269,7 +269,7 @@ test('robots fetch consuming the final time budget records terminal exhaustion w
       return response(url);
     },
   });
-  assert.deepEqual(fetched, ['/', '/robots.txt']);
+  assert.deepEqual(fetched, ['/robots.txt']);
   assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
   assert.equal(site.crawl.truncated, true);
 });
@@ -291,12 +291,12 @@ test('final sitemap fetch consuming the time budget records terminal exhaustion 
       return response(url);
     },
   });
-  assert.deepEqual(fetched, ['/', '/robots.txt', '/sitemap.xml']);
+  assert.deepEqual(fetched, ['/robots.txt', '/sitemap.xml']);
   assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
   assert.equal(site.crawl.truncated, true);
 });
 
-test('robots time expiry before a declared sitemap does not override an earlier page budget stop', async () => {
+test('robots time expiry prevents page collection before the page budget can be reached', async () => {
   let elapsedMs = 0;
   const fetched = [];
   const site = await buildSiteFromUrl('https://fixture.test/', {
@@ -318,8 +318,8 @@ test('robots time expiry before a declared sitemap does not override an earlier 
       return response(url, '', 'application/xml');
     },
   });
-  assert.deepEqual(fetched, ['/', '/robots.txt']);
-  assert.equal(site.crawl.stopReason, 'page_budget_exhausted');
+  assert.deepEqual(fetched, ['/robots.txt']);
+  assert.equal(site.crawl.stopReason, 'time_budget_exhausted');
   assert.equal(site.crawl.truncated, true);
 });
 

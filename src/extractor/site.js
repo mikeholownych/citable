@@ -3,6 +3,7 @@ import path from 'node:path';
 import { extractPage } from './page.js';
 import { parseRobots } from '../crawler/robots.js';
 import { parseSitemap } from '../crawler/sitemap.js';
+import { collectSitemapTopology } from '../crawler/sitemapCollector.js';
 import { fetchUrl } from '../crawler/fetch.js';
 
 /**
@@ -64,14 +65,14 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
 export async function buildSiteFromUrl(startUrl, {
   maxPages = 500, timeBudgetSeconds = 1800, userAgent, pageMaxBytes = 5 * 1024 * 1024,
   robotsMaxBytes = 512 * 1024, sitemapMaxBytes = 5 * 1024 * 1024,
+  sitemapMaxDepth = 4, sitemapMaxDocuments = 1000,
+  sitemapMaxUncompressedBytes = 20 * 1024 * 1024,
   fetcher = fetchUrl,
   now = () => performance.now(),
 } = {}) {
   const origin = new URL(startUrl).origin;
   const startedAt = now();
   const timeExpired = () => now() - startedAt >= timeBudgetSeconds * 1000;
-  const seen = new Set();
-  const queue = [startUrl];
   const pages = [];
   const errors = [];
   let stopReason = 'frontier_exhausted';
@@ -80,68 +81,96 @@ export async function buildSiteFromUrl(startUrl, {
     if (stopReason === 'frontier_exhausted') stopReason = 'time_budget_exhausted';
     return true;
   };
-  while (queue.length) {
-    if (timeBudgetStopped()) break;
-    const url = queue[0];
-    const key = url.replace(/#.*$/, '');
-    if (seen.has(key)) {
-      queue.shift();
-      continue;
+
+  // Robots and sitemap topology are collected first so sitemap-only pages share
+  // the same bounded, deduplicated frontier as pages found through HTML links.
+  let robotsText = null;
+  if (!timeBudgetStopped()) {
+    try {
+      const robotsUrl = new URL('/robots.txt', origin).href;
+      const response = await fetcher(robotsUrl, { userAgent, maxBodyBytes: robotsMaxBytes });
+      if (response.status === 200) robotsText = response.body;
+    } catch {
+      // Missing robots remains represented by robotsText=null for existing detectors.
     }
+    timeBudgetStopped();
+  }
+
+  const declaredSitemaps = robotsText != null ? parseRobots(robotsText).sitemaps : [];
+  const sitemapEntries = declaredSitemaps.length
+    ? declaredSitemaps
+    : [new URL('/sitemap.xml', origin).href];
+  const sitemapTopology = await collectSitemapTopology(sitemapEntries, {
+    fetcher,
+    maxDepth: sitemapMaxDepth,
+    maxDocuments: sitemapMaxDocuments,
+    maxUncompressedBytes: sitemapMaxUncompressedBytes,
+    sitemapMaxBytes,
+    origin,
+    userAgent,
+    shouldStop: timeExpired,
+  });
+  if (sitemapTopology.stop_reasons.includes('time_budget_exhausted')) timeBudgetStopped();
+  for (const error of sitemapTopology.errors) {
+    errors.push(`${error.url}: ${error.message ?? error.reason}`);
+  }
+  const sitemaps = sitemapTopology.documents
+    .filter((document) => document.status === 'fetched' && document.parsed)
+    .map((document) => ({ source: document.effective_url, parsed: document.parsed }));
+
+  const seen = new Set();
+  const queued = new Set();
+  const queue = [];
+  const enqueuePage = (rawUrl, source) => {
+    let url;
+    try {
+      url = new URL(rawUrl, origin);
+      url.hash = '';
+    } catch {
+      return;
+    }
+    if (url.origin !== origin || isProviderUtilityPath(url.pathname) || seen.has(url.href) || queued.has(url.href)) return;
+    queued.add(url.href);
+    queue.push({ url: url.href, source });
+  };
+  enqueuePage(startUrl, 'start');
+  for (const entry of sitemapTopology.urls) enqueuePage(entry.url, 'sitemap');
+
+  while (queue.length && stopReason !== 'time_budget_exhausted') {
+    if (timeBudgetStopped()) break;
     if (seen.size >= maxPages) {
       stopReason = 'page_budget_exhausted';
       break;
     }
-    queue.shift();
-    seen.add(key);
+    const next = queue.shift();
+    queued.delete(next.url);
+    seen.add(next.url);
     try {
-      const res = await fetcher(url, { userAgent, maxBodyBytes: pageMaxBytes });
+      const response = await fetcher(next.url, { userAgent, maxBodyBytes: pageMaxBytes });
       const page = extractPage({
-        url: res.url, html: res.body, status: res.status, headers: res.headers, redirectChain: res.redirectChain,
+        url: response.url, html: response.body, status: response.status,
+        headers: response.headers, redirectChain: response.redirectChain,
       });
-      page.requestedUrl = url;
+      page.requestedUrl = next.url;
+      page.discoverySource = next.source;
       pages.push(page);
       if (timeBudgetStopped()) break;
-      if (String(res.headers['content-type'] || '').includes('text/html')) {
-        for (const l of page.links) {
+      if (String(response.headers['content-type'] || '').includes('text/html')) {
+        for (const link of page.links) {
           if (timeBudgetStopped()) break;
           try {
-            const u = new URL(l.href, res.url);
-            u.hash = '';
-            if (u.origin === origin && !isProviderUtilityPath(u.pathname) && !seen.has(u.href)) queue.push(u.href);
+            const target = new URL(link.href, response.url);
+            enqueuePage(target.href, 'link');
           } catch { /* unresolvable href — surfaced by LINK detectors */ }
         }
       }
       if (stopReason === 'time_budget_exhausted') break;
-    } catch (err) {
-      errors.push(`${url}: ${err.message}`);
+    } catch (error) {
+      errors.push(`${next.url}: ${error.message}`);
     }
-  }
-  let robotsText = null;
-  const sitemaps = [];
-  if (stopReason !== 'time_budget_exhausted') {
-    if (!timeBudgetStopped()) {
-      try {
-        const r = await fetcher(new URL('/robots.txt', origin).href, { userAgent, maxBodyBytes: robotsMaxBytes });
-        if (r.status === 200) robotsText = r.body;
-      } catch { /* recorded as missing robots */ }
-    }
-  }
-  const smUrls = robotsText ? parseRobots(robotsText).sitemaps : [new URL('/sitemap.xml', origin).href];
-  for (const sm of stopReason === 'time_budget_exhausted' ? [] : smUrls) {
-    if (timeBudgetStopped()) break;
-    try {
-      const sitemapUrl = new URL(sm, origin);
-      if (sitemapUrl.origin !== origin) {
-        errors.push(`${sitemapUrl.href}: sitemap URL leaves audited origin`);
-        continue;
-      }
-      const r = await fetcher(sitemapUrl.href, { userAgent, maxBodyBytes: sitemapMaxBytes });
-      if (r.status === 200) sitemaps.push({ source: sm, parsed: parseSitemap(r.body) });
-    } catch { /* absence handled by TECH detectors */ }
   }
   if (stopReason === 'frontier_exhausted') timeBudgetStopped();
-  const pendingUrls = [...new Set(queue.map((url) => url.replace(/#.*$/, '')).filter((url) => !seen.has(url)))];
+  const pendingUrls = queue.map((entry) => entry.url).filter((url) => !seen.has(url));
   const crawl = {
     maxPages,
     timeBudgetSeconds,
@@ -153,6 +182,7 @@ export async function buildSiteFromUrl(startUrl, {
   };
   const site = assembleSite({ baseUrl: origin, pages, robotsText, sitemaps, transport: {}, mode: 'url', location: startUrl, crawl });
   site.fetchErrors = errors;
+  site.sitemapTopology = sitemapTopology;
   return site;
 }
 

@@ -66,6 +66,13 @@ test('sitemap parser: urlset and index', () => {
   assert.equal(i.children.length, 1);
 });
 
+test('sitemap parser accepts a self-closing empty urlset root', () => {
+  const sitemap = parseSitemap('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>');
+  assert.equal(sitemap.rootValid, true);
+  assert.deepEqual(sitemap.urls, []);
+  assert.deepEqual(sitemap.errors, []);
+});
+
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('fetchUrl refuses redirects outside the audited origin', async () => {
