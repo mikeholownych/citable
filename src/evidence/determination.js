@@ -108,6 +108,11 @@ export function evaluateRequirement(requirement, coverage, subject = null) {
   }
 
   if (requirement === REQUIREMENTS.EVALUATED_SUBSET) {
+    // A subject-bearing determination cannot borrow aggregate subset counts:
+    // the named page/URL must itself be an evaluator-completed resource.
+    if (subject?.type === 'page' || subject?.type === 'url') {
+      return evaluatePageResource(coverage, subject);
+    }
     const p = population(coverage);
     if (!Number.isInteger(p.evaluated) || p.evaluated < 1) return result('indeterminate', { reason: 'no_evaluated_resources' });
     return result(coverage?.coverage_status === 'complete' ? 'supported' : 'qualified', {

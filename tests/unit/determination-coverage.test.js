@@ -116,6 +116,14 @@ test('valid_resource without evaluator completion is not page-local support', ()
   assert.equal(result.reason, 'resource_not_evaluated');
 });
 
+test('evaluated-subset determination cannot support an unknown subject from aggregate counts', () => {
+  const result = evaluateRequirement(REQUIREMENTS.EVALUATED_SUBSET, completeCoverage, {
+    type: 'page', url: 'https://example.test/not-observed', identifier: 'https://example.test/not-observed',
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.equal(result.reason, 'resource_not_observed');
+});
+
 test('detector definitions fail closed when coverage requirement is missing or unknown', () => {
   const base = {
     id: 'TECH-TEST-002', name: 'Missing requirement', namespace: 'TECH', description: 'test',
