@@ -79,16 +79,28 @@ export async function syncConnection(root, { connectionId, startDate, endDate, a
     }
     throw error;
   }
+  const collection = result.collection || {
+    schema_version: 1,
+    items: result.rows,
+    pagination_state: { pages_requested: 1, pages_retrieved: 1 },
+    provider_reported_total: null,
+    retrieved_total: result.rows.length,
+    coverage_status: 'indeterminate',
+    continuation_state: null,
+    limitations: ['Connector did not provide a collection contract.'],
+    errors: [],
+  };
+  const collectionLimitations = [...collection.limitations, ...collection.errors];
   const observations = result.rows.map((row) => envelope('metric', {
     metric_id: row.metric.metric_id, provider: connector.provider, external_name: row.metric.external_name,
     value: Number(row.value), unit: row.metric.unit === 'custom' ? row.metric.custom_unit : row.metric.unit,
     aggregation: row.metric.aggregation, observed_at: row.observed_at, period_start: row.observed_at,
     period_end: row.observed_at, dimensions: row.dimensions,
-  }, { method: 'live_api', source: connector.provider, limitations: [...row.metric.limitations, ...result.limitations] }));
+  }, { method: 'live_api', source: connector.provider, limitations: [...row.metric.limitations, ...collectionLimitations] }));
   const run = observationRun(root, 'connect sync', loaded.connection.property_id, observations);
-  const updated = { ...loaded.registries.connections, entries: loaded.registries.connections.entries.map((item) => item.connection_id === connectionId ? { ...item, state: 'synchronized', last_synchronized_at: new Date().toISOString(), cursor: result.cursor, limitations: result.limitations } : item) };
+  const updated = { ...loaded.registries.connections, entries: loaded.registries.connections.entries.map((item) => item.connection_id === connectionId ? { ...item, state: ['truncated', 'indeterminate'].includes(collection.coverage_status) ? 'partial' : 'synchronized', last_synchronized_at: new Date().toISOString(), cursor: result.cursor, limitations: collectionLimitations } : item) };
   saveRegistry(root, 'connections', updated);
-  return { ...run, connection_id: connectionId, provider: connector.provider };
+  return { ...run, connection_id: connectionId, provider: connector.provider, collection };
 }
 
 export async function readCmsContent(root, { connectionId, targetId, accessToken, env, fetchImpl } = {}) {
@@ -119,4 +131,3 @@ export async function applyCmsRemediation(root, { connectionId, input, write = f
 
 export { submitIndexNow, verifyHostKey, buildIndexNowPayload, normalizeHost, parseUrlsInput } from '../connectors/indexnow.js';
 export { collectMcpEvidence } from '../connectors/mcp/pilot.js';
-
