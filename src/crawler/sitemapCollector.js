@@ -83,6 +83,7 @@ export async function collectSitemapTopology(entryUrls, {
       parent_url: item.parentUrl,
       http_status: null,
       compression: 'none',
+      compression_transport_decoded: false,
       parse_errors: [],
       url_count: 0,
       child_count: 0,
@@ -114,6 +115,7 @@ export async function collectSitemapTopology(entryUrls, {
       const decoded = decodeBody(
         response.body, response.headers, record.effective_url, maxUncompressedBytes, record.compression,
       );
+      record.compression_transport_decoded = decoded.transportDecoded;
       const parsed = parseSitemap(decoded.text);
       record.parsed = parsed;
       record.parse_errors = [...parsed.errors];
@@ -201,15 +203,28 @@ function decodeBody(body, headers, url, maxUncompressedBytes, compression = dete
       : Buffer.from(String(body ?? ''), 'utf8');
   const magicGzip = bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
   let decoded = bytes;
-  if (compression === 'gzip' && (magicGzip || typeof body !== 'string')) {
-    decoded = gunzipSync(bytes, { maxOutputLength: maxUncompressedBytes });
+  let transportDecoded = false;
+  if (compression === 'gzip') {
+    if (magicGzip) {
+      decoded = gunzipSync(bytes, { maxOutputLength: maxUncompressedBytes });
+    } else if (looksLikeDecodedXml(bytes)) {
+      transportDecoded = true;
+    } else {
+      const error = new Error('gzip-indicated sitemap body is neither gzip bytes nor transport-decoded XML');
+      error.code = 'SITEMAP_DECOMPRESSION_FAILED';
+      throw error;
+    }
   }
   if (decoded.byteLength > maxUncompressedBytes) {
     const error = new Error(`sitemap uncompressed body exceeds ${maxUncompressedBytes} bytes`);
     error.code = 'SITEMAP_UNCOMPRESSED_LIMIT';
     throw error;
   }
-  return { text: decoded.toString('utf8'), compression };
+  return { text: decoded.toString('utf8'), compression, transportDecoded };
+}
+
+function looksLikeDecodedXml(bytes) {
+  return /^\s*</u.test(bytes.toString('utf8').replace(/^\uFEFF/u, ''));
 }
 
 function headerValue(headers, name) {
@@ -223,7 +238,8 @@ function classifyFailure(error) {
     || /maxoutputlength|larger than|exceeds .* bytes/i.test(error?.message ?? '')) {
     return 'max_uncompressed_bytes_exceeded';
   }
-  if (/gzip|incorrect header|invalid distance|unexpected end/i.test(error?.message ?? '')) return 'decompression_failed';
+  if (error?.code === 'SITEMAP_DECOMPRESSION_FAILED'
+    || /gzip|incorrect header|invalid distance|unexpected end/i.test(error?.message ?? '')) return 'decompression_failed';
   return 'fetch_failed';
 }
 

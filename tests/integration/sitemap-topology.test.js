@@ -140,6 +140,30 @@ test('collectSitemapTopology preserves compressed bytes when using the productio
   assert.deepEqual(result.urls.map((entry) => entry.url), [`${ORIGIN}/binary`]);
 });
 
+test('collectSitemapTopology does not double-decompress an HTTP gzip body already decoded by fetch', async () => {
+  const xml = `<urlset><url><loc>${ORIGIN}/transport-decoded</loc></url></urlset>`;
+  const fetcher = (url, options) => fetchUrl(url, {
+    ...options,
+    maxRetries: 1,
+    lookup: async () => [{ address: '93.184.216.34', family: 4 }],
+    // Node fetch exposes decompressed response bytes while retaining this header.
+    fetchImpl: async () => new Response(xml, {
+      status: 200,
+      headers: {
+        'content-encoding': 'gzip',
+        'content-type': 'application/xml',
+      },
+    }),
+  });
+
+  const result = await collectSitemapTopology(`${ORIGIN}/sitemap.xml`, { fetcher, origin: ORIGIN });
+
+  assert.equal(result.status, 'complete');
+  assert.equal(result.documents[0].compression, 'gzip');
+  assert.equal(result.documents[0].compression_transport_decoded, true);
+  assert.deepEqual(result.urls.map((entry) => entry.url), [`${ORIGIN}/transport-decoded`]);
+});
+
 test('collectSitemapTopology preserves valid entries while reporting malformed and missing loc values', async () => {
   const fetcher = routeFetcher({
     '/sitemap.xml': response(`${ORIGIN}/sitemap.xml`, `
@@ -350,6 +374,29 @@ test('URL collection uses /sitemap.xml when robots has no sitemap declaration', 
 
   assert.deepEqual(calls, [`${ORIGIN}/robots.txt`, `${ORIGIN}/sitemap.xml`, `${ORIGIN}/`]);
   assert.equal(site.sitemapTopology.status, 'complete');
+});
+
+test('URL collection keeps valid entries from a partially malformed sitemap in legacy site.sitemaps', async () => {
+  const fetcher = routeFetcher({
+    '/robots.txt': response(`${ORIGIN}/robots.txt`, `Sitemap: ${ORIGIN}/partial.xml`, { type: 'text/plain' }),
+    '/partial.xml': response(`${ORIGIN}/partial.xml`, `
+      <urlset>
+        <url><loc>${ORIGIN}/valid</loc></url>
+        <url><lastmod>2026-09-19</lastmod></url>
+      </urlset>`),
+    '/': response(`${ORIGIN}/`, '<h1>Home</h1>', { type: 'text/html' }),
+    '/valid': response(`${ORIGIN}/valid`, '<h1>Valid</h1>', { type: 'text/html' }),
+  });
+
+  const site = await buildSiteFromUrl(`${ORIGIN}/`, { fetcher });
+
+  assert.equal(site.sitemapTopology.status, 'indeterminate');
+  assert.equal(site.sitemapTopology.documents[0].status, 'malformed');
+  assert.match(site.sitemapTopology.documents[0].parse_errors.join('\n'), /missing <loc>/);
+  assert.equal(site.sitemaps.length, 1);
+  assert.equal(site.sitemaps[0].status, 'malformed');
+  assert.deepEqual(site.sitemaps[0].parsed.urls.map((entry) => entry.loc), [`${ORIGIN}/valid`]);
+  assert.match(site.sitemaps[0].parsed.errors.join('\n'), /missing <loc>/);
 });
 
 test('page budget counts sitemap-discovered pages and exposes the remaining sitemap frontier', async () => {

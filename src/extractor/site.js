@@ -115,8 +115,13 @@ export async function buildSiteFromUrl(startUrl, {
     errors.push(`${error.url}: ${error.message ?? error.reason}`);
   }
   const sitemaps = sitemapTopology.documents
-    .filter((document) => document.status === 'fetched' && document.parsed)
-    .map((document) => ({ source: document.effective_url, parsed: document.parsed }));
+    .filter((document) => document.http_status === 200 && document.parsed?.rootValid)
+    .map((document) => ({
+      source: document.effective_url,
+      parsed: document.parsed,
+      status: document.status,
+      failure_reason: document.failure_reason,
+    }));
 
   const seen = new Set();
   const queued = new Set();
