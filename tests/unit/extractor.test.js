@@ -529,6 +529,36 @@ test('fetchUrl records redirect responses and final retrieval in one attempt his
   ]);
 });
 
+test('fetchUrl redacts redirect query secrets from errors and redirect-chain provenance', async () => {
+  const sameOriginFetch = async (url) => url.includes('/old')
+    ? new Response(null, { status: 302, headers: { location: '/new?token=redirect-secret' } })
+    : new Response('ok');
+  const response = await fetchUrl('https://audit.example/old?token=request-secret', {
+    fetchImpl: sameOriginFetch, lookup: publicLookup, maxRetries: 1,
+    allowUnsafeCustomTransportForTest: true,
+  });
+  assert.doesNotMatch(JSON.stringify(response.redirectChain), /redirect-secret|request-secret/);
+  assert.match(response.redirectChain[0].url, /\[REDACTED\]/);
+  assert.match(response.redirectChain[0].location, /\[REDACTED\]/);
+
+  await assert.rejects(
+    fetchUrl('https://audit.example/old?token=request-secret', {
+      fetchImpl: async () => new Response(null, {
+        status: 302,
+        headers: { location: 'https://other.example/next?token=redirect-secret' },
+      }),
+      lookup: publicLookup,
+      maxRetries: 1,
+      allowUnsafeCustomTransportForTest: true,
+    }),
+    (error) => {
+      assert.doesNotMatch(error.message, /redirect-secret|request-secret/);
+      assert.equal(error.code, 'FETCH_REDIRECT_ORIGIN');
+      return true;
+    },
+  );
+});
+
 test('buildSiteFromUrl attaches resource validity, URL identity, and retrieval metadata to pages only', async () => {
   const fetcher = async (url) => {
     if (url.endsWith('/robots.txt')) return { url, requestedUrl: url, status: 200, headers: { 'content-type': 'text/plain' }, body: '', bodyComplete: true, redirectChain: [], attempts: [] };
@@ -576,4 +606,52 @@ test('buildSiteFromUrl preserves the original requested URL spelling for page id
     url: 'HTTPS://MiXeD.Example:443/Path?Q=One',
     normalized_url: 'HTTPS://MiXeD.Example/Path?Q=One',
   });
+});
+
+test('buildSiteFromUrl sanitizes URL queries and transport details in fetchErrors', async () => {
+  const fetcher = async (url) => {
+    if (url.endsWith('/robots.txt')) return { url, status: 200, headers: { 'content-type': 'text/plain' }, body: '', redirectChain: [] };
+    if (url.endsWith('/sitemap.xml')) return { url, status: 404, headers: { 'content-type': 'application/xml' }, body: '', redirectChain: [] };
+    throw new Error('internal socket detail token=transport-secret');
+  };
+  const site = await buildSiteFromUrl('https://fixture.test/private?token=query-secret', { fetcher, maxPages: 1 });
+  assert.ok(site.fetchErrors.length >= 1);
+  assert.doesNotMatch(JSON.stringify(site.fetchErrors), /query-secret|transport-secret|internal socket detail/);
+  assert.ok(site.fetchErrors.some((error) => /\[REDACTED\].*FETCH_ERROR/.test(error)));
+});
+
+test('buildSiteFromUrl sanitizes and bounds caller-supplied attempt metadata', async () => {
+  const unsafeAttempts = Array.from({ length: 125 }, (_, index) => ({
+    attempt: index + 1,
+    url: `https://fixture.test/page?token=attempt-secret-${index}`,
+    startedAtMs: index,
+    endedAtMs: index + 1,
+    elapsedMs: 1,
+    outcome: 'error',
+    status: null,
+    errorCode: 'TOKEN_IS_SECRET',
+    retryDecision: 'retry',
+    internalMessage: `private-detail-${index}`,
+  }));
+  const fetcher = async (url) => {
+    if (url.endsWith('/robots.txt')) return { url, status: 200, headers: { 'content-type': 'text/plain' }, body: '', redirectChain: [] };
+    if (url.endsWith('/sitemap.xml')) return { url, status: 404, headers: { 'content-type': 'application/xml' }, body: '', redirectChain: [] };
+    return {
+      url,
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+      body: '<html><body><p>Substantive content for attempt sanitization verification.</p></body></html>',
+      redirectChain: [],
+      attempts: unsafeAttempts,
+    };
+  };
+  const site = await buildSiteFromUrl('https://fixture.test/page', { fetcher, maxPages: 1 });
+  const [page] = site.pages;
+  assert.equal(page.fetchAttempts.length, 100);
+  assert.equal(page.fetchAttemptsTruncated, true);
+  assert.equal(page.fetchAttempts[0].errorCode, 'FETCH_ERROR');
+  assert.deepEqual(Object.keys(page.fetchAttempts[0]).sort(), [
+    'attempt', 'elapsedMs', 'endedAtMs', 'errorCode', 'outcome', 'retryDecision', 'startedAtMs', 'status', 'url',
+  ]);
+  assert.doesNotMatch(JSON.stringify(page.fetchAttempts), /attempt-secret|private-detail|TOKEN_IS_SECRET/);
 });

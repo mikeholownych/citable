@@ -194,6 +194,12 @@ function isRetryableResponseStatus(status) {
   return status === 500 || status === 502 || status === 503 || status === 504;
 }
 
+function codedFetchError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
 function attachAttempts(error, attempts) {
   const target = error instanceof Error ? error : new Error('request failed');
   Object.defineProperty(target, 'attempts', {
@@ -295,11 +301,16 @@ export async function fetchUrl(url, {
         retryDecision: redirects === maxRedirects ? 'stop' : 'redirect',
       });
       if (redirects === maxRedirects) break;
-      const next = new URL(headers.location, current);
-      if (next.origin !== allowedOrigin) {
-        throw attachAttempts(new Error(`redirect leaves audited origin: ${next.href}`), attempts);
+      let next;
+      try {
+        next = new URL(headers.location, current);
+      } catch {
+        throw attachAttempts(codedFetchError('invalid redirect location', 'FETCH_REDIRECT_INVALID'), attempts);
       }
-      chain.push({ url: current, status: res.status, location: headers.location });
+      if (next.origin !== allowedOrigin) {
+        throw attachAttempts(codedFetchError('redirect leaves audited origin', 'FETCH_REDIRECT_ORIGIN'), attempts);
+      }
+      chain.push({ url: attemptUrl(current), status: res.status, location: attemptUrl(next.href) });
       current = next.href;
       await res.body?.cancel();
       continue;
@@ -326,5 +337,8 @@ export async function fetchUrl(url, {
       throw attachAttempts(error, attempts);
     }
   }
-  throw attachAttempts(new Error(`redirect chain exceeded ${maxRedirects} hops for ${url}`), attempts);
+  throw attachAttempts(codedFetchError(
+    `redirect chain exceeded ${maxRedirects} hops`,
+    'FETCH_REDIRECT_LIMIT',
+  ), attempts);
 }

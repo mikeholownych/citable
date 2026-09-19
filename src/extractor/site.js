@@ -8,6 +8,70 @@ import { fetchUrl } from '../crawler/fetch.js';
 import { classifyResource } from '../crawler/resourceValidity.js';
 import { createUrlIdentity } from '../crawler/urlIdentity.js';
 
+const MAX_PAGE_FETCH_ATTEMPTS = 100;
+const SAFE_FETCH_ERROR_CODES = new Set([
+  'FETCH_ABORTED', 'FETCH_BODY_LIMIT', 'FETCH_ERROR', 'FETCH_REDIRECT_INVALID',
+  'FETCH_REDIRECT_LIMIT', 'FETCH_REDIRECT_ORIGIN', 'FETCH_TIMEOUT',
+  'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH',
+  'ENOTFOUND', 'EPIPE', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT',
+]);
+
+function sanitizeEvidenceUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl));
+    url.hash = '';
+    if (url.search) url.search = '?[REDACTED]';
+    return url.href;
+  } catch {
+    return '[invalid-url]';
+  }
+}
+
+function safeErrorCode(value, fallback = 'FETCH_ERROR') {
+  return typeof value === 'string' && SAFE_FETCH_ERROR_CODES.has(value) ? value : fallback;
+}
+
+function finiteNonNegative(value) {
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function sanitizeFetchAttempts(attempts) {
+  if (!Array.isArray(attempts)) return { attempts: [], truncated: false };
+  const bounded = attempts.slice(0, MAX_PAGE_FETCH_ATTEMPTS).map((rawAttempt, index) => {
+    const attempt = rawAttempt && typeof rawAttempt === 'object' ? rawAttempt : {};
+    const outcome = attempt.outcome === 'response' ? 'response' : 'error';
+    return {
+      attempt: Number.isInteger(attempt.attempt) && attempt.attempt > 0 ? attempt.attempt : index + 1,
+      url: sanitizeEvidenceUrl(attempt.url),
+      startedAtMs: finiteNonNegative(attempt.startedAtMs),
+      endedAtMs: finiteNonNegative(attempt.endedAtMs),
+      elapsedMs: finiteNonNegative(attempt.elapsedMs),
+      outcome,
+      status: Number.isInteger(attempt.status) && attempt.status >= 100 && attempt.status <= 599
+        ? attempt.status
+        : null,
+      errorCode: outcome === 'error' ? safeErrorCode(attempt.errorCode) : null,
+      retryDecision: ['retry', 'stop', 'redirect', 'complete'].includes(attempt.retryDecision)
+        ? attempt.retryDecision
+        : 'stop',
+    };
+  });
+  return { attempts: bounded, truncated: attempts.length > MAX_PAGE_FETCH_ATTEMPTS };
+}
+
+function sanitizedFetchError(rawUrl, error) {
+  const attempts = sanitizeFetchAttempts(error?.attempts).attempts;
+  const reason = safeErrorCode(error?.code, attempts.at(-1)?.errorCode ?? 'FETCH_ERROR');
+  return `${sanitizeEvidenceUrl(rawUrl)}: ${reason}`;
+}
+
+function sanitizedSitemapError(error) {
+  const reason = typeof error?.reason === 'string' && /^[a-z0-9_]{1,80}$/.test(error.reason)
+    ? error.reason
+    : 'sitemap_error';
+  return `${sanitizeEvidenceUrl(error?.url)}: ${reason}`;
+}
+
 function attachResourceMetadata(page, {
   requestedUrl,
   bodyComplete = true,
@@ -17,7 +81,9 @@ function attachResourceMetadata(page, {
   const declaredCanonicalUrl = page.canonicals[0] ?? null;
   page.requestedUrl = requestedUrl ?? effectiveUrl;
   page.bodyComplete = bodyComplete === true;
-  page.fetchAttempts = fetchAttempts;
+  const sanitizedAttempts = sanitizeFetchAttempts(fetchAttempts);
+  page.fetchAttempts = sanitizedAttempts.attempts;
+  page.fetchAttemptsTruncated = sanitizedAttempts.truncated;
   page.resourceValidity = classifyResource({
     status: page.status,
     headers: page.headers,
@@ -148,7 +214,7 @@ export async function buildSiteFromUrl(startUrl, {
   });
   if (sitemapTopology.stop_reasons.includes('time_budget_exhausted')) timeBudgetStopped();
   for (const error of sitemapTopology.errors) {
-    errors.push(`${error.url}: ${error.message ?? error.reason}`);
+    errors.push(sanitizedSitemapError(error));
   }
   const sitemaps = sitemapTopology.documents
     .filter((document) => document.http_status === 200 && document.parsed?.rootValid)
@@ -215,7 +281,7 @@ export async function buildSiteFromUrl(startUrl, {
       }
       if (stopReason === 'time_budget_exhausted') break;
     } catch (error) {
-      errors.push(`${next.url}: ${error.message}`);
+      errors.push(sanitizedFetchError(next.url, error));
     }
   }
   if (stopReason === 'frontier_exhausted') timeBudgetStopped();
