@@ -7,6 +7,7 @@ import { buildContext } from './context.js';
 import { runDetectors } from '../detectors/framework.js';
 import { selectDetectors } from '../detectors/index.js';
 import { remediateCommand } from './remediate.js';
+import { assessReobservation } from './compareSnapshots.js';
 
 const PKG_VERSION = JSON.parse(
   fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
@@ -55,7 +56,7 @@ export async function verifyRemediation(root, options = {}) {
     recheck_run_id: null,
     detector_id: finding ? String(finding).toUpperCase() : null,
     subject: null,
-    verdict: { resolved: false, before_finding_ids: [], after_finding_ids: [], new_regressions: [], resolution_definition: RESOLUTION_DEFINITION },
+    verdict: { resolved: false, comparison_state: 'indeterminate', before_finding_ids: [], after_finding_ids: [], new_regressions: [], resolution_definition: RESOLUTION_DEFINITION },
     patch: null,
     provenance: { command: 'verify remediation', recheck_target: target || null, detectors_run: [], detectors_skipped: [], recheck_errors: [], recheck_warnings: [] },
     limitations,
@@ -165,14 +166,46 @@ export async function verifyRemediation(root, options = {}) {
     .filter((f) => !beforeKeys.has(`${f.detector_id}|${subjectKey(f.subject)}|${f.observation?.summary}`))
     .map((f) => ({ finding_id: f.finding_id, detector_id: f.detector_id, severity: f.classification.severity, summary: f.observation?.summary }));
 
+  // Finalize the same collection envelope used by audit so detector absence
+  // is only resolution when the responsible resource was actually observed.
+  let recheckCoverage = null;
+  if (ctx.site?.finalizeCoverage) {
+    try { recheckCoverage = ctx.site.finalizeCoverage({ evaluated: true }); }
+    catch (error) { result.provenance.recheck_errors.push(`coverage finalization failed: ${error.message}`); }
+  }
+  let reobservation = assessReobservation(matches[0], recheckCoverage);
+  // Directory re-checks predate the coverage ledger and intentionally do not
+  // manufacture a package artifact. Their concrete page model is still a
+  // sufficient page-local observation when the subject is present.
+  if (!recheckCoverage && ctx.site?.pages?.some((page) => {
+    const subjectUrl = matches[0].subject?.url || matches[0].subject?.identifier;
+    return subjectUrl && page.url === subjectUrl;
+  })) {
+    reobservation = { state: 'resolved', reason: 'page_present_in_recheck_model', resource: null };
+  }
+  result.comparison = {
+    state: reobservation.state,
+    reason: reobservation.reason,
+    coverage_status: recheckCoverage?.coverage_status || 'not_available',
+    resource: reobservation.resource?.normalized_url || null,
+  };
+  result.verdict.comparison_state = reobservation.state;
+
   const errorsDuringRecheck = result.provenance.recheck_errors.length > 0;
   if (errorsDuringRecheck) {
-    result.status = 'blocked';
+    result.status = 'indeterminate';
     result.verdict.resolved = false;
-    result.limitations.push('Detector errors occurred during the re-check; resolution cannot be established from a failed observation.');
+    result.verdict.comparison_state = 'indeterminate';
+    result.limitations.push('Detector or collection errors occurred during the re-check; resolution cannot be established from a failed observation.');
   } else if (afterMatches.length === 0) {
-    result.status = 'verified';
-    result.verdict.resolved = true;
+    if (reobservation.state === 'resolved') {
+      result.status = 'verified';
+      result.verdict.resolved = true;
+    } else {
+      result.status = reobservation.state === 'indeterminate' ? 'indeterminate' : 'not_reobserved';
+      result.verdict.resolved = false;
+      result.limitations.push(`The source subject was not sufficiently reobserved: ${reobservation.reason}.`);
+    }
   } else {
     result.status = 'not_resolved';
     result.verdict.resolved = false;

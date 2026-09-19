@@ -110,3 +110,21 @@ test('verify remediation fails closed: missing run, unknown finding, refused pat
   assert.equal(persisted.verdict.resolved, false);
   assert.equal(persisted.verdict.after_finding_ids.length, 1, 'unpatched finding must persist');
 });
+
+test('verify remediation never calls a missing recheck resource resolved', async (t) => {
+  const dir = project();
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const siteDir = site(dir);
+  const run = await audit(dir, { target: siteDir, baseUrl: 'https://example.test', refDate: '2026-09-08' });
+  assert.ok(run.findings.some((f) => f.detector_id === 'CRO-007'));
+  const missingTarget = path.join(dir, 'missing-recheck');
+  fs.mkdirSync(missingTarget);
+  const result = await verifyRemediation(dir, {
+    run: run.runId, finding: 'CRO-007', recheckTarget: missingTarget,
+    baseUrl: 'https://example.test', refDate: '2026-09-08',
+  });
+  assert.equal(result.status, 'not_reobserved');
+  assert.equal(result.verdict.resolved, false);
+  assert.equal(result.verdict.comparison_state, 'not_reobserved');
+  assert.equal(result.comparison.coverage_status, 'not_available');
+});
