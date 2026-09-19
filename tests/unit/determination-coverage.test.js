@@ -141,3 +141,20 @@ test('unsatisfied detector coverage is explicitly marked not established', () =>
   assert.equal(finding.classification.confidence, 'unknown');
   assert.match(finding.reasoning.limitations[0], /determination not established/);
 });
+
+test('explicit exhaustive requirement is not weakened by a page or URL subject', () => {
+  const detector = defineDetector({
+    id: 'TECH-TEST-004', name: 'Exhaustive URL condition', namespace: 'TECH', description: 'test',
+    discipline: ['seo'], severity: 'low', deterministic: true, requires: [],
+    coverage_requirement: REQUIREMENTS.EXHAUSTIVE_SCOPE, remediation: 'test', verification: 'test',
+    check: () => [{
+      subject: { type: 'url', identifier: 'https://example.test/page-17', url: 'https://example.test/page-17' },
+      summary: 'Exhaustive URL condition', evidence: ['page-17'],
+    }],
+  });
+  const finding = runDetectors([detector], {
+    coverage: incompleteCoverage, runId: 'RUN-3', timestamp: '2026-09-19T00:00:00Z',
+  }).findings[0];
+  assert.equal(finding.evidence_scope.requirement, REQUIREMENTS.EXHAUSTIVE_SCOPE);
+  assert.equal(finding.evidence_scope.satisfaction, 'indeterminate');
+});

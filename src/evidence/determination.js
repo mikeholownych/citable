@@ -146,6 +146,7 @@ export function requirementForDetector(detector, hit = null) {
   if (!detector || !isCoverageRequirement(detector.coverage_requirement)) {
     throw new TypeError(`detector ${detector?.id ?? '?'} must declare a valid coverage_requirement`);
   }
-  if (hit?.subject?.type === 'page' || hit?.subject?.type === 'url') return REQUIREMENTS.PAGE_RESOURCE;
+  // The detector declaration is authoritative. Subject shape must never
+  // silently weaken an exhaustive or rendered-resource contract.
   return detector.coverage_requirement;
 }
