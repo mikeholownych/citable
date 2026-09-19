@@ -10,6 +10,7 @@ function evidenceById(ctx) {
 }
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-001', name: 'Verified claim without evidence', namespace: 'CLAIM',
   description: 'A claim is marked verified but references no evidence entries.',
   discipline: ['aeo', 'geo'], severity: 'critical', deterministic: true, requires: ['registries'],
@@ -29,6 +30,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-002', name: 'Verified claim depends on expired or revoked evidence', namespace: 'CLAIM',
   description: 'All evidence supporting a verified claim is expired, stale, revoked, or inaccessible.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -60,6 +62,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-003', name: 'Claim active after expiry', namespace: 'CLAIM',
   description: 'A claim has passed its expires date but is not marked expired/retired.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -79,6 +82,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-004', name: 'Quantitative or comparative claim without evidence', namespace: 'CLAIM',
   description: 'A performance or comparative claim (any status except prohibited/retired) has no supporting evidence recorded.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -98,6 +102,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-005', name: 'Opinion or aspiration represented as verified fact', namespace: 'CLAIM',
   description: 'An opinion, position, or aspirational claim carries a "verified" status, flattening the claim hierarchy.',
   discipline: ['geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -117,6 +122,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-006', name: 'Regulated claim without required review', namespace: 'CLAIM',
   description: 'A legal/regulatory, security, or commercial claim has no legal_status assessment.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -137,6 +143,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-007', name: 'Unbounded superlative in page text', namespace: 'CLAIM',
   description: 'Page text contains a superlative ("best", "industry-leading", "#1") with no registered comparative claim covering that page.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site', 'registries'],
@@ -167,6 +174,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-008', name: 'Published claim missing from page text (surface drift)', namespace: 'CLAIM',
   description: 'A claim lists a page as a publication surface, but the page no longer contains recognizably similar text.',
   discipline: ['geo'], severity: 'low', deterministic: false, requires: ['site', 'registries'],
@@ -200,6 +208,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CLAIM-009', name: 'Verified claim without semantic support assessment', namespace: 'CLAIM',
   description: 'A claim holds verified status without a recorded assessment that the evidence semantically supports the claim as worded (entailment, not just linkage). Valid evidence references, dates, and owners do not establish that the wording matches what the evidence proves.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],

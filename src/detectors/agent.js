@@ -50,6 +50,7 @@ function siteUrl(ctx) {
 // ---------------------------------------------------------------------------
 
 export const AGENT_001 = defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'AGENT-001',
   name: 'AI bot rules absent from robots.txt',
   namespace: 'AGENT',
@@ -94,6 +95,7 @@ export const AGENT_001 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_002 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-002',
   name: 'Link response headers absent',
   namespace: 'AGENT',
@@ -131,6 +133,7 @@ export const AGENT_002 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_003 = defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'AGENT-003',
   name: 'llms.txt missing',
   namespace: 'AGENT',
@@ -169,6 +172,7 @@ export const AGENT_003 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_004 = defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'AGENT-004',
   name: 'MCP Server Card not discoverable',
   namespace: 'AGENT',
@@ -215,6 +219,7 @@ export const AGENT_004 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_005 = defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'AGENT-005',
   name: 'A2A Agent Card not discoverable',
   namespace: 'AGENT',
@@ -258,6 +263,7 @@ export const AGENT_005 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_006 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-006',
   name: 'Markdown content negotiation not supported',
   namespace: 'AGENT',
@@ -302,6 +308,7 @@ export const AGENT_006 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_007 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-007',
   name: 'Web Bot Auth not declared',
   namespace: 'AGENT',
@@ -345,6 +352,7 @@ export const AGENT_007 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_008 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-008',
   name: 'Content-Signals header absent',
   namespace: 'AGENT',
@@ -386,6 +394,7 @@ export const AGENT_008 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_009 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-009',
   name: 'auth.md not present',
   namespace: 'AGENT',
@@ -431,6 +440,7 @@ export const AGENT_009 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_010 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-010',
   name: 'Agentic commerce protocols not declared',
   namespace: 'AGENT',
@@ -488,6 +498,7 @@ export const AGENT_010 = defineDetector({
 // ---------------------------------------------------------------------------
 
 export const AGENT_011 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'AGENT-011',
   name: 'llms.txt structure or link integrity broken',
   namespace: 'AGENT',

@@ -103,3 +103,41 @@ test('detector findings bind to their requirement and never infer corpus scope f
     coverage_ref: 'coverage.json',
   });
 });
+
+test('valid_resource without evaluator completion is not page-local support', () => {
+  const coverage = {
+    ...incompleteCoverage,
+    resources: incompleteCoverage.resources.map((resource) => ({ ...resource, state: 'valid_resource' })),
+  };
+  const result = evaluateRequirement(REQUIREMENTS.PAGE_RESOURCE, coverage, {
+    type: 'page', url: 'https://example.test/page-17', identifier: 'https://example.test/page-17',
+  });
+  assert.equal(result.status, 'indeterminate');
+  assert.equal(result.reason, 'resource_not_evaluated');
+});
+
+test('detector definitions fail closed when coverage requirement is missing or unknown', () => {
+  const base = {
+    id: 'TECH-TEST-002', name: 'Missing requirement', namespace: 'TECH', description: 'test',
+    discipline: ['seo'], severity: 'low', deterministic: true, requires: [], remediation: 'test',
+    verification: 'test', check: () => [],
+  };
+  assert.throws(() => defineDetector(base), /coverage_requirement/);
+  assert.throws(() => defineDetector({ ...base, coverage_requirement: 'magic_scope' }), /coverage_requirement/);
+});
+
+test('unsatisfied detector coverage is explicitly marked not established', () => {
+  const detector = defineDetector({
+    id: 'TECH-TEST-003', name: 'Exhaustive condition', namespace: 'TECH', description: 'test',
+    discipline: ['seo'], severity: 'low', deterministic: true, requires: [],
+    coverage_requirement: REQUIREMENTS.EXHAUSTIVE_SCOPE, remediation: 'test', verification: 'test',
+    check: () => [{ subject: { type: 'site', identifier: 'site' }, summary: 'Site condition', evidence: ['site'] }],
+  });
+  const finding = runDetectors([detector], {
+    coverage: incompleteCoverage, runId: 'RUN-2', timestamp: '2026-09-19T00:00:00Z',
+  }).findings[0];
+  assert.equal(finding.evidence_scope.satisfaction, 'indeterminate');
+  assert.equal(finding.observation.determination_status, 'indeterminate');
+  assert.equal(finding.classification.confidence, 'unknown');
+  assert.match(finding.reasoning.limitations[0], /determination not established/);
+});

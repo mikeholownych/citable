@@ -4,6 +4,7 @@ import { parse } from 'node-html-parser';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-001', name: 'Missing title element', namespace: 'PAGE',
   description: 'Index-target page has no <title>.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -19,6 +20,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-002', name: 'Duplicate title across pages', namespace: 'PAGE',
   description: 'Two or more index-target pages share an identical title.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -42,6 +44,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-003', name: 'Missing meta description', namespace: 'PAGE',
   description: 'Index-target page lacks a meta description (search-result copy).',
   discipline: ['seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -57,6 +60,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-004', name: 'Duplicate meta description', namespace: 'PAGE',
   description: 'Multiple pages share an identical meta description.',
   discipline: ['seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -80,6 +84,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-005', name: 'Missing or multiple H1', namespace: 'PAGE',
   description: 'Page does not have exactly one primary heading.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -98,6 +103,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-006', name: 'Heading hierarchy skip', namespace: 'PAGE',
   description: 'Heading levels skip (e.g., H1 → H3), indicating headings used for visual size rather than document structure.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -127,6 +133,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-007', name: 'Image missing alt text', namespace: 'PAGE',
   description: 'Content images lack alt attributes.',
   discipline: ['seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -147,6 +154,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-008', name: 'Thin index-target content', namespace: 'PAGE',
   description: 'An index-target page has very little primary text.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -169,6 +177,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-009', name: 'Keyword stuffing', namespace: 'PAGE',
   description: 'A single non-trivial term dominates the page text at a frequency inconsistent with natural prose.',
   discipline: ['seo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -201,6 +210,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-010', name: 'High boilerplate-to-content ratio in extracted answer passages', namespace: 'PAGE',
   description: 'An index-target page has a high ratio of boilerplate (navigation, header, footer, chrome) relative to substantive primary content, diluting extracted answer passages.',
   discipline: ['aeo', 'seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -235,6 +245,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'PAGE-011', name: 'Critical entity claims rendered inside transient/collapsible UI containers without fallback', namespace: 'PAGE',
   description: 'Registered claim or critical entity statement is rendered exclusively inside a collapsible or transient UI container (<details>, accordion, hidden tab) without an uncollapsed fallback or crawlable representation.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],

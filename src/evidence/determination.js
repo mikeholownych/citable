@@ -17,6 +17,10 @@ export const REQUIREMENTS = Object.freeze({
 
 const VALID_REQUIREMENTS = new Set(Object.values(REQUIREMENTS));
 
+export function isCoverageRequirement(value) {
+  return VALID_REQUIREMENTS.has(value);
+}
+
 function population(coverage) {
   return coverage?.populations && typeof coverage.populations === 'object'
     ? coverage.populations
@@ -64,7 +68,7 @@ function evaluatePageResource(coverage, subject, rendered = false) {
   const resource = resourceForSubject(coverage, subject);
   if (!resource) return result('indeterminate', { reason: 'resource_not_observed' });
   const state = resource.state || (resource.evaluation ? 'evaluated' : resource.classification?.state);
-  if (state !== 'evaluated' && state !== 'valid_resource') {
+  if (state !== 'evaluated') {
     return result('indeterminate', { reason: 'resource_not_evaluated', resource_id: resource.resource_id });
   }
   if (rendered && resource.rendered !== true && resource.rendering_status !== 'complete') {
@@ -139,8 +143,9 @@ export function propagateDetermination(determination, coverage) {
 }
 
 export function requirementForDetector(detector, hit = null) {
-  if (detector?.coverage_requirement && VALID_REQUIREMENTS.has(detector.coverage_requirement)) return detector.coverage_requirement;
+  if (!detector || !isCoverageRequirement(detector.coverage_requirement)) {
+    throw new TypeError(`detector ${detector?.id ?? '?'} must declare a valid coverage_requirement`);
+  }
   if (hit?.subject?.type === 'page' || hit?.subject?.type === 'url') return REQUIREMENTS.PAGE_RESOURCE;
-  if (detector?.requires?.includes('site')) return REQUIREMENTS.EVALUATED_SUBSET;
-  return REQUIREMENTS.PROVIDER_BOUNDED;
+  return detector.coverage_requirement;
 }

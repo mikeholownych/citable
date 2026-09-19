@@ -3,6 +3,7 @@ import { defineDetector, indexTargets, pageSubject, registryPageFor } from './fr
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-001', name: 'Declared conversion action missing visible interactive CTA', namespace: 'CRO',
   description: 'A page registry declares a conversion_action (e.g. "request demo", "start trial"), but the rendered page DOM contains no matching interactive CTA button, link, or form.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
@@ -54,6 +55,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-002', name: 'Friction-heavy or defective lead capture form', namespace: 'CRO',
   description: 'A form on the page is defective (missing submit mechanism) or contains excessive input fields (>7) on top-of-funnel conversion surfaces.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -92,6 +94,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-003', name: 'Commercial intent page lacks proximate conversion pathway', namespace: 'CRO',
   description: 'A page with commercial or transactional intent (e.g. product, pricing, or vendor evaluation) contains zero interactive CTAs.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -134,6 +137,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-004', name: 'Defective or unverified outbound conversion target', namespace: 'CRO',
   description: 'A primary CTA button or link points to a placeholder (#, javascript:void(0)), an unreachable internal destination (404), or a non-production staging/localhost URL.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -177,6 +181,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-005', name: 'Search-to-landing scent gap: primary H1 fails to corroborate title', namespace: 'CRO',
   description: 'A commercial landing page H1 shares zero substantive keywords with the page title, creating a message-match scent gap that elevates bounce rates for search visitors.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -218,6 +223,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-006', name: 'Commercial lead capture form lacks proximate trust proof or security badges', namespace: 'CRO',
   description: 'A lead capture or transaction form collects user information without proximate trust signals (compliance certifications, encryption, guarantees, or social proof), elevating funnel abandonment.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -254,6 +260,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-007', name: 'Identity or contact input fields lack HTML5 autocomplete attributes', namespace: 'CRO',
   description: 'Form input fields that collect standard personal identity or contact information (e.g. name, email, phone, organization) lack standard HTML5 autocomplete attributes, increasing typing friction and preventing browser autofill.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -291,6 +298,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-008', name: 'Form inputs rely solely on placeholder without accessible label', namespace: 'CRO',
   description: 'Input fields on conversion forms rely solely on disappearing placeholder text without an associated <label for="...">, <label> wrapper, or aria-label, degrading cognitive accessibility and mobile error recovery.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -326,6 +334,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-009', name: 'Mobile input type mismatch for email or telephone fields', namespace: 'CRO',
   description: 'An email or telephone input uses generic type="text" instead of semantic types (type="email", type="tel") or lacks inputmode="numeric", failing to trigger the appropriate mobile virtual keyboard.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -375,6 +384,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-010', name: 'Choice overload: excessive competing primary CTAs in hero conversion zone', namespace: 'CRO',
   description: 'The hero section or primary viewport of a commercial landing page presents 3 or more competing primary calls-to-action, creating choice paralysis and reducing click-through rates.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -411,6 +421,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-011', name: 'Buried primary conversion pathway on long-form commercial page', namespace: 'CRO',
   description: 'A long-form commercial landing page (>1,000 words) has zero above-the-fold or early CTAs within the initial hero section and lacks a persistent navigation CTA, forcing visitors to scroll through extensive prose before reaching an action trigger.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -451,6 +462,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-012', name: 'Low-intent generic CTA microcopy on primary commercial action', namespace: 'CRO',
   description: 'A primary CTA on a commercial landing page uses passive, low-commitment, or non-descriptive microcopy (such as "Submit", "Click Here", "Send", "Next", or "Go") rather than an action-oriented, value-delivering verb.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -490,6 +502,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-013', name: 'Enclosed checkout or lead funnel leak: distraction navigation present on conversion step', namespace: 'CRO',
   description: 'A dedicated checkout, payment, or final lead registration step retains full global navigation menus (>5 links), providing exit ramps that elevate funnel abandonment.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -520,6 +533,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-014', name: 'Unprotected post-conversion confirmation page lacks noindex directive', namespace: 'CRO',
   description: 'A post-conversion confirmation, thank-you, or receipt page (/thank-you, /order-received, /welcome) lacks a "noindex" robots directive, exposing internal receipt URLs to organic search indexing and distorting conversion tracking.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -551,6 +565,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-015', name: 'Mobile touch target size below recommended 48px threshold', namespace: 'CRO',
   description: 'An interactive conversion CTA button or link has explicit dimensions under 44px by 44px, violating mobile accessibility and tap-target usability standards (WCAG 2.5.5) and increasing tap error rates.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -583,6 +598,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-016', name: 'Diminutive font size on primary conversion CTA microcopy', namespace: 'CRO',
   description: 'A primary CTA button uses diminutive font sizing (< 12px), creating readability friction and lowering tap confidence for mobile and accessibility-sensitive visitors.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -615,6 +631,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-017', name: 'Multi-step conversion funnel break: intermediate step unavailable or defective', namespace: 'CRO',
   description: 'A multi-step funnel declared in funnels.yaml contains a step whose target page cannot be located in the audited site or returns an HTTP error status (4xx/5xx).',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
@@ -662,6 +679,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-018', name: 'Funnel progression link fails to preserve campaign attribution parameters', namespace: 'CRO',
   description: 'An intermediate CTA link leading to the next funnel step strips or omits declared campaign query parameters (such as utm_source, utm_campaign), breaking multi-touch attribution.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site', 'registries'],
@@ -706,6 +724,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-019', name: 'AI Answer cited landing page lacks immediate claim corroboration or conversion pathway', namespace: 'CRO',
   description: 'A landing page cited by an answer engine or generative AI response contains no proximate interactive conversion trigger or fails to corroborate the cited entity claim in its primary visible text.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -743,6 +762,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-020', name: 'Statistical underpower risk on low-traffic A/B experiment', namespace: 'CRO',
   description: 'An A/B experiment registered in experiments.yaml specifies a minimum observation window or sample size insufficient to detect the expected hypothesis effect at standard statistical power (80%).',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -775,6 +795,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRO-021', name: 'High-intent conversion step lacks express payment wallet options', namespace: 'CRO',
   version: 2,
   description: 'A high-intent conversion step (checkout, pricing, cart, subscription) contains traditional payment forms or checkout actions but provides no express payment wallet buttons (Apple Pay, Google Pay, PayPal Express). Payment wallets and WebAuthn passkey authentication are distinct capabilities: this detector reports payment-wallet readiness only; passkey/WebAuthn authentication readiness is reported separately by inspect cro as an informational index.',

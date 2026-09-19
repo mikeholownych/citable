@@ -6,6 +6,7 @@ const D = [];
 /* ---------------- LIFE: lifecycle and ownership ---------------- */
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-001', name: 'Page without content owner', namespace: 'LIFE',
   description: 'An active page registry entry has no accountable content owner.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -23,6 +24,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-002', name: 'Claim-bearing page without factual reviewer', namespace: 'LIFE',
   description: 'A page that publishes registered claims has no factual reviewer.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -42,6 +44,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-003', name: 'Review overdue', namespace: 'LIFE',
   description: 'A page has passed its next review date.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -61,6 +64,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-004', name: 'Page without lifecycle classification', namespace: 'LIFE',
   description: 'An active page has no lifecycle class, so no review model can apply.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -80,6 +84,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-005', name: 'Regulatory content without jurisdiction', namespace: 'LIFE',
   description: 'A page classified regulatory (or carrying legal claims) records no jurisdiction.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -100,6 +105,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LIFE-006', name: 'Freshness theater (date bumped, content unchanged)', namespace: 'LIFE',
   description: 'Between snapshots, a page’s dateModified advanced while its content hash stayed identical.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site', 'snapshots'],
@@ -139,6 +145,7 @@ export function extractModified(page) {
 /* ---------------- MEAS: measurement integrity ---------------- */
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'MEAS-001', name: 'Prompt observation missing required metadata', namespace: 'MEAS',
   description: 'A recorded prompt-test observation lacks engine, model/interface, locale, or timestamp context.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['promptResults'],
@@ -163,6 +170,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'MEAS-002', name: 'Single observation treated as stable outcome', namespace: 'MEAS',
   description: 'A prompt has exactly one recorded observation but its registry accuracy_status asserts a definitive outcome.',
   discipline: ['geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -186,6 +194,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'MEAS-003', name: 'Causal experiment conclusion without controls', namespace: 'MEAS',
   description: 'A concluded experiment asserts a result but records no control group, baseline window, or confounders.',
   discipline: ['seo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],

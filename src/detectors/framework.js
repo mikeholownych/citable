@@ -1,11 +1,7 @@
 import { sha256 } from '../shared/io.js';
 import { fileURLToPath } from 'node:url';
 import { readJson } from '../shared/io.js';
-import {
-  REQUIREMENTS,
-  evaluateRequirement,
-  requirementForDetector,
-} from '../evidence/determination.js';
+import { evaluateRequirement, isCoverageRequirement, requirementForDetector } from '../evidence/determination.js';
 
 const TOOL_VERSION = readJson(new URL('../../package.json', import.meta.url)).version;
 
@@ -27,6 +23,9 @@ export function defineDetector(def) {
   }
   if (!NAMESPACES.includes(def.namespace)) throw new Error(`detector ${def.id}: unknown namespace ${def.namespace}`);
   if (!def.id.startsWith(def.namespace + '-')) throw new Error(`detector id ${def.id} must be prefixed with namespace`);
+  if (!isCoverageRequirement(def.coverage_requirement)) {
+    throw new Error(`detector ${def.id ?? '?'} must explicitly declare a valid coverage_requirement`);
+  }
   return {
     version: 1,
     confidence_model: def.deterministic ? 'binary condition; confirmed when observed' : 'heuristic; confidence reported per finding',
@@ -36,12 +35,6 @@ export function defineDetector(def) {
     false_positive_conditions: [],
     false_negative_conditions: [],
     applicable_requirement: '',
-    // Every detector carries an explicit evidence contract. Page/url hits are
-    // narrowed to the evaluated resource at emission time; site and registry
-    // detectors default to the evaluated subset unless they opt into a
-    // stronger contract such as exhaustive_requested_scope.
-    coverage_requirement: def.coverage_requirement
-      ?? (def.requires?.includes('site') ? REQUIREMENTS.EVALUATED_SUBSET : REQUIREMENTS.PROVIDER_BOUNDED),
     ...def,
   };
 }
@@ -81,6 +74,10 @@ export function runDetectors(detectors, ctx) {
         ? evaluateRequirement(coverageRequirement, ctx.coverage, hit.subject)
         : null;
       const resourceIds = scope?.resource_id ? [scope.resource_id] : [];
+      const scopeSatisfied = scope?.status === 'supported' || scope?.status === 'qualified';
+      const determinationNote = scope && !scopeSatisfied
+        ? `determination not established: ${scope.reason || 'coverage requirement unsatisfied'}`
+        : null;
       findings.push({
         ...(ctx.coverage ? { schema_version: 2 } : {}),
         finding_id: `F-${sha256(idSeed).slice(0, 12)}`,
@@ -95,11 +92,12 @@ export function runDetectors(detectors, ctx) {
           evidence: hit.evidence,
           captured_value: hit.captured ?? null,
           expected_value: hit.expected ?? null,
+          ...(scope ? { determination_status: scope.status, ...(determinationNote ? { determination_reason: determinationNote } : {}) } : {}),
         },
         classification: {
           finding_type: hit.finding_type ?? d.finding_type,
           severity: hit.severity ?? d.severity,
-          confidence: hit.confidence ?? d.confidence,
+          confidence: scope && !scopeSatisfied ? 'unknown' : (hit.confidence ?? d.confidence),
           deterministic: d.deterministic,
           impact: { ...d.impact, ...(hit.impact || {}) },
         },
@@ -107,7 +105,10 @@ export function runDetectors(detectors, ctx) {
           applicable_requirement: d.applicable_requirement,
           explanation: d.description,
           assumptions: hit.assumptions ?? [],
-          limitations: d.deterministic ? [] : ['heuristic detection; verify manually before acting'],
+          limitations: [
+            ...(d.deterministic ? [] : ['heuristic detection; verify manually before acting']),
+            ...(determinationNote ? [determinationNote] : []),
+          ],
         },
         remediation: {
           preferred: d.remediation,

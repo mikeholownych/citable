@@ -5,6 +5,7 @@ import { isAllowed } from '../crawler/robots.js';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-001', name: 'Non-200 index-target URL', namespace: 'TECH',
   description: 'A page intended for indexing does not return HTTP 200.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -23,6 +24,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-002', name: 'Accidental noindex on index-target page', namespace: 'TECH',
   description: 'A page whose registry intent is "index" carries a noindex directive (meta robots or X-Robots-Tag).',
   discipline: ['seo', 'aeo', 'geo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -41,6 +43,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-003', name: 'robots.txt blocks index-target page', namespace: 'TECH',
   description: 'robots.txt disallows a search crawler from fetching a page that is intended to be indexed and cited.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -67,6 +70,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-004', name: 'Multiple conflicting canonical declarations', namespace: 'TECH',
   description: 'A document declares more than one rel=canonical with differing targets.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -85,6 +89,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-005', name: 'Canonical points to redirect', namespace: 'TECH',
   description: 'rel=canonical targets a URL that itself redirects.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -98,6 +103,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-006', name: 'Canonical points to error page', namespace: 'TECH',
   description: 'rel=canonical targets a URL returning 4xx/5xx.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -111,6 +117,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-007', name: 'Canonical points to noindex page', namespace: 'TECH',
   description: 'rel=canonical consolidates signals into a URL that is itself noindexed.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -124,6 +131,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-008', name: 'Sitemap contains redirecting URL', namespace: 'TECH',
   description: 'An XML sitemap lists a URL that does not resolve directly with HTTP 200 (redirects).',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -137,6 +145,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-009', name: 'Sitemap contains non-canonical URL', namespace: 'TECH',
   description: 'A sitemap lists a URL whose page declares a different canonical.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -166,6 +175,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-010', name: 'Sitemap URL unresolvable or errors', namespace: 'TECH',
   description: 'A sitemap lists a URL that is missing from the built output or returns an error.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -206,6 +216,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-011', name: 'Render-dependent primary content', namespace: 'TECH',
   description: 'Initial HTML contains almost no primary text relative to script payload; principal content likely requires client-side rendering.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: false, requires: ['site'],
@@ -227,6 +238,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-012', name: 'Invalid MIME type for HTML page', namespace: 'TECH',
   description: 'An index-target page is served with a non-HTML content type.',
   discipline: ['seo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -247,6 +259,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-013', name: 'Redirect chain', namespace: 'TECH',
   description: 'Reaching the final URL required more than one redirect hop.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -264,6 +277,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-014', name: 'Soft-404 behaviour', namespace: 'TECH',
   description: 'A page returns 200 but its content indicates the resource does not exist.',
   discipline: ['seo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -286,6 +300,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-015', name: 'Staging or preview host exposed as indexable', namespace: 'TECH',
   description: 'The audited base URL looks like a staging/preview environment yet pages are indexable.',
   discipline: ['seo'], severity: 'critical', deterministic: false, requires: ['site'],
@@ -311,6 +326,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'TECH-016', name: 'Missing sitemap', namespace: 'TECH',
   description: 'No XML sitemap was found for the audited output.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -329,6 +345,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-017', name: 'Snippet suppression on citation-target page', namespace: 'TECH',
   description: 'A page targeted for answer citation carries nosnippet or max-snippet:0, which removes snippet eligibility that generative search features depend on.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -346,6 +363,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-018', name: 'Missing viewport (mobile readiness)', namespace: 'TECH',
   description: 'Page lacks a viewport meta tag, a minimum condition for mobile parity.',
   discipline: ['seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -366,6 +384,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-019', name: 'Open Graph URL conflicts with canonical', namespace: 'TECH',
   description: 'Open Graph URL (og:url) disagrees with the declared canonical URL, sending conflicting canonicalization and entity identity signals.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -401,6 +420,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-020', name: 'Missing reciprocal hreflang return link', namespace: 'TECH',
   description: 'An alternate hreflang URL targets an internal page, but that target page does not reciprocate with a matching hreflang link back to the source page.',
   discipline: ['seo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -451,6 +471,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-021', name: 'Invalid or non-standard BCP 47 hreflang syntax', namespace: 'TECH',
   description: 'An hreflang annotation uses an invalid language code, malformed region subtag, deprecated territory, or relative URL.',
   discipline: ['seo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -499,6 +520,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-022', name: 'Hreflang alternate target conflicts with rel=canonical', namespace: 'TECH',
   description: 'An alternate hreflang URL points to a page that declares a different rel=canonical target, breaking the alternate cluster.',
   discipline: ['seo', 'geo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -545,6 +567,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-023', name: 'Hydration gap: critical metadata or schema missing from initial server HTML response', namespace: 'TECH',
   description: 'A single-page application or client-rendered document returns empty content mounting shells with virtually no static text (<20 words) in initial server HTML, breaking crawler and answer engine extraction without full headless JS rendering.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -580,6 +603,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-024', name: 'Excessive render-blocking script payload exceeding crawler execution budget', namespace: 'TECH',
   description: 'The page delivers excessive inline/head script payloads (>1.2MB) or an excessive number of render-blocking head scripts (>12 without defer/async), exhausting crawler execution budgets and delaying indexing.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -625,6 +649,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'TECH-025', name: 'Oversized uncompressed image asset or heavy inline image payload', namespace: 'TECH',
   description: 'The page embeds an excessively large inline image data URI (>100KB) or references raw uncompressed image payloads exceeding 1MB, delaying Largest Contentful Paint (LCP) and exhausting mobile data budgets.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],

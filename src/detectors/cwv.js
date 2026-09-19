@@ -19,6 +19,7 @@ import { defineDetector, indexTargets, pageSubject } from './framework.js';
  * Checks for common LCP blockers. Cannot measure actual LCP.
  */
 export const CWV_001 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CWV-001',
   name: 'LCP potential blockers',
   namespace: 'CWV',
@@ -77,6 +78,7 @@ export const CWV_001 = defineDetector({
  * CWV-002: Preconnect hints for critical origins
  */
 export const CWV_002 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CWV-002',
   name: 'preconnect hints',
   namespace: 'CWV',
@@ -111,6 +113,7 @@ export const CWV_002 = defineDetector({
  * CWV-003: Image optimization for LCP
  */
 export const CWV_003 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CWV-003',
   name: 'image optimization',
   namespace: 'CWV',
@@ -165,6 +168,7 @@ export const CWV_003 = defineDetector({
 });
 
 export const CWV_004 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CWV-004',
   name: 'Excessive DOM size and depth',
   namespace: 'CWV',
