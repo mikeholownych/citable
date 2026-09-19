@@ -56,6 +56,29 @@ export async function audit(root, {
   run.manifest.detectors_skipped = detectorsSkipped;
   run.manifest.errors.push(...errors);
 
+  // Coverage is finalized and persisted before any aggregate summary is derived.
+  // This prevents report consumers from having to reconstruct completeness from
+  // legacy crawl fields or from an incomplete findings array.
+  let coverage = null;
+  if (ctx.site?.finalizeCoverage) {
+    try {
+      coverage = ctx.site.finalizeCoverage({ evaluated: true });
+      run.manifest.coverage_status = coverage.coverage_status;
+      run.manifest.determination_status = coverage.coverage_status === 'complete' ? 'supported' : 'qualified';
+      run.writeArtifact('coverage.json', coverage);
+      if (coverage.coverage_status !== 'complete') {
+        run.manifest.incomplete_checks.push(
+          `Coverage is ${coverage.coverage_status}; conclusions are limited to the successfully observed corpus.`,
+        );
+      }
+    } catch (error) {
+      run.manifest.execution_status = 'failed';
+      run.manifest.errors.push(`coverage: ${error.message}`);
+      run.finalize('failed');
+      throw error;
+    }
+  }
+
   // Validate every finding against the data contract; a contract breach fails the run.
   const invalid = [];
   for (const f of findings) {
@@ -75,6 +98,7 @@ export async function audit(root, {
     detectorsSkipped,
     promptResults: ctx.promptResults || [],
     targetOrigin: ctx.site?.baseUrl ? new URL(ctx.site.baseUrl).origin : null,
+    coverage,
   });
   run.writeArtifact('summary.json', summary);
   run.writeArtifact('inputs.json', {
@@ -82,6 +106,8 @@ export async function audit(root, {
     registry_counts: Object.fromEntries(Object.entries(ctx.registries).map(([k, v]) => [k, v.entries.length])),
     pages_audited: ctx.site?.pages.length ?? 0,
     crawl_coverage: ctx.site?.crawl ?? null,
+    coverage_status: coverage?.coverage_status ?? 'not_applicable',
+    coverage_populations: coverage?.populations ?? null,
   });
   run.writeArtifact('environment.json', {
     node: process.version, platform: process.platform, cwd: root,
@@ -111,7 +137,7 @@ export async function audit(root, {
     }
   }
 
-  const report = renderMarkdownReport({ findings, manifest: run.manifest, summary, detectorsSkipped });
+  const report = renderMarkdownReport({ findings, manifest: run.manifest, summary, detectorsSkipped, coverage });
   run.writeArtifact('report.md', report);
 
   // Update the latest page snapshot for regression/freshness comparison
@@ -130,6 +156,10 @@ export async function audit(root, {
 
   const status = run.manifest.errors.length ? 'completed_with_warnings'
     : run.manifest.incomplete_checks.length ? 'incomplete' : 'completed';
+  // Successful persistence/execution is independent from collection coverage
+  // and legacy warning status. A run with fetch warnings can still complete as
+  // an execution while its coverage remains indeterminate or truncated.
+  run.manifest.execution_status = 'completed';
   const dir = run.finalize(status);
   return { runId: run.runId, dir, findings, summary, manifest: run.manifest, report };
 }

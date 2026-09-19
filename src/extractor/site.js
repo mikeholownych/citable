@@ -7,6 +7,7 @@ import { collectSitemapTopology } from '../crawler/sitemapCollector.js';
 import { fetchUrl } from '../crawler/fetch.js';
 import { classifyResource } from '../crawler/resourceValidity.js';
 import { createUrlIdentity } from '../crawler/urlIdentity.js';
+import { createCoverageLedger } from '../evidence/coverage.js';
 
 const MAX_PAGE_FETCH_ATTEMPTS = 100;
 const SAFE_FETCH_ERROR_CODES = new Set([
@@ -168,6 +169,7 @@ export async function buildSiteFromUrl(startUrl, {
   now = () => performance.now(),
 } = {}) {
   const origin = new URL(startUrl).origin;
+  const coverageLedger = createCoverageLedger({ startUrl, maxPages, timeBudgetSeconds });
   const startedAt = now();
   const timeExpired = () => now() - startedAt >= timeBudgetSeconds * 1000;
   const pages = [];
@@ -244,6 +246,7 @@ export async function buildSiteFromUrl(startUrl, {
       return;
     }
     if (url.origin !== origin || isProviderUtilityPath(url.pathname) || seen.has(url.href) || queued.has(url.href)) return;
+    coverageLedger.discover(url.href, source, { requested_url: requestedUrl });
     queued.add(url.href);
     queue.push({ url: url.href, requestedUrl, source });
   };
@@ -259,8 +262,14 @@ export async function buildSiteFromUrl(startUrl, {
     const next = queue.shift();
     queued.delete(next.url);
     seen.add(next.url);
+    coverageLedger.attempt(next.url, { attempt: 1, requested_url: next.requestedUrl });
     try {
       const response = await fetcher(next.url, { userAgent, maxBodyBytes: pageMaxBytes });
+      coverageLedger.retrieve(next.url, {
+        status: response.status,
+        effective_url: response.url,
+        body_complete: response.bodyComplete ?? true,
+      });
       const page = extractPage({
         url: response.url, html: response.body, status: response.status,
         headers: response.headers, redirectChain: response.redirectChain,
@@ -270,6 +279,18 @@ export async function buildSiteFromUrl(startUrl, {
         bodyComplete: response.bodyComplete ?? true,
         fetchAttempts: response.attempts ?? [],
       });
+      page.crawlUrl = next.url;
+      if (page.resourceValidity?.state === 'valid_resource') {
+        coverageLedger.classify(next.url, {
+          state: 'valid_resource',
+          resource_id: page.urlIdentity?.resource_id,
+        });
+      } else {
+        coverageLedger.markIndeterminate(next.url, {
+          reason_codes: page.resourceValidity?.reason_codes || ['resource_invalid'],
+          resource_validity: page.resourceValidity?.state || 'indeterminate',
+        });
+      }
       page.discoverySource = next.source;
       pages.push(page);
       if (timeBudgetStopped()) break;
@@ -281,6 +302,7 @@ export async function buildSiteFromUrl(startUrl, {
       }
       if (stopReason === 'time_budget_exhausted') break;
     } catch (error) {
+      coverageLedger.fail(next.url, { reason: error?.code || 'FETCH_ERROR' });
       errors.push(sanitizedFetchError(next.url, error));
     }
   }
@@ -302,6 +324,32 @@ export async function buildSiteFromUrl(startUrl, {
     },
   };
   const site = assembleSite({ baseUrl: origin, pages, robotsText, sitemaps, transport: {}, mode: 'url', location: startUrl, crawl });
+  site.coverageLedger = coverageLedger;
+  site.coverageOptions = {
+    discoveryStatus: sitemapTopology.status,
+    discoveryMethods: ['start', 'link', 'sitemap'],
+    discoveryLimitations: [...sitemapTopology.limitations],
+    limitations: [...sitemapTopology.limitations],
+  };
+  site.finalizeCoverage = ({ evaluated = true } = {}) => {
+    if (evaluated) {
+      for (const page of pages) {
+        if (page.resourceValidity?.state === 'valid_resource') {
+          coverageLedger.evaluate(page.crawlUrl || page.url, {
+            evaluator: 'audit-detectors',
+            detector_scope: 'selected',
+          });
+        }
+      }
+    } else {
+      for (const page of pages) {
+        if (page.resourceValidity?.state === 'valid_resource') {
+          coverageLedger.markValidButUnevaluated(page.crawlUrl || page.url, { reason: 'not_evaluated' });
+        }
+      }
+    }
+    return coverageLedger.finalize(stopReason, site.coverageOptions);
+  };
   site.fetchErrors = errors;
   site.sitemapTopology = sitemapTopology;
   return site;

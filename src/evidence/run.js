@@ -30,6 +30,7 @@ export function createRun(root, { command, argv = [], target, locale = process.e
   fs.mkdirSync(dir, { recursive: true });
   const git = gitInfo(root);
   const manifest = {
+    schema_version: 2,
     run_id: runId,
     command,
     argv,
@@ -50,6 +51,9 @@ export function createRun(root, { command, argv = [], target, locale = process.e
     errors: [],
     warnings: [],
     status: 'incomplete',
+    execution_status: 'completed',
+    coverage_status: 'not_applicable',
+    determination_status: 'not_applicable',
   };
   return {
     runId,

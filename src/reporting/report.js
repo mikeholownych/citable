@@ -39,7 +39,7 @@ function citationPosture(promptResults, targetOrigin) {
   };
 }
 
-export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], promptResults = [], targetOrigin = null } = {}) {
+export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], promptResults = [], targetOrigin = null, coverage = null } = {}) {
   const bySeverity = {};
   const byNamespace = {};
   const byDiscipline = { seo: 0, aeo: 0, geo: 0 };
@@ -51,6 +51,18 @@ export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], 
     for (const d of f.discipline) byDiscipline[d] = (byDiscipline[d] || 0) + 1;
     if (f.classification.deterministic) deterministic++;
   }
+  const coverageIncomplete = coverage && coverage.coverage_status !== 'complete';
+  const posture = {
+    retrieval_eligibility: readinessPosture(findings, detectorsRun, detectorsSkipped, RETRIEVAL_NAMESPACES),
+    source_extraction_and_support: readinessPosture(findings, detectorsRun, detectorsSkipped, SOURCE_NAMESPACES),
+    observed_citation_behavior: citationPosture(promptResults, targetOrigin),
+  };
+  if (coverageIncomplete) {
+    for (const key of ['retrieval_eligibility', 'source_extraction_and_support']) {
+      posture[key].result = 'qualified';
+      posture[key].coverage_status = coverage.coverage_status;
+    }
+  }
   return {
     total: findings.length,
     deterministic_observations: deterministic,
@@ -58,15 +70,16 @@ export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], 
     by_severity: bySeverity,
     by_namespace: byNamespace,
     by_discipline: byDiscipline,
-    posture: {
-      retrieval_eligibility: readinessPosture(findings, detectorsRun, detectorsSkipped, RETRIEVAL_NAMESPACES),
-      source_extraction_and_support: readinessPosture(findings, detectorsRun, detectorsSkipped, SOURCE_NAMESPACES),
-      observed_citation_behavior: citationPosture(promptResults, targetOrigin),
-    },
+    coverage: coverage ? {
+      status: coverage.coverage_status,
+      populations: coverage.populations,
+      stop_reason: coverage.stop_reason,
+    } : null,
+    posture,
   };
 }
 
-export function renderMarkdownReport({ findings, manifest, summary, detectorsSkipped = [] }) {
+export function renderMarkdownReport({ findings, manifest, summary, detectorsSkipped = [], coverage = null }) {
   const lines = [];
   lines.push(`# Citable audit report`);
   lines.push('');
@@ -85,10 +98,18 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
   lines.push(`| Total findings | ${summary.total} |`);
   lines.push(`| Deterministic observations | ${summary.deterministic_observations} |`);
   lines.push(`| Heuristic / semantic findings | ${summary.semantic_or_heuristic} |`);
+  if (coverage) {
+    lines.push(`| Coverage status | ${coverage.coverage_status} |`);
+    lines.push(`| Evaluated resources | ${coverage.populations.evaluated} of ${coverage.populations.discovered - coverage.populations.excluded} eligible |`);
+  }
   for (const [sev, n] of Object.entries(summary.by_severity).sort((a, b) => SEV_ORDER[a[0]] - SEV_ORDER[b[0]])) {
     lines.push(`| ${sev} | ${n} |`);
   }
   lines.push('');
+  if (coverage && coverage.coverage_status !== 'complete') {
+    lines.push(`> Coverage status: **${coverage.coverage_status}**. This report describes the observed corpus and does not establish a complete site-wide determination.`);
+    lines.push('');
+  }
   lines.push('## Separate eligibility and observation states');
   lines.push('');
   lines.push('| Dimension | Result | Evidence |');

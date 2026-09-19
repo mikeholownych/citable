@@ -178,13 +178,19 @@ D.push(defineDetector({
     for (const sm of ctx.site.sitemaps) {
       for (const u of sm.parsed.urls) {
         const page = ctx.site.byUrl.get(ctx.site.normalize(u.loc));
-        if (!page && ctx.site.mode === 'url' && ctx.site.crawl?.truncated) {
+        const crawlState = ctx.site.mode === 'url' ? ctx.site.coverageLedger?.stateFor(u.loc) : null;
+        if (!page && ctx.site.mode === 'url' && crawlState !== 'failed') {
+          // An unvisited or merely queued sitemap URL is not evidence of an
+          // invalid resource. Coverage records it for an aggregate
+          // determination instead of manufacturing a TECH-010 absence claim.
           continue;
         } else if (!page) {
           hits.push({
             subject: { type: 'url', identifier: u.loc, url: u.loc, source_location: sm.source },
-            summary: 'Sitemap URL not present in audited output',
-            evidence: [`sitemap ${sm.source} lists ${u.loc}; no matching page found`],
+            summary: crawlState === 'failed' ? 'Sitemap URL fetch failed' : 'Sitemap URL not present in audited output',
+            evidence: [crawlState === 'failed'
+              ? `sitemap ${sm.source} lists ${u.loc}; retrieval failed after attempted observation`
+              : `sitemap ${sm.source} lists ${u.loc}; no matching page found`],
           });
         } else if (page.status >= 400) {
           hits.push({

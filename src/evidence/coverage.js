@@ -412,6 +412,14 @@ export function createCoverageLedger({
     return coverage;
   }
 
+  // Read-only state inspection for detectors that must distinguish an
+  // unvisited sitemap URL from an observed retrieval failure. This does not
+  // expose mutable ledger internals or alter reconciliation.
+  function stateFor(url) {
+    const resource = resources.get(normalizedUrl(url));
+    return resource ? stateOf(resource) : null;
+  }
+
   return {
     discover,
     exclude,
@@ -422,6 +430,7 @@ export function createCoverageLedger({
     fail,
     markIndeterminate,
     markValidButUnevaluated,
+    stateFor,
     finalize,
   };
 }

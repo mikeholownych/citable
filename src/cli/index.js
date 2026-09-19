@@ -424,7 +424,7 @@ ${r.findings.map((f) => `  [${f.rule_id}] (${f.severity}) ${f.summary}\n    Fix:
           maxPages: args.maxPages,
           timeBudgetSeconds: args.timeBudgetSeconds,
         });
-        out(args, `Audit ${r.runId}: ${r.summary.total} finding(s) [${Object.entries(r.summary.by_severity).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nReport: ${path.join(r.dir, 'report.md')}\nStatus: ${r.manifest.status}${r.manifest.incomplete_checks.length ? `\nIncomplete: ${r.manifest.incomplete_checks.join('; ')}` : ''}`, { runId: r.runId, dir: r.dir, summary: r.summary, status: r.manifest.status });
+        out(args, `Audit ${r.runId}: ${r.summary.total} finding(s) [${Object.entries(r.summary.by_severity).map(([k, v]) => `${k}:${v}`).join(' ')}]\nEvidence package: ${r.dir}\nReport: ${path.join(r.dir, 'report.md')}\nStatus: ${r.manifest.status}\nExecution: ${r.manifest.execution_status}\nCoverage: ${r.manifest.coverage_status}\nDetermination: ${r.manifest.determination_status}${r.manifest.incomplete_checks.length ? `\nIncomplete: ${r.manifest.incomplete_checks.join('; ')}` : ''}`, { runId: r.runId, dir: r.dir, summary: r.summary, status: r.manifest.status, execution_status: r.manifest.execution_status, coverage_status: r.manifest.coverage_status, determination_status: r.manifest.determination_status });
         break;
       }
       case 'plan-audit': {
