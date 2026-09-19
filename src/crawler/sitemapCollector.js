@@ -5,6 +5,10 @@ import { parseSitemap } from './sitemap.js';
 const DEFAULT_MAX_DEPTH = 4;
 const DEFAULT_MAX_DOCUMENTS = 1000;
 const DEFAULT_MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024;
+const DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+const DEFAULT_MAX_DISCOVERED_URLS = 50_000;
+const DEFAULT_MAX_QUEUED_DOCUMENTS = 1000;
+const DEFAULT_MAX_XML_TOKENS = 500_000;
 const DEFAULT_SITEMAP_MAX_BYTES = 5 * 1024 * 1024;
 
 /** Collect a same-origin sitemap graph with deterministic breadth-first traversal. */
@@ -13,6 +17,10 @@ export async function collectSitemapTopology(entryUrls, {
   maxDepth = DEFAULT_MAX_DEPTH,
   maxDocuments = DEFAULT_MAX_DOCUMENTS,
   maxUncompressedBytes = DEFAULT_MAX_UNCOMPRESSED_BYTES,
+  maxTotalUncompressedBytes = DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES,
+  maxDiscoveredUrls = DEFAULT_MAX_DISCOVERED_URLS,
+  maxQueuedDocuments = DEFAULT_MAX_QUEUED_DOCUMENTS,
+  maxXmlTokens = DEFAULT_MAX_XML_TOKENS,
   sitemapMaxBytes = DEFAULT_SITEMAP_MAX_BYTES,
   origin,
   userAgent,
@@ -21,6 +29,10 @@ export async function collectSitemapTopology(entryUrls, {
   assertInteger(maxDepth, 'maxDepth', 0);
   assertInteger(maxDocuments, 'maxDocuments', 1);
   assertInteger(maxUncompressedBytes, 'maxUncompressedBytes', 1);
+  assertInteger(maxTotalUncompressedBytes, 'maxTotalUncompressedBytes', 1);
+  assertInteger(maxDiscoveredUrls, 'maxDiscoveredUrls', 1);
+  assertInteger(maxQueuedDocuments, 'maxQueuedDocuments', 1);
+  assertInteger(maxXmlTokens, 'maxXmlTokens', 1);
   assertInteger(sitemapMaxBytes, 'sitemapMaxBytes', 1);
   const entries = Array.isArray(entryUrls) ? entryUrls : [entryUrls];
   const auditedOrigin = new URL(origin ?? entries.find(Boolean)).origin;
@@ -33,6 +45,8 @@ export async function collectSitemapTopology(entryUrls, {
   const errors = [];
   const limitations = [];
   const stopReasons = [];
+  let totalUncompressedBytes = 0;
+  let queuedDocumentsPeak = 0;
 
   const addStop = (reason, limitation) => {
     if (!stopReasons.includes(reason)) stopReasons.push(reason);
@@ -54,14 +68,31 @@ export async function collectSitemapTopology(entryUrls, {
       return 'out_of_origin';
     }
     if (queued.has(parsed.href)) return 'duplicate';
+    if (queue.length >= maxQueuedDocuments) {
+      addStop(
+        'max_queued_documents_exceeded',
+        `Sitemap topology collection reached the ${maxQueuedDocuments}-document queued-frontier limit.`,
+      );
+      return 'max_queued_documents_exceeded';
+    }
     queued.add(parsed.href);
     queue.push({ url: parsed.href, depth, parentUrl });
+    queuedDocumentsPeak = Math.max(queuedDocumentsPeak, queue.length);
     return null;
   };
 
-  for (const entry of entries) enqueue(entry, 0, null, 'entry_sitemap');
+  for (let index = 0; index < entries.length; index += 1) {
+    if (index >= maxQueuedDocuments) {
+      addStop(
+        'max_queued_documents_exceeded',
+        `Sitemap topology collection reached the ${maxQueuedDocuments}-document queued-frontier limit.`,
+      );
+      break;
+    }
+    enqueue(entries[index], 0, null, 'entry_sitemap');
+  }
 
-  while (queue.length) {
+  collection: while (queue.length) {
     if (shouldStop()) {
       addStop('time_budget_exhausted', 'Sitemap topology collection stopped when the whole-run time budget expired.');
       break;
@@ -89,6 +120,7 @@ export async function collectSitemapTopology(entryUrls, {
       child_count: 0,
       status: 'failed',
       failure_reason: null,
+      failure_stage: null,
       parsed: null,
     };
     documents.push(record);
@@ -102,11 +134,13 @@ export async function collectSitemapTopology(entryUrls, {
       record.http_status = response.status ?? null;
       if (new URL(record.effective_url).origin !== auditedOrigin) {
         record.failure_reason = 'effective_url_out_of_origin';
+        record.failure_stage = 'policy';
         errors.push({ url: item.url, reason: record.failure_reason });
         continue;
       }
       if (response.status !== 200) {
         record.failure_reason = `http_status_${response.status}`;
+        record.failure_stage = 'transport';
         errors.push({ url: item.url, reason: record.failure_reason });
         continue;
       }
@@ -116,20 +150,48 @@ export async function collectSitemapTopology(entryUrls, {
         response.body, response.headers, record.effective_url, maxUncompressedBytes, record.compression,
       );
       record.compression_transport_decoded = decoded.transportDecoded;
-      const parsed = parseSitemap(decoded.text);
+      record.uncompressed_bytes = decoded.uncompressedBytes;
+      if (totalUncompressedBytes + decoded.uncompressedBytes > maxTotalUncompressedBytes) {
+        markTruncated(record, 'max_total_uncompressed_bytes_exceeded');
+        addStop(
+          'max_total_uncompressed_bytes_exceeded',
+          `Sitemap topology collection exceeded the ${maxTotalUncompressedBytes}-byte cumulative uncompressed limit.`,
+        );
+        break collection;
+      }
+      totalUncompressedBytes += decoded.uncompressedBytes;
+      const parsed = parseSitemap(decoded.text, {
+        maxUrls: Math.max(0, maxDiscoveredUrls - urls.length),
+        maxChildren: Math.max(0, maxQueuedDocuments - queue.length),
+        maxTokens: maxXmlTokens,
+      });
       record.parsed = parsed;
       record.parse_errors = [...parsed.errors];
-      record.url_count = parsed.urls.length;
-      record.child_count = parsed.children.length;
+      record.url_count = parsed.urlCount;
+      record.child_count = parsed.childCount;
       record.status = parsed.errors.length ? 'malformed' : 'fetched';
       if (parsed.errors.length) {
         record.failure_reason = 'sitemap_parse_error';
+        record.failure_stage = 'parse';
         errors.push({ url: item.url, reason: record.failure_reason, details: [...parsed.errors] });
+      }
+      if (parsed.truncated) {
+        const [reason, limitation] = parsed.truncationReason === 'max_urls_exceeded'
+          ? ['max_discovered_urls_exceeded', `Sitemap topology collection reached the ${maxDiscoveredUrls}-URL discovery limit.`]
+          : parsed.truncationReason === 'max_children_exceeded'
+            ? ['max_queued_documents_exceeded', `Sitemap topology collection reached the ${maxQueuedDocuments}-document queued-frontier limit.`]
+            : ['max_xml_tokens_exceeded', `Sitemap parsing reached the ${maxXmlTokens}-token structural limit.`];
+        markTruncated(record, reason);
+        addStop(reason, limitation);
       }
 
       for (const child of parsed.rootValid ? parsed.children : []) {
         const exclusionReason = enqueue(child.loc, item.depth + 1, record.effective_url, 'child_sitemap');
         if (exclusionReason === 'malformed_url') markMalformedLoc(record, child.loc);
+        if (exclusionReason === 'max_queued_documents_exceeded') {
+          markTruncated(record, exclusionReason);
+          break;
+        }
       }
       for (const entry of parsed.rootValid ? parsed.urls : []) {
         let page;
@@ -148,11 +210,21 @@ export async function collectSitemapTopology(entryUrls, {
           continue;
         }
         if (seenUrls.has(page.href)) continue;
+        if (urls.length >= maxDiscoveredUrls) {
+          markTruncated(record, 'max_discovered_urls_exceeded');
+          addStop(
+            'max_discovered_urls_exceeded',
+            `Sitemap topology collection reached the ${maxDiscoveredUrls}-URL discovery limit.`,
+          );
+          break;
+        }
         seenUrls.add(page.href);
         urls.push({ url: page.href, sitemap_url: record.effective_url, requested_sitemap_url: item.url, sitemap_depth: item.depth });
       }
+      if (stopReasons.includes('max_discovered_urls_exceeded')) break collection;
     } catch (error) {
       record.failure_reason = classifyFailure(error);
+      record.failure_stage = failureStage(record.failure_reason);
       errors.push({ url: item.url, reason: record.failure_reason, message: error.message });
     }
   }
@@ -176,7 +248,17 @@ export async function collectSitemapTopology(entryUrls, {
       max_depth: maxDepth,
       max_documents: maxDocuments,
       max_uncompressed_bytes: maxUncompressedBytes,
+      max_total_uncompressed_bytes: maxTotalUncompressedBytes,
+      max_discovered_urls: maxDiscoveredUrls,
+      max_queued_documents: maxQueuedDocuments,
+      max_xml_tokens: maxXmlTokens,
       sitemap_max_bytes: sitemapMaxBytes,
+    },
+    totals: {
+      documents: documents.length,
+      urls: urls.length,
+      uncompressed_bytes: totalUncompressedBytes,
+      queued_documents_peak: queuedDocumentsPeak,
     },
   };
 }
@@ -220,7 +302,7 @@ function decodeBody(body, headers, url, maxUncompressedBytes, compression = dete
     error.code = 'SITEMAP_UNCOMPRESSED_LIMIT';
     throw error;
   }
-  return { text: decoded.toString('utf8'), compression, transportDecoded };
+  return { text: decoded.toString('utf8'), compression, transportDecoded, uncompressedBytes: decoded.byteLength };
 }
 
 function looksLikeDecodedXml(bytes) {
@@ -234,8 +316,11 @@ function headerValue(headers, name) {
 }
 
 function classifyFailure(error) {
+  if (error?.code === 'FETCH_BODY_LIMIT' || /^response body exceeds \d+ bytes$/i.test(error?.message ?? '')) {
+    return 'sitemap_transport_bytes_exceeded';
+  }
   if (error?.code === 'SITEMAP_UNCOMPRESSED_LIMIT' || error?.code === 'ERR_BUFFER_TOO_LARGE'
-    || /maxoutputlength|larger than|exceeds .* bytes/i.test(error?.message ?? '')) {
+    || /maxoutputlength|larger than/i.test(error?.message ?? '')) {
     return 'max_uncompressed_bytes_exceeded';
   }
   if (error?.code === 'SITEMAP_DECOMPRESSION_FAILED'
@@ -248,6 +333,23 @@ function markMalformedLoc(record, loc) {
   if (!record.parse_errors.includes(message)) record.parse_errors.push(message);
   record.status = 'malformed';
   record.failure_reason = 'sitemap_parse_error';
+  record.failure_stage = 'parse';
+}
+
+function markTruncated(record, reason) {
+  record.status = 'truncated';
+  record.failure_reason = reason;
+  record.failure_stage = 'collection';
+}
+
+function failureStage(reason) {
+  if (reason === 'sitemap_transport_bytes_exceeded' || reason === 'fetch_failed' || reason.startsWith('http_status_')) {
+    return 'transport';
+  }
+  if (reason === 'max_uncompressed_bytes_exceeded' || reason === 'decompression_failed') return 'decompression';
+  if (reason === 'sitemap_parse_error') return 'parse';
+  if (reason.includes('out_of_origin')) return 'policy';
+  return 'collection';
 }
 
 function assertInteger(value, name, minimum) {

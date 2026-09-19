@@ -73,6 +73,54 @@ test('sitemap parser accepts a self-closing empty urlset root', () => {
   assert.deepEqual(sitemap.errors, []);
 });
 
+test('sitemap parser ignores root-like markup inside XML comments', () => {
+  const sitemap = parseSitemap(`
+    <!-- <urlset><url><loc>https://x.test/commented</loc></url></urlset> -->
+    <urlset><url><loc>https://x.test/real</loc></url></urlset>`);
+  assert.equal(sitemap.rootValid, true);
+  assert.deepEqual(sitemap.urls.map((entry) => entry.loc), ['https://x.test/real']);
+  assert.deepEqual(sitemap.errors, []);
+});
+
+test('sitemap parser rejects multiple document roots', () => {
+  const sitemap = parseSitemap('<urlset></urlset><urlset></urlset>');
+  assert.equal(sitemap.rootValid, false);
+  assert.match(sitemap.errors.join('\n'), /multiple|extra root/i);
+});
+
+test('sitemap parser rejects malformed closure ordering', () => {
+  const sitemap = parseSitemap('<urlset><url><loc>https://x.test/a</loc></urlset></url>');
+  assert.equal(sitemap.rootValid, false);
+  assert.match(sitemap.errors.join('\n'), /mismatched|unclosed/i);
+});
+
+test('sitemap parser reports a self-closing url entry with no loc', () => {
+  const sitemap = parseSitemap('<urlset><url/></urlset>');
+  assert.equal(sitemap.rootValid, true);
+  assert.match(sitemap.errors.join('\n'), /missing <loc>/i);
+});
+
+test('sitemap parser only accepts entry blocks that are direct children of the root', () => {
+  const sitemap = parseSitemap(`
+    <urlset><wrapper><url><loc>https://x.test/nested</loc></url></wrapper></urlset>`);
+  assert.equal(sitemap.rootValid, false);
+  assert.deepEqual(sitemap.urls, []);
+  assert.match(sitemap.errors.join('\n'), /direct child|unexpected/i);
+});
+
+test('sitemap parser bounds retained entries while reporting the full entry count', () => {
+  const sitemap = parseSitemap(`
+    <urlset>
+      <url><loc>https://x.test/1</loc></url>
+      <url><loc>https://x.test/2</loc></url>
+      <url><loc>https://x.test/3</loc></url>
+    </urlset>`, { maxUrls: 2 });
+  assert.equal(sitemap.urls.length, 2);
+  assert.equal(sitemap.urlCount, 3);
+  assert.equal(sitemap.truncated, true);
+  assert.equal(sitemap.truncationReason, 'max_urls_exceeded');
+});
+
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('fetchUrl refuses redirects outside the audited origin', async () => {
@@ -111,6 +159,22 @@ test('fetchUrl refuses documentation and benchmark address ranges', async () => 
       url,
     );
   }
+});
+
+test('fetchUrl refuses DNS rebinding from a public validation result to a private connection address', async () => {
+  let resolutions = 0;
+  const lookup = async () => {
+    resolutions += 1;
+    return resolutions === 1
+      ? [{ address: '93.184.216.34', family: 4 }]
+      : [{ address: '127.0.0.1', family: 4 }];
+  };
+
+  await assert.rejects(
+    fetchUrl('http://audit.example/', { lookup, maxRetries: 1 }),
+    /private|loopback|non-public/i,
+  );
+  assert.equal(resolutions, 2);
 });
 
 test('browser route guard allows safe local schemes and aborts private or unsupported requests', async () => {

@@ -67,6 +67,9 @@ export async function buildSiteFromUrl(startUrl, {
   robotsMaxBytes = 512 * 1024, sitemapMaxBytes = 5 * 1024 * 1024,
   sitemapMaxDepth = 4, sitemapMaxDocuments = 1000,
   sitemapMaxUncompressedBytes = 20 * 1024 * 1024,
+  sitemapMaxTotalUncompressedBytes = 100 * 1024 * 1024,
+  sitemapMaxDiscoveredUrls = 50_000, sitemapMaxQueuedDocuments = 1000,
+  sitemapMaxXmlTokens = 500_000,
   fetcher = fetchUrl,
   now = () => performance.now(),
 } = {}) {
@@ -105,6 +108,10 @@ export async function buildSiteFromUrl(startUrl, {
     maxDepth: sitemapMaxDepth,
     maxDocuments: sitemapMaxDocuments,
     maxUncompressedBytes: sitemapMaxUncompressedBytes,
+    maxTotalUncompressedBytes: sitemapMaxTotalUncompressedBytes,
+    maxDiscoveredUrls: sitemapMaxDiscoveredUrls,
+    maxQueuedDocuments: sitemapMaxQueuedDocuments,
+    maxXmlTokens: sitemapMaxXmlTokens,
     sitemapMaxBytes,
     origin,
     userAgent,
@@ -175,15 +182,19 @@ export async function buildSiteFromUrl(startUrl, {
     }
   }
   if (stopReason === 'frontier_exhausted') timeBudgetStopped();
+  if (stopReason === 'frontier_exhausted' && sitemapTopology.status === 'truncated') {
+    stopReason = sitemapTopology.stop_reasons[0] ?? 'sitemap_topology_truncated';
+  }
   const pendingUrls = queue.map((entry) => entry.url).filter((url) => !seen.has(url));
   const crawl = {
     maxPages,
     timeBudgetSeconds,
     stopReason,
     pagesFetched: pages.length,
-    truncated: stopReason === 'page_budget_exhausted' || stopReason === 'time_budget_exhausted',
+    truncated: stopReason !== 'frontier_exhausted',
     pendingUrlCount: pendingUrls.length,
     pendingUrls,
+    sitemapStopReasons: [...sitemapTopology.stop_reasons],
   };
   const site = assembleSite({ baseUrl: origin, pages, robotsText, sitemaps, transport: {}, mode: 'url', location: startUrl, crawl });
   site.fetchErrors = errors;

@@ -1,5 +1,9 @@
 import dns from 'node:dns';
+import http from 'node:http';
+import https from 'node:https';
 import net from 'node:net';
+import { Readable } from 'node:stream';
+import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 
 const blockedAddresses = new net.BlockList();
 for (const [network, prefix] of [
@@ -22,18 +26,73 @@ function isBlockedAddress(address) {
 }
 
 export async function validatePublicUrl(url, { lookup = dns.promises.lookup } = {}) {
+  const parsed = parseNetworkUrl(url);
+  await resolvePublicAddresses(parsed.hostname, lookup);
+  return parsed;
+}
+
+function parseNetworkUrl(url) {
   const parsed = new URL(url);
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(`unsupported URL protocol: ${parsed.protocol}`);
   if (parsed.username || parsed.password) throw new Error('URL credentials are not permitted');
-  const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
+  return parsed;
+}
+
+async function resolvePublicAddresses(rawHostname, lookup, options = {}) {
+  const hostname = rawHostname.replace(/^\[|\]$/g, '');
   const literalFamily = net.isIP(hostname);
   const addresses = literalFamily
     ? [{ address: hostname, family: literalFamily }]
-    : await lookup(hostname, { all: true, verbatim: true });
+    : await lookup(hostname, { ...options, all: true, verbatim: true });
   if (!addresses.length || addresses.some(({ address }) => isBlockedAddress(address))) {
     throw new Error(`refusing private, loopback, or non-public destination: ${hostname}`);
   }
-  return parsed;
+  return addresses;
+}
+
+function createGuardedLookup(lookup) {
+  return (hostname, options, callback) => {
+    const normalizedOptions = typeof options === 'number' ? { family: options } : (options ?? {});
+    resolvePublicAddresses(hostname, lookup, { family: normalizedOptions.family || 0 })
+      .then((addresses) => {
+        if (normalizedOptions.all) callback(null, addresses);
+        else callback(null, addresses[0].address, addresses[0].family);
+      })
+      .catch((error) => callback(error));
+  };
+}
+
+function fetchWithGuardedLookup(url, { headers, signal, lookup }) {
+  const parsed = new URL(url);
+  const transport = parsed.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject) => {
+    const request = transport.request(parsed, {
+      method: 'GET',
+      headers,
+      lookup,
+      servername: parsed.protocol === 'https:' ? parsed.hostname : undefined,
+      signal,
+    }, (response) => {
+      const responseHeaders = new Headers();
+      for (const [name, value] of Object.entries(response.headers)) {
+        if (Array.isArray(value)) for (const item of value) responseHeaders.append(name, item);
+        else if (value !== undefined) responseHeaders.set(name, value);
+      }
+      const encoding = String(response.headers['content-encoding'] ?? '').toLowerCase();
+      let body = response;
+      if (encoding === 'gzip' || encoding === 'x-gzip') body = response.pipe(createGunzip());
+      else if (encoding === 'deflate') body = response.pipe(createInflate());
+      else if (encoding === 'br') body = response.pipe(createBrotliDecompress());
+      const noBody = response.statusCode === 204 || response.statusCode === 205 || response.statusCode === 304;
+      resolve(new Response(noBody ? null : Readable.toWeb(body), {
+        status: response.statusCode,
+        statusText: response.statusMessage,
+        headers: responseHeaders,
+      }));
+    });
+    request.on('error', reject);
+    request.end();
+  });
 }
 
 /** Enforce the public-network policy for each Playwright request. */
@@ -65,7 +124,7 @@ export async function handlePublicBrowserRoute(route, { lookup = dns.promises.lo
 async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
   const declared = Number(res.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBodyBytes) {
-    throw new Error(`response body exceeds ${maxBodyBytes} bytes`);
+    throw bodyLimitError(maxBodyBytes);
   }
   if (!res.body) return responseType === 'buffer' ? Buffer.alloc(0) : '';
   const reader = res.body.getReader();
@@ -76,7 +135,7 @@ async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > maxBodyBytes) throw new Error(`response body exceeds ${maxBodyBytes} bytes`);
+      if (total > maxBodyBytes) throw bodyLimitError(maxBodyBytes);
       chunks.push(value);
     }
   } finally {
@@ -88,31 +147,39 @@ async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
   return responseType === 'buffer' ? Buffer.from(bytes) : new TextDecoder().decode(bytes);
 }
 
+function bodyLimitError(maxBodyBytes) {
+  const error = new Error(`response body exceeds ${maxBodyBytes} bytes`);
+  error.code = 'FETCH_BODY_LIMIT';
+  return error;
+}
+
 /** Fetch a public URL with bounded retries, redirects, time, and response size. */
 export async function fetchUrl(url, {
   userAgent = 'CitableAudit/0.1', maxRedirects = 10, timeoutMs = 20000,
   maxRetries = 3, retryDelayMs = 1000, maxBodyBytes = 5 * 1024 * 1024,
   responseType = 'text',
-  fetchImpl = globalThis.fetch, lookup = dns.promises.lookup,
+  fetchImpl, lookup = dns.promises.lookup,
 } = {}) {
   if (!['text', 'buffer'].includes(responseType)) throw new TypeError('responseType must be text or buffer');
-  const requested = await validatePublicUrl(url, { lookup });
+  const requested = parseNetworkUrl(url);
   const allowedOrigin = requested.origin;
   const chain = [];
   let current = requested.href;
+  const effectiveFetch = !fetchImpl || fetchImpl === globalThis.fetch ? fetchWithGuardedLookup : fetchImpl;
 
   for (let redirects = 0; redirects <= maxRedirects; redirects += 1) {
-    await validatePublicUrl(current, { lookup });
     let res;
     let lastError;
     for (let attempt = 0; attempt < Math.max(1, maxRetries); attempt += 1) {
+      await validatePublicUrl(current, { lookup });
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(new Error(`request timeout after ${timeoutMs}ms`)), timeoutMs);
       try {
-        res = await fetchImpl(current, {
+        res = await effectiveFetch(current, {
           redirect: 'manual',
           headers: { 'user-agent': userAgent },
           signal: controller.signal,
+          lookup: createGuardedLookup(lookup),
         });
         if (res.status < 500 || attempt === Math.max(1, maxRetries) - 1) {
           lastError = null;
@@ -138,7 +205,6 @@ export async function fetchUrl(url, {
       if (redirects === maxRedirects) break;
       const next = new URL(headers.location, current);
       if (next.origin !== allowedOrigin) throw new Error(`redirect leaves audited origin: ${next.href}`);
-      await validatePublicUrl(next.href, { lookup });
       chain.push({ url: current, status: res.status, location: headers.location });
       current = next.href;
       await res.body?.cancel();
