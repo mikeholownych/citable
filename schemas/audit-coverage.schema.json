@@ -1,0 +1,104 @@
+{
+  "$id": "citable://schemas/audit-coverage.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit coverage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "normalization_version",
+    "requested_scope",
+    "discovery",
+    "populations",
+    "resources",
+    "stop_reason",
+    "coverage_status",
+    "reconciliation",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "normalization_version": { "type": "string", "minLength": 1 },
+    "requested_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_url", "origin", "max_pages", "time_budget_seconds"],
+      "properties": {
+        "start_url": { "type": "string", "format": "uri" },
+        "origin": { "type": "string", "format": "uri" },
+        "max_pages": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "time_budget_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "methods", "limitations"],
+      "properties": {
+        "status": { "type": "string", "enum": ["complete", "truncated", "indeterminate"] },
+        "methods": { "type": "array", "items": { "type": "string" } },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "populations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discovered",
+        "eligible",
+        "excluded",
+        "attempted",
+        "retrieved",
+        "valid_resource",
+        "evaluated",
+        "valid_but_unevaluated",
+        "failed",
+        "indeterminate",
+        "unvisited"
+      ],
+      "properties": {
+        "discovered": { "$ref": "#/definitions/populationCount" },
+        "eligible": { "$ref": "#/definitions/populationCount" },
+        "excluded": { "$ref": "#/definitions/populationCount" },
+        "attempted": { "$ref": "#/definitions/populationCount" },
+        "retrieved": { "$ref": "#/definitions/populationCount" },
+        "valid_resource": { "$ref": "#/definitions/populationCount" },
+        "evaluated": { "$ref": "#/definitions/populationCount" },
+        "valid_but_unevaluated": { "$ref": "#/definitions/populationCount" },
+        "failed": { "$ref": "#/definitions/populationCount" },
+        "indeterminate": { "$ref": "#/definitions/populationCount" },
+        "unvisited": { "$ref": "#/definitions/populationCount" }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "stop_reason": {
+      "type": "string",
+      "enum": [
+        "frontier_exhausted",
+        "page_budget_exhausted",
+        "time_budget_exhausted",
+        "fatal_collection_failure"
+      ]
+    },
+    "coverage_status": {
+      "type": "string",
+      "enum": ["complete", "truncated", "indeterminate", "not_applicable"]
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "errors"],
+      "properties": {
+        "valid": { "type": "boolean" },
+        "errors": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "definitions": {
+    "populationCount": { "type": "integer", "minimum": 0 }
+  }
+}

@@ -17,11 +17,18 @@
     "status"
   ],
   "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1, 2]
+    },
     "finding_id": {
       "$ref": "citable://schemas/common.defs.json#/definitions/id"
     },
     "detector_id": {
       "$ref": "citable://schemas/common.defs.json#/definitions/id"
+    },
+    "detector_name": {
+      "type": "string"
     },
     "run_id": {
       "type": "string"
@@ -326,6 +333,42 @@
         }
       }
     },
+    "evidence_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement",
+        "satisfaction",
+        "resource_ids",
+        "coverage_ref"
+      ],
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "satisfaction": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "qualified",
+            "indeterminate",
+            "not_applicable"
+          ]
+        },
+        "resource_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "status": {
       "type": "object",
       "required": [
@@ -358,6 +401,41 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["schema_version"],
+        "properties": {
+          "schema_version": {
+            "const": 2
+          }
+        }
+      },
+      "then": {
+        "required": ["evidence_scope"],
+        "propertyNames": {
+          "enum": [
+            "schema_version",
+            "finding_id",
+            "detector_id",
+            "detector_name",
+            "run_id",
+            "timestamp",
+            "discipline",
+            "subject",
+            "observation",
+            "classification",
+            "reasoning",
+            "remediation",
+            "verification",
+            "provenance",
+            "evidence_scope",
+            "status"
+          ]
+        }
+      }
+    }
+  ],
   "definitions": {
     "impactLevel": {
       "type": "string",

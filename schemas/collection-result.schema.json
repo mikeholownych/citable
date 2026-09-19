@@ -1,0 +1,35 @@
+{
+  "$id": "citable://schemas/collection-result.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Collection result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "items",
+    "pagination_state",
+    "provider_reported_total",
+    "retrieved_total",
+    "coverage_status",
+    "continuation_state",
+    "limitations",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "items": {
+      "type": "array",
+      "items": {}
+    },
+    "pagination_state": { "type": "object" },
+    "provider_reported_total": { "type": ["integer", "null"], "minimum": 0 },
+    "retrieved_total": { "type": "integer", "minimum": 0 },
+    "coverage_status": {
+      "type": "string",
+      "enum": ["complete", "truncated", "indeterminate", "provider_bounded"]
+    },
+    "continuation_state": { "type": ["object", "null"] },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  }
+}

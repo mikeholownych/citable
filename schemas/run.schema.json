@@ -5,6 +5,7 @@
   "type": "object",
   "required": ["run_id", "command", "tool_version", "skill_version", "timestamp", "target", "status"],
   "properties": {
+    "schema_version": { "type": "integer", "enum": [1, 2] },
     "run_id": { "type": "string" },
     "command": { "type": "string" },
     "argv": { "type": "array", "items": { "type": "string" } },
@@ -31,6 +32,17 @@
     "incomplete_checks": { "type": "array", "items": { "type": "string" } },
     "errors": { "type": "array", "items": { "type": "string" } },
     "warnings": { "type": "array", "items": { "type": "string" } },
-    "status": { "type": "string", "enum": ["completed", "completed_with_warnings", "incomplete", "failed"] }
-  }
+    "status": { "type": "string", "enum": ["completed", "completed_with_warnings", "incomplete", "failed"] },
+    "execution_status": { "type": "string", "enum": ["completed", "completed_with_warnings", "failed"] },
+    "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "not_applicable"] }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["schema_version"],
+        "properties": { "schema_version": { "const": 2 } }
+      },
+      "then": { "required": ["execution_status", "coverage_status"] }
+    }
+  ]
 }
