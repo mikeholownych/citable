@@ -1,6 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { validateAgainst } from '../../src/shared/schemaValidator.js';
+
+const findingSchema = JSON.parse(
+  fs.readFileSync(new URL('../../schemas/finding.schema.json', import.meta.url), 'utf8'),
+);
+
+function assertV2FindingPropertyParity(schema) {
+  const v2Rule = schema.allOf.find(
+    (entry) => entry.if?.properties?.schema_version?.const === 2,
+  );
+  assert.ok(v2Rule?.then?.propertyNames?.enum, 'finding schema must define a v2 propertyNames allowlist');
+  assert.deepEqual(
+    [...v2Rule.then.propertyNames.enum].sort(),
+    Object.keys(schema.properties).sort(),
+    'finding v2 propertyNames allowlist must match finding schema properties',
+  );
+}
 
 function validAuditCoverage() {
   return {
@@ -194,6 +211,37 @@ test('version-2 findings require a bounded evidence scope', () => {
 
   const unknownTopLevelField = { ...v2, inferred_complete: true };
   assert.equal(validateAgainst('finding.schema.json', unknownTopLevelField).valid, false);
+});
+
+test('version-2 finding property allowlist stays in parity with declared properties', () => {
+  assertV2FindingPropertyParity(findingSchema);
+
+  const driftedSchema = structuredClone(findingSchema);
+  driftedSchema.properties.future_contract_field = { type: 'string' };
+  assert.throws(
+    () => assertV2FindingPropertyParity(driftedSchema),
+    /propertyNames allowlist must match finding schema properties/,
+  );
+});
+
+test('legacy finding extensions remain valid while version 2 rejects unknown top-level fields', () => {
+  const legacyWithExtension = {
+    ...validLegacyFinding(),
+    legacy_extension: { retained: true },
+  };
+  assert.equal(validateAgainst('finding.schema.json', legacyWithExtension).valid, true);
+
+  const v2WithExtension = {
+    ...legacyWithExtension,
+    schema_version: 2,
+    evidence_scope: {
+      requirement: 'Every eligible page exposes one canonical URL.',
+      satisfaction: 'qualified',
+      resource_ids: ['RESOURCE-1'],
+      coverage_ref: 'coverage.json',
+    },
+  };
+  assert.equal(validateAgainst('finding.schema.json', v2WithExtension).valid, false);
 });
 
 test('legacy findings remain valid without semantic-completeness fields', () => {
