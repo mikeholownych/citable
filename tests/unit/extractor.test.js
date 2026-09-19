@@ -8,6 +8,7 @@ import {
   fetchUrl,
   handlePublicBrowserRoute,
 } from '../../src/crawler/fetch.js';
+import { buildSiteFromUrl } from '../../src/extractor/site.js';
 
 test('extractPage captures title, canonical, robots, headings, links, jsonld', () => {
   const html = `<!doctype html><html lang="en"><head><title>T</title>
@@ -390,4 +391,129 @@ test('a declared custom transport refuses a private connection-time DNS rebound'
     /private|loopback|non-public/i,
   );
   assert.equal(resolutions, 2);
+});
+
+test('fetchUrl preserves attempt history through failures and eventual success', async () => {
+  let call = 0;
+  const fetchImpl = async () => {
+    call += 1;
+    if (call === 1) throw Object.assign(new Error('temporary socket failure with secret detail'), { code: 'ECONNRESET' });
+    if (call === 2) return new Response('retry later', { status: 503 });
+    return new Response('<html><body>Recovered response body with enough useful content.</body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    });
+  };
+  const response = await fetchUrl('https://audit.example/', {
+    fetchImpl, lookup: publicLookup, maxRetries: 3, retryDelayMs: 0,
+    allowUnsafeCustomTransportForTest: true,
+  });
+  assert.equal(response.bodyComplete, true);
+  assert.deepEqual(response.attempts.map(({ attempt, outcome, status, errorCode, retryDecision }) => ({ attempt, outcome, status, errorCode, retryDecision })), [
+    { attempt: 1, outcome: 'error', status: null, errorCode: 'ECONNRESET', retryDecision: 'retry' },
+    { attempt: 2, outcome: 'response', status: 503, errorCode: null, retryDecision: 'retry' },
+    { attempt: 3, outcome: 'response', status: 200, errorCode: null, retryDecision: 'complete' },
+  ]);
+  assert.ok(response.attempts.every((attempt) => attempt.elapsedMs >= 0));
+  assert.doesNotMatch(JSON.stringify(response.attempts), /secret detail/);
+});
+
+test('fetchUrl retries timeout errors and records the timeout outcome', async () => {
+  let call = 0;
+  const fetchImpl = async (_url, { signal }) => {
+    call += 1;
+    if (call > 1) return new Response('ok', { headers: { 'content-type': 'text/html' } });
+    return await new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+  };
+  const response = await fetchUrl('https://audit.example/', {
+    fetchImpl, lookup: publicLookup, maxRetries: 2, retryDelayMs: 0, timeoutMs: 5,
+    allowUnsafeCustomTransportForTest: true,
+  });
+  assert.equal(response.attempts[0].outcome, 'error');
+  assert.equal(response.attempts[0].errorCode, 'FETCH_TIMEOUT');
+  assert.equal(response.attempts[0].retryDecision, 'retry');
+  assert.equal(response.attempts[1].status, 200);
+});
+
+test('fetchUrl attaches sanitized attempt provenance to permanent failures', async () => {
+  const fetchImpl = async () => {
+    throw Object.assign(new Error('token=do-not-record'), { code: 'ENETUNREACH' });
+  };
+  await assert.rejects(
+    fetchUrl('https://audit.example/', {
+      fetchImpl, lookup: publicLookup, maxRetries: 2, retryDelayMs: 0,
+      allowUnsafeCustomTransportForTest: true,
+    }),
+    (error) => {
+      assert.deepEqual(error.attempts.map(({ outcome, errorCode, retryDecision }) => ({ outcome, errorCode, retryDecision })), [
+        { outcome: 'error', errorCode: 'ENETUNREACH', retryDecision: 'retry' },
+        { outcome: 'error', errorCode: 'ENETUNREACH', retryDecision: 'stop' },
+      ]);
+      assert.doesNotMatch(JSON.stringify(error.attempts), /do-not-record/);
+      return true;
+    },
+  );
+});
+
+test('fetchUrl does not copy query secrets or untrusted error codes into attempt provenance', async () => {
+  const fetchImpl = async () => {
+    throw Object.assign(new Error('credential detail'), { code: 'SECRET-token-value' });
+  };
+  await assert.rejects(
+    fetchUrl('https://audit.example/page?access_token=do-not-record', {
+      fetchImpl, lookup: publicLookup, maxRetries: 1,
+      allowUnsafeCustomTransportForTest: true,
+    }),
+    (error) => {
+      assert.equal(error.attempts[0].errorCode, 'FETCH_ERROR');
+      assert.doesNotMatch(JSON.stringify(error.attempts), /do-not-record|token-value/);
+      return true;
+    },
+  );
+});
+
+test('fetchUrl records redirect responses and final retrieval in one attempt history', async () => {
+  const fetchImpl = async (url) => url.endsWith('/old')
+    ? new Response(null, { status: 301, headers: { location: '/new' } })
+    : new Response('<html><body>Destination page with substantive information for visitors.</body></html>', {
+      headers: { 'content-type': 'text/html' },
+    });
+  const response = await fetchUrl('https://audit.example/old', {
+    fetchImpl, lookup: publicLookup, maxRetries: 1,
+    allowUnsafeCustomTransportForTest: true,
+  });
+  assert.equal(response.url, 'https://audit.example/new');
+  assert.deepEqual(response.attempts.map(({ attempt, url, status, retryDecision }) => ({ attempt, url, status, retryDecision })), [
+    { attempt: 1, url: 'https://audit.example/old', status: 301, retryDecision: 'redirect' },
+    { attempt: 2, url: 'https://audit.example/new', status: 200, retryDecision: 'complete' },
+  ]);
+});
+
+test('buildSiteFromUrl attaches resource validity, URL identity, and retrieval metadata to pages only', async () => {
+  const fetcher = async (url) => {
+    if (url.endsWith('/robots.txt')) return { url, requestedUrl: url, status: 200, headers: { 'content-type': 'text/plain' }, body: '', bodyComplete: true, redirectChain: [], attempts: [] };
+    if (url.endsWith('/sitemap.xml')) return { url, requestedUrl: url, status: 404, headers: { 'content-type': 'application/xml' }, body: '', bodyComplete: true, redirectChain: [], attempts: [] };
+    return {
+      url: 'https://fixture.test/Home/', requestedUrl: url, status: 200,
+      headers: { 'content-type': 'text/html' }, bodyComplete: true,
+      body: '<html><head><link rel="canonical" href="/canonical"></head><body><h1>Home</h1><p>A substantive page describing the product, its operation, support, and limitations.</p></body></html>',
+      redirectChain: [{ url, status: 301, location: '/Home/' }],
+      attempts: [{ attempt: 1, outcome: 'response', status: 301, retryDecision: 'redirect' }],
+    };
+  };
+  const site = await buildSiteFromUrl('https://fixture.test/', { fetcher, maxPages: 1 });
+  assert.equal(site.pages.length, 1);
+  const [page] = site.pages;
+  assert.equal(page.url, 'https://fixture.test/Home/');
+  assert.equal(page.requestedUrl, 'https://fixture.test/');
+  assert.equal(page.resourceValidity.state, 'valid_resource');
+  assert.equal(page.urlIdentity.requested.url, 'https://fixture.test/');
+  assert.equal(page.urlIdentity.effective.url, 'https://fixture.test/Home/');
+  assert.equal(page.urlIdentity.canonical.normalized_url, 'https://fixture.test/canonical');
+  assert.equal(page.bodyComplete, true);
+  assert.equal(page.fetchAttempts.length, 1);
+  assert.equal(site.sitemaps.length, 0);
+  assert.equal(site.sitemapTopology.documents[0].resourceValidity, undefined);
 });

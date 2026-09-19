@@ -5,6 +5,35 @@ import { parseRobots } from '../crawler/robots.js';
 import { parseSitemap } from '../crawler/sitemap.js';
 import { collectSitemapTopology } from '../crawler/sitemapCollector.js';
 import { fetchUrl } from '../crawler/fetch.js';
+import { classifyResource } from '../crawler/resourceValidity.js';
+import { createUrlIdentity } from '../crawler/urlIdentity.js';
+
+function attachResourceMetadata(page, {
+  requestedUrl,
+  bodyComplete = true,
+  fetchAttempts = [],
+} = {}) {
+  const effectiveUrl = page.url;
+  const declaredCanonicalUrl = page.canonicals[0] ?? null;
+  page.requestedUrl = requestedUrl ?? effectiveUrl;
+  page.bodyComplete = bodyComplete === true;
+  page.fetchAttempts = fetchAttempts;
+  page.resourceValidity = classifyResource({
+    status: page.status,
+    headers: page.headers,
+    body: page.rawHtml,
+    bodyComplete: page.bodyComplete,
+    requestedUrl: page.requestedUrl,
+    effectiveUrl,
+  });
+  page.urlIdentity = createUrlIdentity({
+    requestedUrl: page.requestedUrl,
+    effectiveUrl,
+    redirectChain: page.redirectChain,
+    declaredCanonicalUrl,
+  });
+  return page;
+}
 
 /**
  * Build a SiteModel from a directory of built/static HTML output.
@@ -28,16 +57,15 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
         let urlPath = '/' + rel;
         if (urlPath.endsWith('/index.html')) urlPath = urlPath.slice(0, -'index.html'.length);
         const t = transport['/' + rel] || transport[urlPath] || {};
-        pages.push(
-          extractPage({
-            url: new URL(urlPath, baseUrl).href,
-            html: fs.readFileSync(p, 'utf8'),
-            status: t.status ?? 200,
-            headers: { 'content-type': 'text/html', ...(t.headers || {}) },
-            sourceFile: p,
-            redirectChain: [],
-          })
-        );
+        const page = extractPage({
+          url: new URL(urlPath, baseUrl).href,
+          html: fs.readFileSync(p, 'utf8'),
+          status: t.status ?? 200,
+          headers: { 'content-type': 'text/html', ...(t.headers || {}) },
+          sourceFile: p,
+          redirectChain: [],
+        });
+        pages.push(attachResourceMetadata(page, { requestedUrl: page.url }));
       }
     }
   };
@@ -164,7 +192,11 @@ export async function buildSiteFromUrl(startUrl, {
         url: response.url, html: response.body, status: response.status,
         headers: response.headers, redirectChain: response.redirectChain,
       });
-      page.requestedUrl = next.url;
+      attachResourceMetadata(page, {
+        requestedUrl: next.url,
+        bodyComplete: response.bodyComplete ?? true,
+        fetchAttempts: response.attempts ?? [],
+      });
       page.discoverySource = next.source;
       pages.push(page);
       if (timeBudgetStopped()) break;

@@ -170,6 +170,36 @@ function bodyLimitError(maxBodyBytes) {
   return error;
 }
 
+function timeoutError(timeoutMs) {
+  const error = new Error(`request timeout after ${timeoutMs}ms`);
+  error.code = 'FETCH_TIMEOUT';
+  return error;
+}
+
+function errorCode(error) {
+  const code = typeof error?.code === 'string' && error.code ? error.code : null;
+  if (code && /^[A-Z][A-Z0-9_]{0,63}$/.test(code)) return code;
+  if (error?.name === 'AbortError') return 'FETCH_ABORTED';
+  return 'FETCH_ERROR';
+}
+
+function attemptUrl(url) {
+  const parsed = new URL(url);
+  parsed.hash = '';
+  if (parsed.search) parsed.search = '?[REDACTED]';
+  return parsed.href;
+}
+
+function attachAttempts(error, attempts) {
+  const target = error instanceof Error ? error : new Error('request failed');
+  Object.defineProperty(target, 'attempts', {
+    value: attempts.map((attempt) => ({ ...attempt })),
+    enumerable: true,
+    configurable: true,
+  });
+  return target;
+}
+
 /** Fetch a public URL with bounded retries, redirects, time, and response size. */
 export async function fetchUrl(url, {
   userAgent = 'CitableAudit/0.1', maxRedirects = 10, timeoutMs = 20000,
@@ -182,6 +212,8 @@ export async function fetchUrl(url, {
   const requested = parseNetworkUrl(url);
   const allowedOrigin = requested.origin;
   const chain = [];
+  const attempts = [];
+  let attemptNumber = 0;
   let current = requested.href;
   const customFetch = fetchImpl && fetchImpl !== globalThis.fetch;
   if (customFetch && allowUnsafeCustomTransportForTest !== true && fetchImpl[GUARDED_LOOKUP_TRANSPORT] !== true) {
@@ -192,10 +224,13 @@ export async function fetchUrl(url, {
   for (let redirects = 0; redirects <= maxRedirects; redirects += 1) {
     let res;
     let lastError;
+    let responseStartedAtMs = null;
     for (let attempt = 0; attempt < Math.max(1, maxRetries); attempt += 1) {
       await validatePublicUrl(current, { lookup });
+      attemptNumber += 1;
+      const startedAtMs = performance.now();
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error(`request timeout after ${timeoutMs}ms`)), timeoutMs);
+      const timer = setTimeout(() => controller.abort(timeoutError(timeoutMs)), timeoutMs);
       try {
         res = await effectiveFetch(current, {
           redirect: 'manual',
@@ -203,15 +238,29 @@ export async function fetchUrl(url, {
           signal: controller.signal,
           lookup: createGuardedLookup(lookup),
         });
-        if (res.status < 500 || attempt === Math.max(1, maxRetries) - 1) {
+        const retry = res.status >= 500 && attempt < Math.max(1, maxRetries) - 1;
+        if (!retry) {
           lastError = null;
+          responseStartedAtMs = startedAtMs;
           break;
         }
+        const endedAtMs = performance.now();
+        attempts.push({
+          attempt: attemptNumber, url: attemptUrl(current), startedAtMs, endedAtMs,
+          elapsedMs: Math.max(0, endedAtMs - startedAtMs), outcome: 'response',
+          status: res.status, errorCode: null, retryDecision: 'retry',
+        });
         await res.body?.cancel();
         lastError = new Error(`server returned ${res.status}`);
       } catch (err) {
-        lastError = err;
-        if (controller.signal.aborted) throw controller.signal.reason ?? err;
+        lastError = controller.signal.aborted ? (controller.signal.reason ?? err) : err;
+        const retry = attempt < Math.max(1, maxRetries) - 1;
+        const endedAtMs = performance.now();
+        attempts.push({
+          attempt: attemptNumber, url: attemptUrl(current), startedAtMs, endedAtMs,
+          elapsedMs: Math.max(0, endedAtMs - startedAtMs), outcome: 'error', status: null,
+          errorCode: errorCode(lastError), retryDecision: retry ? 'retry' : 'stop',
+        });
       } finally {
         clearTimeout(timer);
       }
@@ -220,20 +269,48 @@ export async function fetchUrl(url, {
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-    if (lastError) throw lastError;
+    if (lastError) throw attachAttempts(lastError, attempts);
 
     const headers = Object.fromEntries(res.headers.entries());
     if (res.status >= 300 && res.status < 400 && headers.location) {
+      const endedAtMs = performance.now();
+      attempts.push({
+        attempt: attemptNumber, url: attemptUrl(current), startedAtMs: responseStartedAtMs, endedAtMs,
+        elapsedMs: Math.max(0, endedAtMs - responseStartedAtMs), outcome: 'response',
+        status: res.status, errorCode: null,
+        retryDecision: redirects === maxRedirects ? 'stop' : 'redirect',
+      });
       if (redirects === maxRedirects) break;
       const next = new URL(headers.location, current);
-      if (next.origin !== allowedOrigin) throw new Error(`redirect leaves audited origin: ${next.href}`);
+      if (next.origin !== allowedOrigin) {
+        throw attachAttempts(new Error(`redirect leaves audited origin: ${next.href}`), attempts);
+      }
       chain.push({ url: current, status: res.status, location: headers.location });
       current = next.href;
       await res.body?.cancel();
       continue;
     }
-    const body = await readBodyLimited(res, maxBodyBytes, responseType);
-    return { url: current, requestedUrl: url, status: res.status, headers, body, redirectChain: chain };
+    try {
+      const body = await readBodyLimited(res, maxBodyBytes, responseType);
+      const endedAtMs = performance.now();
+      attempts.push({
+        attempt: attemptNumber, url: attemptUrl(current), startedAtMs: responseStartedAtMs, endedAtMs,
+        elapsedMs: Math.max(0, endedAtMs - responseStartedAtMs), outcome: 'response',
+        status: res.status, errorCode: null, retryDecision: res.status >= 500 ? 'stop' : 'complete',
+      });
+      return {
+        url: current, requestedUrl: url, status: res.status, headers, body,
+        bodyComplete: true, redirectChain: chain, attempts,
+      };
+    } catch (error) {
+      const endedAtMs = performance.now();
+      attempts.push({
+        attempt: attemptNumber, url: attemptUrl(current), startedAtMs: responseStartedAtMs, endedAtMs,
+        elapsedMs: Math.max(0, endedAtMs - responseStartedAtMs), outcome: 'error', status: res.status,
+        errorCode: errorCode(error), retryDecision: 'stop',
+      });
+      throw attachAttempts(error, attempts);
+    }
   }
-  throw new Error(`redirect chain exceeded ${maxRedirects} hops for ${url}`);
+  throw attachAttempts(new Error(`redirect chain exceeded ${maxRedirects} hops for ${url}`), attempts);
 }
