@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { init } from '../../src/commands/init.js';
 import { audit } from '../../src/commands/audit.js';
-import { verifyRemediation } from '../../src/commands/verifyRemediation.js';
+import { recheckComparability, verifyRemediation } from '../../src/commands/verifyRemediation.js';
 import { readJson } from '../../src/shared/io.js';
 
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
@@ -146,4 +147,19 @@ test('verify remediation refuses a resolution from a non-comparable source envel
   assert.equal(result.verdict.resolved, false);
   assert.equal(result.verdict.comparison_state, 'not_comparable');
   assert.equal(result.comparison.comparability.dimensions.tool_changed, true);
+});
+
+test('equal viewport configurations remain comparable despite distinct object instances', async (t) => {
+  const viewport = { width: 390, height: 844, deviceScaleFactor: 2 };
+  const config = { site: { base_url: 'https://example.test' } };
+  const hash = (value) => crypto.createHash('sha256').update(value, 'utf8').digest('hex');
+  const result = recheckComparability(
+    { tool_version: '1.19.0', target: { kind: 'built_output' }, configuration_hash: hash(JSON.stringify(config)) },
+    { provenance: { detector_version: 1, viewport: { ...viewport } } },
+    { provenance: { detector_version: 1, viewport: { ...viewport } } },
+    { site: { mode: 'built_output' }, viewport: { ...viewport }, config },
+    { version: 1 },
+  );
+  assert.equal(result.comparable, true);
+  assert.equal(result.dimensions.observation_method_changed, false);
 });

@@ -32,7 +32,15 @@ function newVerificationId() {
   return `VR-${nowIso().replace(/\D/g, '')}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function recheckComparability(manifest, sourceFinding, afterFinding, ctx, detector) {
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function recheckComparability(manifest, sourceFinding, afterFinding, ctx, detector) {
   const sourceKind = manifest?.target?.kind || null;
   const recheckKind = ctx.site?.mode || null;
   const sourceDetectorVersion = sourceFinding?.provenance?.detector_version ?? 1;
@@ -44,7 +52,8 @@ function recheckComparability(manifest, sourceFinding, afterFinding, ctx, detect
   const dimensions = {
     tool_changed: (manifest?.tool_version || null) !== PKG_VERSION,
     evaluator_changed: sourceDetectorVersion !== recheckDetectorVersion,
-    observation_method_changed: sourceKind !== recheckKind || sourceViewport !== recheckViewport,
+    observation_method_changed: sourceKind !== recheckKind
+      || canonicalJson(sourceViewport) !== canonicalJson(recheckViewport),
     configuration_changed: sourceConfig !== recheckConfig,
   };
   return {
@@ -64,7 +73,7 @@ function recheckComparability(manifest, sourceFinding, afterFinding, ctx, detect
  * never a silent `verified`.
  */
 export async function verifyRemediation(root, options = {}) {
-  const { run: runId, finding, target, apply = false, subject = null } = options;
+  const { run: runId, finding, target, apply = false, subject = null, viewport = null } = options;
   const runDir = path.join(root, '.citable', 'runs', runId || '');
   const limitations = [
     RESOLUTION_DEFINITION,
@@ -161,7 +170,7 @@ export async function verifyRemediation(root, options = {}) {
   const namespace = result.detector_id.split('-')[0];
   let ctx;
   try {
-    ctx = await buildContext(root, { target: recheckTarget, baseUrl: options.baseUrl, refDate: options.refDate });
+    ctx = await buildContext(root, { target: recheckTarget, baseUrl: options.baseUrl, refDate: options.refDate, viewport });
   } catch (err) {
     result.provenance.recheck_errors.push(`re-check context failed: ${err.message}`);
     result.limitations.push('required_input: a readable target directory or URL for the detector re-run.');
