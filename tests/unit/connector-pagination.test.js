@@ -46,6 +46,12 @@ test('partial connector errors are indeterminate rather than complete', () => {
   assert.equal(result.errors.length, 1);
 });
 
+test('contradictory provider totals cannot be reported complete', () => {
+  const result = collectionResult({ items: [{ id: 1 }, { id: 2 }], providerReportedTotal: 1 });
+  assert.equal(result.coverage_status, 'indeterminate');
+  assert.match(result.errors.join(' '), /below retrieved item count/);
+});
+
 test('WordPress follows provider page totals beyond the legacy first page', async () => {
   const fetchImpl = async (url) => {
     const page = Number(new URL(url).searchParams.get('page') || 1);
@@ -120,4 +126,24 @@ test('malformed Webflow continuation is indeterminate and retained', async () =>
   );
   assert.equal(result.collection.coverage_status, 'indeterminate');
   assert.match(result.collection.errors.join(' '), /malformed continuation/i);
+});
+
+test('Webflow rejects external continuation URLs without exfiltrating the bearer token', async () => {
+  const calls = [];
+  const result = await webflowConnector.sync(
+    { property_id: 'wf-site' },
+    [{ external_name: 'pages' }],
+    {
+      token: 'super-secret-token',
+      fetchImpl: async (url, options) => {
+        calls.push({ url, options });
+        return json({ pages: [{ id: 'p1' }], pagination: { next: 'https://evil.example/steal?token=secret' } });
+      },
+    },
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(result.collection.coverage_status, 'indeterminate');
+  assert.match(result.collection.errors.join(' '), /outside the Webflow API/i);
+  assert.doesNotMatch(JSON.stringify(result.collection), /evil\.example|secret/i);
+  assert.equal(calls[0].options.headers.authorization, 'Bearer super-secret-token');
 });

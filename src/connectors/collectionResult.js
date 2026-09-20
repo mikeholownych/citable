@@ -39,12 +39,17 @@ export function collectionResult({
   if (continuationState !== null && (typeof continuationState !== 'object' || Array.isArray(continuationState))) throw new TypeError('continuationState must be an object or null');
   if (!['declared', 'unknown'].includes(providerCompleteness)) throw new TypeError('providerCompleteness must be declared or unknown');
 
-  const cleanErrors = [...new Set(errors)];
-  const status = cleanErrors.length
+  const totalErrors = providerReportedTotal !== null && providerReportedTotal < items.length
+    ? [`provider reported total ${providerReportedTotal}, below retrieved item count ${items.length}`]
+    : [];
+  const cleanErrors = [...new Set([...errors, ...totalErrors])];
+  const contradictoryTotal = providerReportedTotal !== null && providerReportedTotal < items.length;
+  const unresolvedTotal = providerReportedTotal !== null && providerReportedTotal > items.length && !continuationState;
+  const status = (cleanErrors.length || contradictoryTotal)
     ? 'indeterminate'
     : continuationState
       ? 'truncated'
-      : providerCompleteness === 'unknown'
+      : (unresolvedTotal || providerCompleteness === 'unknown')
         ? 'provider_bounded'
         : 'complete';
   const result = {

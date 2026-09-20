@@ -3,6 +3,7 @@ import { sha256, nowIso } from '../shared/io.js';
 import { collectionResult, errorMessage, paginationBoundary } from './collectionResult.js';
 
 const BASE = 'https://api.webflow.com/v2';
+const API_ORIGIN = new URL(BASE).origin;
 
 const METRICS = {
   pages: { unit: 'count', value_type: 'integer' },
@@ -23,6 +24,15 @@ function computeWebflowPayloadHash(payload) {
     body: String(payload.body || ''),
   };
   return sha256(JSON.stringify(canonical));
+}
+
+function safeContinuation(url, { preserveOrigin = true } = {}) {
+  try {
+    const parsed = new URL(url);
+    return { ...(preserveOrigin ? { url: `${parsed.origin}${parsed.pathname}` } : { path: parsed.pathname }), query_redacted: parsed.search.length > 0 };
+  } catch {
+    return { url: '[invalid continuation]', query_redacted: true };
+  }
 }
 
 async function collectWebflowList(url, field, context) {
@@ -46,6 +56,19 @@ async function collectWebflowList(url, field, context) {
       : `?limit=100${offset ? `&offset=${offset}` : ''}`;
     let result;
     try {
+      if (nextUrl) {
+        let continuation;
+        try { continuation = new URL(nextUrl); } catch {
+          errors.push(`${field} page ${pagesRequested}: malformed continuation URL`);
+          continuationState = { next: safeContinuation(nextUrl), reason: 'invalid_url' };
+          break;
+        }
+        if (continuation.origin !== API_ORIGIN || continuation.protocol !== 'https:') {
+          errors.push(`${field} page ${pagesRequested}: continuation origin is outside the Webflow API`);
+          continuationState = { next: safeContinuation(nextUrl, { preserveOrigin: false }), reason: 'origin_mismatch' };
+          break;
+        }
+      }
       result = await providerRequest(nextUrl || `${url}${query}`, context);
       const pageItems = Array.isArray(result?.[field]) ? result[field] : [];
       pagesRetrieved += 1;
@@ -64,7 +87,7 @@ async function collectWebflowList(url, field, context) {
       }
       if (providerNextUrl !== null && (!/^https:\/\//i.test(providerNextUrl))) {
         errors.push(`${field} page ${pagesRequested}: malformed continuation URL`);
-        continuationState = { next: providerNextUrl };
+        continuationState = { next: safeContinuation(providerNextUrl, { preserveOrigin: false }) };
         break;
       }
       if (next) cursor = String(next);
@@ -82,12 +105,12 @@ async function collectWebflowList(url, field, context) {
     } catch (error) {
       connectorError ||= error;
       errors.push(`${field} page ${pagesRequested}: ${errorMessage(error)}`);
-      continuationState = cursor ? { cursor } : nextUrl ? { next: nextUrl } : { offset };
+      continuationState = cursor ? { cursor } : nextUrl ? { next: safeContinuation(nextUrl) } : { offset };
       break;
     }
   }
   if (!continuationState && pagesRequested >= maxPages && (providerTotal === null || items.length < providerTotal)) {
-    continuationState = cursor ? { cursor } : { offset: offset + 100 };
+    continuationState = cursor ? { cursor } : nextUrl ? { next: safeContinuation(nextUrl) } : { offset: offset + 100 };
     limitations.push(`Webflow ${field} collection reached the ${maxPages}-page boundary.`);
   }
   return { items, providerTotal, providerCompleteness, connectorError, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
