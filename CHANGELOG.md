@@ -15,6 +15,8 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.20.0 — 2026-09-20
+
 ### Added — Semantic completeness and explicit audit coverage
 
 - Replaced the hidden 50-page URL-audit ceiling with declared, bounded budgets
