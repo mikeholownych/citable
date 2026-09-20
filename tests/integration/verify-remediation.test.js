@@ -11,6 +11,9 @@ import { recheckComparability, verifyRemediation } from '../../src/commands/veri
 import { readJson } from '../../src/shared/io.js';
 
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
+const PACKAGE_VERSION = JSON.parse(
+  fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+).version;
 
 function project() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-verify-'));
@@ -150,7 +153,7 @@ test('equal viewport configurations remain comparable despite distinct object in
   const config = { site: { base_url: 'https://example.test' } };
   const hash = (value) => crypto.createHash('sha256').update(value, 'utf8').digest('hex');
   const result = recheckComparability(
-    { tool_version: '1.19.0', target: { kind: 'built_output' }, configuration_hash: hash(JSON.stringify(config)) },
+    { tool_version: PACKAGE_VERSION, target: { kind: 'built_output' }, configuration_hash: hash(JSON.stringify(config)) },
     { provenance: { detector_version: 1, viewport: { ...viewport } } },
     { provenance: { detector_version: 1, viewport: { ...viewport } } },
     { site: { mode: 'built_output' }, viewport: { ...viewport }, config },
