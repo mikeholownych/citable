@@ -90,7 +90,10 @@ export function createSite257({ failChildSitemap = true, failPage200 = false } =
     if (!Number.isInteger(number) || number < 1 || number > 257) return { url, status: 404, headers: { 'content-type': 'text/html' }, body: '<h1>Not found</h1>', redirectChain: [] };
     if (number === 150) throw timeoutError(url, true);
     if (number === 200 && failPage200) throw timeoutError(url, true);
-    if (number === 99) return { url, status: 301, headers: { location: pageUrl(100), 'content-type': 'text/html' }, body: normalPage(100), redirectChain: [{ url, status: 301, location: pageUrl(100) }] };
+    if (number === 99) {
+      const redirectTarget = `${ORIGIN}/redirect-target`;
+      return { url: redirectTarget, status: 301, headers: { location: redirectTarget, 'content-type': 'text/html' }, body: normalPage(100), redirectChain: [{ url, status: 301, location: redirectTarget }] };
+    }
     if (number === 101) return ok(url, '<!doctype html><html><head><title>Page not found</title></head><body><h1>Page not found</h1><p>The page you requested does not exist.</p></body></html>');
     if (number === 199) return ok(url, '%PDF-1.7 fixture bytes', 'application/pdf');
     if (number === 256) return ok(url, '<!doctype html><html><head><title>Just a moment</title></head><body><h1>Checking your browser</h1><p>Complete the security check to continue.</p></body></html>');

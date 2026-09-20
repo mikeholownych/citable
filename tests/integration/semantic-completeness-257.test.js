@@ -15,6 +15,7 @@ import { evaluateStaticCwv, sweepTechnical } from '../../src/commands/sweep.js';
 import { loadVerifiedRun } from '../../src/shared/verifiedRunLoader.js';
 import { validateAgainst } from '../../src/shared/schemaValidator.js';
 import { readJson } from '../../src/shared/io.js';
+import { evaluateRequirement, REQUIREMENTS } from '../../src/evidence/determination.js';
 import { createSite257, pageUrl } from '../fixtures/site-257/fixture.js';
 
 function project() {
@@ -63,6 +64,17 @@ test('257-page fixture exposes every requested topology and special retrieval ev
   assert.equal(fixture.calls.get('/sitemap-failed.xml'), 1);
 });
 
+test('malformed child sitemap remains visible instead of becoming complete discovery', async () => {
+  const fixture = createSite257({ failChildSitemap: false });
+  const site = await buildSiteFromUrl(fixture.startUrl, { maxPages: 500, timeBudgetSeconds: 60, fetcher: fixture.fetcher });
+  const coverage = site.finalizeCoverage({ evaluated: true });
+  assert.equal(site.sitemapTopology.status, 'indeterminate');
+  assert.ok(site.sitemapTopology.errors.some(({ url }) => url.endsWith('/sitemap-failed.xml')));
+  assert.equal(coverage.discovery.status, 'indeterminate');
+  assert.equal(coverage.coverage_status, 'indeterminate');
+  assert.equal(coverage.reconciliation.valid, true);
+});
+
 test('budgets 50, 100, 256, 257, and 500 differ only at declared evidence boundaries', async () => {
   const root = project();
   const outputs = new Map();
@@ -104,8 +116,13 @@ test('retry, redirect, MIME, soft-404, challenge, and canonical evidence retain 
   const siteResources = readJson(path.join(result.dir, 'coverage.json')).resources;
   const pages = readJson(path.join(result.dir, 'pages', 'index.json'));
   const page = (number) => pages.find(({ requested_url: url }) => url === pageUrl(number));
-  assert.equal(page(99).effective_url, pageUrl(99));
+  assert.equal(page(99).url, `${fixture.origin}/redirect-target`);
+  assert.equal(page(99).effective_url, `${fixture.origin}/redirect-target`);
   assert.equal(page(99).status, 301);
+  assert.equal(page(99).url_identity.requested.normalized_url, pageUrl(99));
+  assert.equal(page(99).url_identity.effective.normalized_url, `${fixture.origin}/redirect-target`);
+  assert.equal(page(99).url_identity.redirect.length, 1);
+  assert.equal(page(99).url_identity.redirect[0].location, `${fixture.origin}/redirect-target`);
   assert.equal(page(149).requested_url, pageUrl(149));
   assert.equal(page(149).resource_id.startsWith('RESOURCE-'), true);
   assert.equal(resource(siteCoverage, 101).state, 'indeterminate');
@@ -113,8 +130,13 @@ test('retry, redirect, MIME, soft-404, challenge, and canonical evidence retain 
   assert.equal(resource(siteCoverage, 256).state, 'indeterminate');
   assert.equal(site.pages.find(({ url }) => url === pageUrl(149)).fetchAttempts.length, 2);
   assert.equal(site.pages.find(({ url }) => url === pageUrl(149)).fetchAttempts[0].retryDecision, 'retry');
-  assert.equal(site.pages.find(({ url }) => url === pageUrl(99)).urlIdentity.requested.url, pageUrl(99));
+  assert.equal(site.pages.find(({ crawlUrl }) => crawlUrl === pageUrl(99)).urlIdentity.requested.url, pageUrl(99));
   assert.equal(siteResources.filter(({ normalized_url: url }) => url === pageUrl(249)).length, 1);
+  const canonical = page(249);
+  assert.equal(canonical.url_identity.requested.normalized_url, pageUrl(249));
+  assert.equal(canonical.url_identity.effective.normalized_url, pageUrl(249));
+  assert.equal(canonical.url_identity.canonical.normalized_url, pageUrl(248));
+  assert.notEqual(canonical.resource_id, page(248).resource_id);
   assert.match(result.report, /Coverage status: \*\*indeterminate\*\*/i);
 });
 
@@ -127,6 +149,24 @@ test('missing page 200 in snapshot B is not classified as resolved', async () =>
   const missing = comparison.not_reobserved.find(({ subject }) => subject.identifier === pageUrl(200));
   assert.ok(missing, 'page 200 must be explicitly marked not_reobserved');
   assert.equal(missing.comparison_state, 'not_reobserved');
+});
+
+test('unique page findings only appear once their resource is evaluated', async () => {
+  const root = project();
+  const fixture = createSite257();
+  const run50 = await runFixture(root, fixture, 50);
+  const run100 = await runFixture(root, createSite257(), 100);
+  const run257 = await runFixture(root, createSite257(), 257);
+  const findingPages = (run) => new Set(run.findings.filter(({ detector_id }) => detector_id === 'TECH-002').map(({ subject }) => subject.identifier));
+  assert.deepEqual([...findingPages(run50)].sort(), [49, 50].map(pageUrl).sort());
+  assert.equal(findingPages(run50).has(pageUrl(51)), false);
+  assert.equal(findingPages(run100).has(pageUrl(100)), true);
+  assert.equal(findingPages(run100).has(pageUrl(200)), false);
+  assert.equal(findingPages(run257).has(pageUrl(200)), true);
+  assert.equal(findingPages(run257).has(pageUrl(257)), true);
+  const coverage = readJson(path.join(run50.dir, 'coverage.json'));
+  assert.equal(evaluateRequirement(REQUIREMENTS.EXHAUSTIVE_SCOPE, coverage).status, 'indeterminate');
+  assert.notEqual(run50.manifest.coverage_status, 'complete');
 });
 
 test('incomplete fixture remains qualified or indeterminate through downstream consumers', async () => {
@@ -176,9 +216,43 @@ test('reversed discovery order has the same normalized coverage populations', as
   const second = await runFixture(root, { ...reversed, fetcher: reverseFetcher }, 500);
   const a = readJson(path.join(first.dir, 'coverage.json'));
   const b = readJson(path.join(second.dir, 'coverage.json'));
+  const normalizeResources = (coverage) => coverage.resources.map((item) => ({
+    ...item,
+    discovery_sources: item.discovery_sources,
+  }));
+  const normalizeFindings = (run) => run.findings.map((finding) => ({
+    detector_id: finding.detector_id,
+    subject: finding.subject,
+    observation: finding.observation,
+    evidence_scope: finding.evidence_scope,
+  })).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
   assert.deepEqual(a.populations, b.populations);
   assert.equal(a.coverage_status, b.coverage_status);
   assert.equal(a.stop_reason, b.stop_reason);
+  assert.deepEqual(normalizeResources(a), normalizeResources(b));
+  assert.deepEqual(normalizeFindings(first), normalizeFindings(second));
+  const firstPages = readJson(path.join(first.dir, 'pages', 'index.json'));
+  const secondPages = readJson(path.join(second.dir, 'pages', 'index.json'));
+  const byUrl = (pages) => Object.fromEntries(pages.map((page) => [page.requested_url, page.artifact_hash]));
+  assert.deepEqual(byUrl(firstPages), byUrl(secondPages));
+});
+
+test('every sealed execution component rejects tampering', async () => {
+  const root = project();
+  const result = await runFixture(root, createSite257(), 50);
+  const files = ['findings.json', 'coverage.json', 'manifest.json', 'pages/index.json', 'summary.json'];
+  for (const relative of files) {
+    const file = path.join(result.dir, relative);
+    const original = fs.readFileSync(file);
+    fs.appendFileSync(file, '\n');
+    assert.throws(
+      () => loadVerifiedRun(result.dir, { requireCompletedExecution: false }),
+      /checksum|integrity|tamper|malformed|schema/i,
+      `tampering ${relative} must fail verification`,
+    );
+    fs.writeFileSync(file, original);
+  }
+  assert.equal(loadVerifiedRun(result.dir, { requireCompletedExecution: false }).verified, true);
 });
 
 test('fixture page static evaluation remains bounded and deterministic', () => {
