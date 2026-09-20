@@ -40,7 +40,7 @@ export function resolveAuditBudgets(config = {}, options = {}) {
 /** Assemble the shared execution context used by audit-family commands. */
 export async function buildContext(root, {
   target, baseUrl, refDate, viewport = null,
-  maxPages, timeBudgetSeconds, fetcher,
+  maxPages, timeBudgetSeconds, fetcher, concurrency = 1,
 } = {}) {
   const warnings = [];
   const configFile = path.join(root, '.citable', 'config.yaml');
@@ -54,7 +54,7 @@ export async function buildContext(root, {
   if (target) {
     if (/^https?:\/\//.test(target)) {
       auditBudgets = resolveAuditBudgets(config, { maxPages, timeBudgetSeconds });
-      site = await buildSiteFromUrl(target, { ...auditBudgets, fetcher });
+      site = await buildSiteFromUrl(target, { ...auditBudgets, fetcher, concurrency });
     } else if (fs.existsSync(target)) {
       site = buildSiteFromDir(target, { baseUrl: resolvedBase });
     } else {

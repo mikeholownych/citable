@@ -39,6 +39,16 @@ async function runFixture(root, fixture, maxPages, extra = {}) {
   });
 }
 
+test('collection concurrency is an explicit sequential contract', async () => {
+  const fixture = createSite257();
+  let fetches = 0;
+  await assert.rejects(
+    buildSiteFromUrl(fixture.startUrl, { concurrency: 2, fetcher: async () => { fetches += 1; } }),
+    /concurrency is fixed at 1/i,
+  );
+  assert.equal(fetches, 0, 'unsupported concurrency must fail before collection');
+});
+
 test('257-page fixture exposes every requested topology and special retrieval event', async () => {
   const root = project();
   const fixture = createSite257();
@@ -213,7 +223,7 @@ test('reversed discovery order has the same normalized coverage populations', as
     return response;
   };
   const first = await runFixture(root, normal, 500);
-  const second = await runFixture(root, { ...reversed, fetcher: reverseFetcher }, 500);
+  const second = await runFixture(root, { ...reversed, fetcher: reverseFetcher }, 500, { concurrency: 1 });
   const a = readJson(path.join(first.dir, 'coverage.json'));
   const b = readJson(path.join(second.dir, 'coverage.json'));
   const normalizeResources = (coverage) => coverage.resources.map((item) => ({

@@ -163,6 +163,9 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
 /** Build a SiteModel by fetching a deployed URL set (target URL + same-origin discovery, bounded). */
 export async function buildSiteFromUrl(startUrl, {
   maxPages = 500, timeBudgetSeconds = 1800, userAgent, pageMaxBytes = 5 * 1024 * 1024,
+  // Collection is intentionally sequential. Reject unsupported values rather
+  // than silently changing reproducibility or budget semantics.
+  concurrency = 1,
   robotsMaxBytes = 512 * 1024, sitemapMaxBytes = 5 * 1024 * 1024,
   sitemapMaxDepth = 4, sitemapMaxDocuments = 1000,
   sitemapMaxUncompressedBytes = 20 * 1024 * 1024,
@@ -172,6 +175,9 @@ export async function buildSiteFromUrl(startUrl, {
   fetcher = fetchUrl,
   now = () => performance.now(),
 } = {}) {
+  if (concurrency !== 1) {
+    throw new RangeError(`URL collection concurrency is fixed at 1; received ${String(concurrency)}`);
+  }
   const origin = new URL(startUrl).origin;
   const coverageLedger = createCoverageLedger({ startUrl, maxPages, timeBudgetSeconds });
   const startedAt = now();

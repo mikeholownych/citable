@@ -15,10 +15,10 @@ import { pageArtifactRecord } from '../evidence/hashes.js';
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
 export async function audit(root, {
   target, scope, baseUrl, refDate, viewport = null,
-  maxPages, timeBudgetSeconds, fetcher,
+  maxPages, timeBudgetSeconds, fetcher, concurrency = 1,
 } = {}) {
   const ctx = await buildContext(root, {
-    target, baseUrl, refDate, viewport, maxPages, timeBudgetSeconds, fetcher,
+    target, baseUrl, refDate, viewport, maxPages, timeBudgetSeconds, fetcher, concurrency,
   });
   const detectors = selectDetectors({ scope });
 
