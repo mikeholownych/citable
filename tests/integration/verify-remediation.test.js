@@ -139,14 +139,10 @@ test('verify remediation refuses a resolution from a non-comparable source envel
   const manifest = readJson(manifestPath);
   manifest.tool_version = '0.0.0-uncomparable';
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  const result = await verifyRemediation(dir, {
+  await assert.rejects(() => verifyRemediation(dir, {
     run: run.runId, finding: 'CRO-007', recheckTarget: siteDir,
     baseUrl: 'https://example.test', refDate: '2026-09-08',
-  });
-  assert.equal(result.status, 'not_comparable');
-  assert.equal(result.verdict.resolved, false);
-  assert.equal(result.verdict.comparison_state, 'not_comparable');
-  assert.equal(result.comparison.comparability.dimensions.tool_changed, true);
+  }), /checksum mismatch|integrity failed/i);
 });
 
 test('equal viewport configurations remain comparable despite distinct object instances', async (t) => {
