@@ -124,10 +124,21 @@ function evaluateAssertion(assertion, observations, derivations) {
 function scopeSupport(claim, datasets, observations) {
   const scope = claim.declared_scope;
   if (scope.generalization === 'universal') return { status: 'UNSUPPORTED', reasons: [reason('generalization_outside_population', 'The evidence population does not support a universal claim.')] };
+  if (scope.type === 'observation' && scope.observation_reference
+    && !(claim.observation_references || []).includes(scope.observation_reference)) {
+    return { status: 'INDETERMINATE', reasons: [reason('scope_reference_mismatch', 'The declared observation scope is not among the claim evidence references.')] };
+  }
+  if (scope.type === 'dataset' && scope.dataset_reference
+    && !(claim.dataset_references || []).includes(scope.dataset_reference)) {
+    return { status: 'INDETERMINATE', reasons: [reason('scope_reference_mismatch', 'The declared dataset scope is not among the claim evidence references.')] };
+  }
   if (scope.type === 'dataset') {
     const dataset = datasets[0];
     if (!dataset || !verifyDatasetSafe(dataset)) return { status: 'INDETERMINATE', reasons: [reason('dataset_unavailable', 'The declared dataset is missing or unverifiable.')] };
     if (dataset.coverage_status !== 'complete_for_declared_population') return { status: 'PARTIALLY_SUPPORTED', reasons: [reason('dataset_coverage_incomplete', `Dataset coverage is ${dataset.coverage_status}, not complete for the declared population.`)] };
+    const referenced = new Set(claim.observation_references || []);
+    const missingMembers = (dataset.observation_references || []).filter((id) => !referenced.has(id));
+    if (missingMembers.length) return { status: 'PARTIALLY_SUPPORTED', reasons: [reason('dataset_members_missing', `The claim does not reference every observation in the declared dataset: ${missingMembers.join(', ')}`)] };
   }
   if (!observations.length) return { status: 'NOT_OBSERVED', reasons: [reason('observation_missing', 'The declared scope has no observed members.')] };
   return { status: 'SUPPORTED', reasons: [] };

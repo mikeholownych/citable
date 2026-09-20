@@ -186,13 +186,35 @@ test('ER-9 distinguishes NOT_OBSERVED, contradiction, and bounded absence', () =
     assertion: { type: 'predicate', path: 'data.feature_x', operator: 'equals', value: true }, limitations: [],
   });
   assert.equal(verifyClaim(missingClaim, { observations: [] }).overall, 'NOT_OBSERVED');
-  const contradiction = createEvidenceClaim({ ...missingClaim, claim_id: 'CLAIM-CONTRA', evidence_references: ['OBS-1'], observation_references: ['OBS-1'] });
+  const contradiction = createEvidenceClaim({ ...missingClaim, claim_id: 'CLAIM-CONTRA', evidence_references: ['OBS-1'], observation_references: ['OBS-1'], declared_scope: { type: 'observation', observation_reference: 'OBS-1', generalization: 'bounded' } });
   assert.equal(verifyClaim(contradiction, { observations: [observation('OBS-1', false)] }).overall, 'CONTRADICTED');
   const absent = createEvidenceClaim({
     claim_id: 'CLAIM-ABSENT', claim_version: 1, proposition: 'None of these products has feature X.', declared_scope: { type: 'dataset', dataset_reference: 'DS-1', generalization: 'bounded' },
     evidence_references: ['OBS-1', 'OBS-2'], observation_references: ['OBS-1', 'OBS-2'], dataset_references: ['DS-1'], derivation_references: [], assertion: { type: 'all', path: 'data.feature_x', operator: 'equals', value: false }, limitations: [],
   });
   assert.equal(verifyClaim(absent, { observations: [observation('OBS-1', false), observation('OBS-2', false)], datasets: [dataset()] }).overall, 'SUPPORTED');
+});
+
+test('ER-9 refuses scope references that do not match the evidence population', () => {
+  const mismatch = createEvidenceClaim({
+    claim_id: 'CLAIM-SCOPE-MISMATCH', claim_version: 1, proposition: 'P-1 has feature X.',
+    declared_scope: { type: 'observation', observation_reference: 'OBS-2', generalization: 'bounded' },
+    evidence_references: ['OBS-1'], observation_references: ['OBS-1'], dataset_references: [], derivation_references: [],
+    assertion: { type: 'predicate', path: 'data.feature_x', operator: 'equals', value: true }, limitations: [],
+  });
+  const result = verifyClaim(mismatch, { observations: [observation('OBS-1', true)] });
+  assert.equal(result.overall, 'INDETERMINATE');
+  assert.ok(result.reasons.some((item) => item.code === 'scope_reference_mismatch'));
+
+  const incompletePopulation = createEvidenceClaim({
+    claim_id: 'CLAIM-DATASET-SUBSET', claim_version: 1, proposition: 'The dataset has feature X.',
+    declared_scope: { type: 'dataset', dataset_reference: 'DS-1', generalization: 'bounded' },
+    evidence_references: ['OBS-1'], observation_references: ['OBS-1'], dataset_references: ['DS-1'], derivation_references: [],
+    assertion: { type: 'predicate', path: 'data.feature_x', operator: 'equals', value: true }, limitations: [],
+  });
+  const subset = verifyClaim(incompletePopulation, { observations: [observation('OBS-1', true)], datasets: [dataset()] });
+  assert.equal(subset.overall, 'PARTIALLY_SUPPORTED');
+  assert.ok(subset.reasons.some((item) => item.code === 'dataset_members_missing'));
 });
 
 test('ER-9 returns PARTIALLY_SUPPORTED with machine-readable reasons', () => {
