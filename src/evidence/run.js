@@ -23,6 +23,26 @@ function gitInfo(root) {
   }
 }
 
+function assertSafeArtifactPath(runDir, relativePath) {
+  if (typeof relativePath !== 'string' || !relativePath || path.isAbsolute(relativePath) || relativePath.includes('\\')) {
+    throw new Error(`unsafe artifact path: ${relativePath}`);
+  }
+  const parts = relativePath.split('/');
+  if (parts.some((part) => !part || part === '.' || part === '..')) throw new Error(`unsafe artifact path: ${relativePath}`);
+  let current = runDir;
+  for (const part of parts) {
+    current = path.join(current, part);
+    if (!fs.existsSync(current)) continue;
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) throw new Error(`artifact path contains symbolic link: ${relativePath}`);
+  }
+}
+
+function fsyncPath(file) {
+  const handle = fs.openSync(file, 'r');
+  try { fs.fsyncSync(handle); } finally { fs.closeSync(handle); }
+}
+
 /** Create a run evidence package under <root>/.citable/runs/<run-id>/. */
 export function createRun(root, { command, argv = [], target, locale = process.env.LANG || 'en', jurisdiction = null, configHash = null }) {
   const runId = newRunId(command);
@@ -63,6 +83,7 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       manifest.input_hashes[name] = sha256(typeof content === 'string' ? content : JSON.stringify(content));
     },
     writeArtifact(relPath, data) {
+      assertSafeArtifactPath(dir, relPath);
       const file = path.join(dir, relPath);
       fs.mkdirSync(path.dirname(file), { recursive: true });
       if (typeof data === 'string' || Buffer.isBuffer(data)) fs.writeFileSync(file, data);
@@ -88,27 +109,34 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       // checksums over every artifact in the package
       const checksumEntries = [];
       const walk = (d) => {
-        for (const name of fs.readdirSync(d)) {
-          const p = path.join(d, name);
-          if (fs.statSync(p).isDirectory()) walk(p);
-          else if (name !== 'checksums.json') checksumEntries.push([path.relative(stage, p).split(path.sep).join('/'), sha256File(p)]);
+        for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+          const p = path.join(d, entry.name);
+          if (entry.isSymbolicLink()) throw new Error(`staging package contains symbolic link: ${path.relative(stage, p)}`);
+          if (entry.isDirectory()) walk(p);
+          else if (entry.isFile() && entry.name !== 'checksums.json') checksumEntries.push([path.relative(stage, p).split(path.sep).join('/'), sha256File(p)]);
+          else if (!entry.isFile()) throw new Error(`staging package contains unsupported entry: ${path.relative(stage, p)}`);
         }
       };
       walk(stage);
       const checksums = Object.fromEntries(checksumEntries.sort(([a], [b]) => a.localeCompare(b)));
       writeJson(path.join(stage, 'checksums.json'), checksums);
-      for (const file of [path.join(stage, 'manifest.json'), path.join(stage, 'checksums.json')]) {
-        const handle = fs.openSync(file, 'r');
-        try { fs.fsyncSync(handle); } finally { fs.closeSync(handle); }
-      }
+      const fsyncTree = (directory) => {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+          const file = path.join(directory, entry.name);
+          if (entry.isSymbolicLink()) throw new Error(`staging package contains symbolic link: ${path.relative(stage, file)}`);
+          if (entry.isDirectory()) fsyncTree(file);
+          else if (entry.isFile()) fsyncPath(file);
+        }
+        fsyncPath(directory);
+      };
+      fsyncTree(stage);
       const parent = path.dirname(dir);
       const displaced = `${dir}.partial-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
       fs.renameSync(dir, displaced);
       try {
         fs.renameSync(stage, dir);
-        const parentHandle = fs.openSync(parent, 'r');
-        try { fs.fsyncSync(parentHandle); } finally { fs.closeSync(parentHandle); }
         fs.rmSync(displaced, { recursive: true, force: true });
+        fsyncPath(parent);
       } catch (error) {
         if (!fs.existsSync(dir) && fs.existsSync(displaced)) fs.renameSync(displaced, dir);
         fs.rmSync(stage, { recursive: true, force: true });

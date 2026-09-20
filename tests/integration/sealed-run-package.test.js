@@ -112,3 +112,27 @@ test('unknown manifest schema versions are rejected before legacy fallback', () 
     (error) => error.code === 'MANIFEST_SCHEMA_UNSUPPORTED' && /schema_version/.test(error.message),
   );
 });
+
+test('run root symlinks and legacy malformed findings fail closed', () => {
+  const { run } = makeRun();
+  const link = path.join(path.dirname(run.dir), 'run-link');
+  fs.symlinkSync(run.dir, link, 'dir');
+  assert.throws(() => loadVerifiedRun(link), /real directory|symbolic link/i);
+
+  const legacyRoot = root();
+  const legacyDir = path.join(legacyRoot, '.citable', 'runs', 'legacy');
+  fs.mkdirSync(legacyDir, { recursive: true });
+  writeJson(path.join(legacyDir, 'findings.json'), [{ finding_id: 'malformed' }]);
+  assert.throws(() => loadVerifiedRun(legacyDir, { allowLegacy: true, requireCoverage: false }), /finding|schema/i);
+});
+
+test('writeArtifact rejects symlinked artifact targets and parents', () => {
+  const project = root();
+  const run = createRun(project, { command: 'symlink fixture', target: { kind: 'fixture', location: 'local' } });
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-outside-'));
+  fs.symlinkSync(outside, path.join(run.dir, 'linked'), 'dir');
+  assert.throws(() => run.writeArtifact('linked/escape.json', {}), /symbolic link|unsafe/i);
+  fs.writeFileSync(path.join(outside, 'target.json'), '{}');
+  fs.symlinkSync(path.join(outside, 'target.json'), path.join(run.dir, 'target.json'));
+  assert.throws(() => run.writeArtifact('target.json', {}), /symbolic link|unsafe/i);
+});

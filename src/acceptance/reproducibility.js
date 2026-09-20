@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../release/governance.js';
 import { nowIso, readJson, sha256, writeJson } from '../shared/io.js';
@@ -56,14 +55,10 @@ export function createAcceptanceReceipt(root, { runId, context = {}, createdAt =
   const contextCheck = validateAgainst('acceptance-run-context.schema.json', context);
   if (!contextCheck.valid) throw new Error(`acceptance context violates contract: ${contextCheck.errors.join('; ')}`);
   const runDir = path.join(root, '.citable', 'runs', runId);
-  const manifestFile = path.join(runDir, 'manifest.json');
-  if (!fs.existsSync(manifestFile)) throw new Error(`run ${runId} not found`);
-  const manifest = readJson(manifestFile);
-  if (manifest.run_id !== runId) throw new Error(`run manifest id ${manifest.run_id} does not match requested run ${runId}`);
   const verified = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
-  const sealedManifest = verified.manifest;
-  if (sealedManifest.run_id !== manifest.run_id) throw new Error('verified run manifest mismatch');
-  const checksums = readJson(path.join(runDir, 'checksums.json'));
+  const manifest = verified.manifest;
+  if (manifest.run_id !== runId) throw new Error(`run manifest id ${manifest.run_id} does not match requested run ${runId}`);
+  const checksums = verified.artifactHashes;
   const canonicalArtifacts = sortedObject(Object.fromEntries(
     Object.entries(checksums).filter(([name]) => name !== 'manifest.json'),
   ));

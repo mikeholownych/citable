@@ -109,5 +109,5 @@ test('receipt creation rejects checksum traversal and run identity mismatch', ()
   const manifest = readJson(manifestFile);
   manifest.run_id = 'DIFFERENT-RUN';
   writeJson(manifestFile, manifest);
-  assert.throws(() => createAcceptanceReceipt(base, { runId: other }), /does not match requested run/);
+  assert.throws(() => createAcceptanceReceipt(base, { runId: other }), /checksum|integrity|does not match requested run/);
 });

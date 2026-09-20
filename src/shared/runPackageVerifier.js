@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { readJson, sha256File } from './io.js';
+import { sha256 } from './io.js';
 import { validateAgainst } from './schemaValidator.js';
 
 export class RunVerificationError extends Error {
@@ -10,6 +10,17 @@ export class RunVerificationError extends Error {
     this.code = details.code || 'RUN_VERIFICATION_FAILED';
     this.details = details;
   }
+}
+
+function readStableBytes(file, runDir, relative) {
+  const first = fs.readFileSync(file);
+  const second = fs.readFileSync(file);
+  if (!first.equals(second)) {
+    throw new RunVerificationError(`Artifact changed while being verified: ${relative}`, {
+      code: 'PACKAGE_MUTATION', runDir, file: relative,
+    });
+  }
+  return first;
 }
 
 /**
@@ -34,8 +45,18 @@ export function verifyRunPackage(runDir, options = {}) {
   if (!runDir || !fs.existsSync(runDir)) {
     throw new RunVerificationError(`Run directory not found: ${runDir}`, { code: 'RUN_NOT_FOUND', runDir });
   }
+  let rootStat;
+  try { rootStat = fs.lstatSync(runDir); } catch (error) {
+    throw new RunVerificationError(`Run directory cannot be inspected: ${error.message}`, { code: 'RUN_NOT_FOUND', runDir });
+  }
+  if (rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    throw new RunVerificationError(`Run path is not a real directory: ${runDir}`, { code: 'RUN_PATH_INVALID', runDir });
+  }
 
   const manifestPath = path.join(runDir, 'manifest.json');
+  if (fs.existsSync(manifestPath) && fs.lstatSync(manifestPath).isSymbolicLink()) {
+    throw new RunVerificationError('Run manifest.json is a symbolic link', { code: 'PACKAGE_SYMLINK', runDir, file: 'manifest.json' });
+  }
   if (!fs.existsSync(manifestPath)) {
     throw new RunVerificationError(`Run package is missing manifest.json at ${manifestPath}`, {
       code: 'MANIFEST_MISSING',
@@ -45,7 +66,7 @@ export function verifyRunPackage(runDir, options = {}) {
 
   let manifest;
   try {
-    manifest = readJson(manifestPath);
+    manifest = JSON.parse(readStableBytes(manifestPath, runDir, 'manifest.json').toString('utf8'));
   } catch (err) {
     throw new RunVerificationError(`Run manifest.json is invalid JSON: ${err.message}`, {
       code: 'MANIFEST_INVALID',
@@ -104,10 +125,12 @@ export function verifyRunPackage(runDir, options = {}) {
   const checksumsPath = path.join(runDir, 'checksums.json');
   let checksumsVerified = false;
   let artifactHashes = {};
+  const artifactBytes = new Map();
   if (fs.existsSync(checksumsPath)) {
+    if (fs.lstatSync(checksumsPath).isSymbolicLink()) throw new RunVerificationError('checksums.json is a symbolic link', { code: 'PACKAGE_SYMLINK', runDir, file: 'checksums.json' });
     let checksums;
     try {
-      checksums = readJson(checksumsPath);
+      checksums = JSON.parse(readStableBytes(checksumsPath, runDir, 'checksums.json').toString('utf8'));
     } catch (err) {
       throw new RunVerificationError(`checksums.json is invalid JSON: ${err.message}`, {
         code: 'CHECKSUMS_INVALID',
@@ -137,7 +160,13 @@ export function verifyRunPackage(runDir, options = {}) {
         missingFiles.push(relPath);
         continue;
       }
-      const actualHash = sha256File(artifactPath);
+      const artifactStat = fs.lstatSync(artifactPath);
+      if (artifactStat.isSymbolicLink() || !artifactStat.isFile()) {
+        throw new RunVerificationError(`checksum artifact is not a regular file: ${relPath}`, { code: 'PACKAGE_SYMLINK', runDir, file: relPath });
+      }
+      const bytes = readStableBytes(artifactPath, runDir, relPath);
+      artifactBytes.set(relPath, bytes);
+      const actualHash = sha256(bytes);
       if (actualHash !== expectedHash) {
         tamperedFiles.push({ file: relPath, expected: expectedHash, actual: actualHash });
       }
@@ -172,7 +201,10 @@ export function verifyRunPackage(runDir, options = {}) {
   let findings = null;
   if (fs.existsSync(findingsPath)) {
     try {
-      findings = readJson(findingsPath);
+      if (fs.lstatSync(findingsPath).isSymbolicLink()) throw new Error('findings.json is a symbolic link');
+      const findingsBytes = artifactBytes.get('findings.json') || readStableBytes(findingsPath, runDir, 'findings.json');
+      artifactBytes.set('findings.json', findingsBytes);
+      findings = JSON.parse(findingsBytes.toString('utf8'));
       if (!Array.isArray(findings)) {
         throw new Error('findings.json must contain an array of findings');
       }
@@ -206,5 +238,6 @@ export function verifyRunPackage(runDir, options = {}) {
     findingsCount: Array.isArray(findings) ? findings.length : 0,
     findings,
     artifactHashes,
+    artifactBytes,
   };
 }

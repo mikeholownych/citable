@@ -15,15 +15,18 @@ export class VerifiedRunLoadError extends Error {
   }
 }
 
-function readContractArtifact(runDir, file, schema, { required = true } = {}) {
+function readContractArtifact(runDir, file, schema, { required = true, bytes = null } = {}) {
   const filePath = path.join(runDir, file);
   if (!fs.existsSync(filePath)) {
     if (required) throw new VerifiedRunLoadError(`Verified run is missing ${file}`, { code: 'ARTIFACT_MISSING', file });
     return null;
   }
+  if (fs.lstatSync(filePath).isSymbolicLink()) {
+    throw new VerifiedRunLoadError(`${file} is a symbolic link`, { code: 'PACKAGE_SYMLINK', file });
+  }
   let value;
   try {
-    value = readJson(filePath);
+    value = bytes ? JSON.parse(bytes.toString('utf8')) : readJson(filePath);
   } catch (error) {
     throw new VerifiedRunLoadError(`${file} is invalid JSON: ${error.message}`, { code: 'ARTIFACT_INVALID', file });
   }
@@ -34,6 +37,16 @@ function readContractArtifact(runDir, file, schema, { required = true } = {}) {
     });
   }
   return value;
+}
+
+function readFindingsArtifact(runDir, bytes = null) {
+  const findings = readContractArtifact(runDir, 'findings.json', null, { bytes });
+  if (!Array.isArray(findings)) throw new VerifiedRunLoadError('findings.json must contain an array of findings', { code: 'ARTIFACT_SCHEMA_INVALID', file: 'findings.json' });
+  for (const [index, finding] of findings.entries()) {
+    const validation = validateAgainst('finding.schema.json', finding);
+    if (!validation.valid) throw new VerifiedRunLoadError(`findings.json finding[${index}] violates finding.schema.json: ${validation.errors.join('; ')}`, { code: 'ARTIFACT_SCHEMA_INVALID', file: 'findings.json' });
+  }
+  return findings;
 }
 
 /**
@@ -62,14 +75,15 @@ export function loadVerifiedRun(runDir, {
       if (!allowLegacy || !['CHECKSUMS_MISSING', 'MANIFEST_MISSING'].includes(error.code)) throw error;
       const manifestPath = path.join(runDir, 'manifest.json');
       const manifest = fs.existsSync(manifestPath) ? readJson(manifestPath) : { run_id: path.basename(runDir), status: 'incomplete' };
-      const findings = readContractArtifact(runDir, 'findings.json', null);
+      const findings = readFindingsArtifact(runDir);
       const coverageFile = path.join(runDir, 'coverage.json');
       const coverage = fs.existsSync(coverageFile) ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json') : null;
+      const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false });
       return {
         verified: false, verification_version: VERIFIED_RUN_LOADER_VERSION,
         integrity_mode: 'legacy_unverified', package_dir: path.resolve(runDir),
         package_hash: null, manifest, findings, findingsCount: findings.length,
-        coverage, summary: null, legacy: true,
+        coverage, summary, legacy: true,
         coverage_status: coverage?.coverage_status || 'indeterminate', determination_status: 'indeterminate',
         checksumsVerified: false,
         artifactHashes: {
@@ -87,8 +101,8 @@ export function loadVerifiedRun(runDir, {
         code: 'COVERAGE_MISSING',
       });
     }
-    const coverage = hasCoverage ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json') : null;
-    const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false });
+    const coverage = hasCoverage ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json', { bytes: verification.artifactBytes.get('coverage.json') }) : null;
+    const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false, bytes: verification.artifactBytes.get('summary.json') });
 
     return {
       ...verification,
