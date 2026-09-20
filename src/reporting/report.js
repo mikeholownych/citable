@@ -1,3 +1,5 @@
+import { assertEpistemicLanguage, evidenceScopeStatement } from '../shared/epistemicLanguage.js';
+
 const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, informational: 4, experimental: 5 };
 
 const RETRIEVAL_NAMESPACES = new Set(['TECH', 'CRAWL', 'LINK', 'HREFLANG']);
@@ -153,8 +155,26 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
     lines.push('');
   }
   if (findings.length === 0) {
-    lines.push(`No findings from the executed detectors. Absence of findings is not proof of eligibility — see skipped and incomplete checks above.`);
+    const population = coverage?.populations?.evaluated ?? 0;
+    lines.push(population > 0
+      ? `No findings were produced for the ${population} successfully evaluated resource(s). Absence of findings is not proof of eligibility — see skipped and incomplete checks above.`
+      : evidenceScopeStatement({
+        coverage_status: coverage?.coverage_status || 'indeterminate',
+        determination_status: summary?.posture?.source_extraction_and_support?.result === 'pass' ? 'supported' : 'indeterminate',
+        evaluated: 0,
+        eligible: coverage?.populations?.eligible ?? 0,
+        legacy: !coverage,
+      }));
     lines.push('');
   }
-  return lines.join('\n');
+  const rendered = lines.join('\n');
+  assertEpistemicLanguage(rendered, {
+    coverage_status: coverage?.coverage_status || 'indeterminate',
+    determination_status: coverage?.coverage_status === 'complete' ? 'supported' : 'indeterminate',
+    evaluated: coverage?.populations?.evaluated ?? 0,
+    eligible: coverage?.populations?.eligible ?? 0,
+    package_verified: true,
+    legacy: !coverage,
+  });
+  return rendered;
 }

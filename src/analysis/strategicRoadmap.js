@@ -24,9 +24,9 @@ export function buildStrategicRoadmap({ findings = [], initiatives = [], targetD
     ],
     exit_criteria: [
       'Zero critical-severity technical findings in citable audit technical',
-      'Static CLS readiness: 100% of body images have explicit dimensions',
-      'All major answer engine bots verified allowed in robots directives',
-      'Baseline Organization schema live with verified @id',
+      'Static CLS readiness: every evaluated body image has explicit dimensions',
+      'Major answer engine bot access observed as allowed in robots directives',
+      'Baseline Organization schema live with an observed @id',
     ],
     actions: [],
   };

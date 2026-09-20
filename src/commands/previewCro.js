@@ -167,7 +167,7 @@ export function generateCroPreviewHtml({
     </div>
 
     <div class="findings-list">
-      <h3>Resolved CRO Defects (${findingItems.length})</h3>
+      <h3>Observed CRO Findings (${findingItems.length})</h3>
       ${findingItems.map((f) => `
         <div class="finding-row">
           <span><strong>${f.detector_id}</strong>: ${f.summary}</span>

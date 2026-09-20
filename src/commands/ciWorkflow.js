@@ -38,7 +38,7 @@ export function formatPrReviewComment(findings = [], determination = null) {
     const status = determination?.determination_status || 'indeterminate';
     if (status !== 'supported') {
       const coverage = determination?.coverage_status ? ` (coverage: ${determination.coverage_status})` : '';
-      return `### ⚠️ Citable CRO Sentinel: No determination can be made from the available evidence${coverage}; insufficient evidence for a clean determination. No finding was observed in the evaluated subset; this is not a verified-clean result.`;
+      return `### ⚠️ Citable CRO Sentinel: No determination can be made from the available evidence${coverage}; insufficient evidence for a clean determination. No finding was observed in the evaluated subset; this is not a verified result.`;
     }
     return '### ✅ Citable CRO Sentinel: No findings were observed over the supported evidence scope.';
   }

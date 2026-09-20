@@ -18,10 +18,10 @@ export function buildCroRoadmap({ findings = [], targetDomain = 'example.com', d
       'Mobile Tap Sizing: Expand diminutive mobile CTA touch targets to >= 48px standard (CRO-015)',
     ],
     target_outcomes: [
-      '100% conversion funnel continuity intact across all declared paths',
+      'Conversion funnel continuity observed across the declared paths in scope',
       'Keystroke Effort Index: Form completion friction reduced by >= 40%',
-      'Above-the-fold information scent match verified across all primary landing pages',
-      'Zero mobile touch target defects under 48px',
+      'Above-the-fold information scent match observed on evaluated primary landing pages',
+      'No mobile touch-target findings in the evaluated pages',
     ],
     measurable_conversion_kpi: 'Form Completion Rate (+8% to +15% expected relative lift)',
     experiments: backlog.experiments.filter((e) => ['CRO-007', 'CRO-005', 'CRO-015', 'CRO-017', 'CRO-018'].includes(e.detector_id) || e.ice_prioritization.effort <= 3),

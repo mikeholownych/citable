@@ -5,6 +5,7 @@ import { exportExecutiveSearchReport, buildExecutiveSearchReport, renderSearchRe
 import { exportExecutiveCroReport, buildExecutiveCroReport, renderCroReportMarkdown, renderCroReportHtml } from "./executiveCroReport.js";
 import { downstreamEnvelope } from '../evidence/downstream.js';
 import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
+import { assertEpistemicLanguage, evidenceScopeStatement } from '../shared/epistemicLanguage.js';
 
 export {
   exportExecutiveSearchReport,
@@ -95,12 +96,14 @@ export async function exportExecutiveReport(root, runId, {
   };
   let findings = [];
   let coverage = null;
+  let packageVerified = false;
 
   if (targetRun) {
     const loaded = loadVerifiedRun(path.join(runsDir, targetRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
     summary = loaded.summary || summary;
     findings = loaded.findings;
     coverage = loaded.coverage;
+    packageVerified = loaded.verified === true && loaded.integrity_mode === 'sealed';
     summary.coverage_status = loaded.coverage_status;
     summary.determination_status = loaded.determination_status;
   }
@@ -114,7 +117,13 @@ export async function exportExecutiveReport(root, runId, {
   };
 
   let content = "";
-  const evidenceNotice = `Evidence determination: ${summary.determination_status} (coverage: ${summary.coverage_status}; evaluated ${summary.coverage.evaluated ?? 0} of ${summary.coverage.eligible ?? 'unknown'} eligible). ${summary.coverage.limitations.join('; ') || 'No additional limitations recorded.'}`;
+  const evidenceNotice = `Evidence determination: ${summary.determination_status} (coverage: ${summary.coverage_status}; evaluated ${summary.coverage.evaluated ?? 0} of ${summary.coverage.eligible ?? 'unknown'} eligible). ${summary.coverage.limitations.join('; ') || evidenceScopeStatement({
+    coverage_status: summary.coverage_status,
+    determination_status: summary.determination_status,
+    evaluated: summary.coverage.evaluated,
+    eligible: summary.coverage.eligible,
+    package_verified: packageVerified,
+  })}`;
 
   if (format === "html-brief") {
     content = `<!DOCTYPE html>
@@ -184,7 +193,7 @@ export async function exportExecutiveReport(root, runId, {
 - **High Severity Findings**: ${summary.counts?.high || 0}
 - **Medium Severity Findings**: ${summary.counts?.medium || 0}
 
-> **${evidenceNotice}** No finding is a site-wide clean claim unless coverage supports it.
+> **${evidenceNotice}** Findings remain limited to the evaluated evidence scope.
 
 > Citable does not guarantee crawling, indexing, ranking, citation, or conversion.
 
@@ -312,6 +321,14 @@ ${findings.slice(0, 5).map((f) => `- **[${f.detector_id}]** (${f.severity}): ${f
     fs.writeFileSync(path.resolve(root, output), content, "utf8");
   }
 
+  const languageContext = {
+    coverage_status: summary.coverage_status,
+    determination_status: summary.determination_status,
+    evaluated: summary.coverage.evaluated,
+    eligible: summary.coverage.eligible,
+    package_verified: packageVerified,
+  };
+  assertEpistemicLanguage(content, languageContext);
   return {
     format,
     client_name: clientName,

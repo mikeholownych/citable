@@ -69,6 +69,15 @@ Every report must keep these top-level states separate:
 3. **Observed citation behavior** — only controlled, timestamped provider
    observations; absent observations are `not_evidenced`, never inferred.
 
+Presentation language must preserve those boundaries. An empty finding list,
+legacy package, unverified artifact, incomplete crawl, or indeterminate
+determination must not be described as `clean`, `complete`, `verified`,
+`resolved`, `100%`, or `site-wide`. State the evaluated population and the
+limitation instead (for example, "No findings were produced for the 217
+successfully evaluated resources; corpus-wide absence is not established").
+Positive local observations may remain supported, but they must not be widened
+to pages or resources that were not observed.
+
 Within retrieval, distinguish `allowed_by_policy`, `synthetic_fetch_succeeded`,
 `observed_in_production_logs`, `indexed`, and `returned_by_retrieval`. Within
 citation testing, distinguish mention, citation, material support, canonical

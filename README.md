@@ -34,6 +34,10 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Separate state reporting** for retrieval eligibility, source extraction and
   support suitability, and observed citation behavior. These are never merged
   into an "AI visibility score."
+- **Scope-qualified reporting**: empty, legacy, unverified, incomplete, and
+  indeterminate evidence cannot be rendered as a clean, complete, verified, or
+  site-wide conclusion. Reports name the evaluated population and preserve
+  limitations; absence of findings is not evidence of absence.
 - **Fail-closed governance**: claims can't become verified without evidence,
   expired evidence invalidates claims, schema is never fabricated, missing
   facts return `blocked` with `required_input`.
