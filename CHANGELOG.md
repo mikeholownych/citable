@@ -15,6 +15,22 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Semantic completeness and explicit audit coverage
+
+- Replaced the hidden 50-page URL-audit ceiling with declared, bounded budgets
+  (`--max-pages`, default 500, hard ceiling 10,000; time budget default 1,800
+  seconds, hard ceiling 86,400 seconds).
+- Added reconciled coverage evidence and independent execution, coverage, and
+  determination statuses so truncation and partial failures cannot masquerade
+  as complete evidence.
+- Propagated coverage requirements through determinations, snapshot comparison,
+  remediation, connectors, reports, exports, CI output, and action plans.
+- Added sealed package verification, representation-specific evidence hashes,
+  and an adversarial 257-page end-to-end regression fixture.
+- Qualified user-facing language for incomplete, empty, legacy, and unverified
+  evidence rather than emitting unsupported clean, verified, resolved, or
+  site-wide claims.
+
 ## 1.19.0 — 2026-09-11
 
 ### Added — Deterministic Bounded Browser-Journey Evidence Acquisition (ADR-003)

@@ -95,7 +95,7 @@ prefer running it over re-deriving its checks by hand:
 
 ```
 citable init                        # initialize .citable/ (non-destructive)
-citable audit [scope] --target <dir|url> [--base-url <url>] [--ref-date YYYY-MM-DD]
+citable audit [scope] --target <dir|url> [--base-url <url>] [--max-pages <1..10000>] [--time-budget-seconds <1..86400>] [--ref-date YYYY-MM-DD]
 citable plan-audit --target <dir|url> [--base-url <url>]
 citable sweep technical --target <dir|url> # Technical SEO sweep + Core Web Vitals metrics
 citable inspect <page> --target <dir|url>
