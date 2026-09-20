@@ -161,6 +161,12 @@ export async function resolveEvidenceSource(root, options = {}) {
       integrity_hash: sha256(findingsJson),
       generation_mode: generationMode,
       run_metadata: null,
+      package_verified: false,
+      integrity_mode: 'in_memory_unsealed',
+      legacy: false,
+      coverage: null,
+      coverage_status: 'indeterminate',
+      determination_status: 'indeterminate',
     };
   }
 
@@ -196,6 +202,12 @@ export async function resolveEvidenceSource(root, options = {}) {
         generation_mode: generationMode,
         run_metadata: verification.manifest,
         checksums_verified: verification.checksumsVerified,
+        package_verified: verification.verified === true && verification.integrity_mode === 'sealed',
+        integrity_mode: verification.integrity_mode,
+        legacy: verification.legacy === true,
+        coverage: verification.coverage,
+        coverage_status: verification.coverage_status,
+        determination_status: verification.determination_status,
       };
     } catch (err) {
       throw new FindingsInvalidError(runId, err.message);
@@ -226,6 +238,12 @@ export async function resolveEvidenceSource(root, options = {}) {
         generation_mode: generationMode,
         run_metadata: null,
         context: ctx,
+        package_verified: false,
+        integrity_mode: 'live_unsealed',
+        legacy: false,
+        coverage: ctx.coverage || null,
+        coverage_status: ctx.coverage?.coverage_status || 'indeterminate',
+        determination_status: ctx.coverage?.determination_status || 'indeterminate',
       };
     } catch (err) {
       throw new LiveInspectionFailedError(target, err.message);
@@ -259,6 +277,13 @@ export async function resolveEvidenceSource(root, options = {}) {
             integrity_hash: verification.package_hash,
             generation_mode: generationMode,
             run_metadata: verification.manifest,
+            checksums_verified: verification.checksumsVerified,
+            package_verified: verification.verified === true && verification.integrity_mode === 'sealed',
+            integrity_mode: verification.integrity_mode,
+            legacy: verification.legacy === true,
+            coverage: verification.coverage,
+            coverage_status: verification.coverage_status,
+            determination_status: verification.determination_status,
           };
         } catch {
           // Try next candidate
@@ -278,6 +303,12 @@ export async function resolveEvidenceSource(root, options = {}) {
       integrity_hash: null,
       generation_mode: 'NON_CONTRACTUAL_SAMPLE',
       run_metadata: null,
+      package_verified: false,
+      integrity_mode: 'sample_unverified',
+      legacy: false,
+      coverage: null,
+      coverage_status: 'indeterminate',
+      determination_status: 'indeterminate',
     };
   }
 

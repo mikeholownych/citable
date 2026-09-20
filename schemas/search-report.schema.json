@@ -90,7 +90,14 @@
         "source_identifier": { "type": ["string", "null"] },
         "source_findings_count": { "type": "integer", "minimum": 0 },
         "integrity_hash": { "type": ["string", "null"] },
-        "synthetic_evidence": { "type": "boolean" }
+        "synthetic_evidence": { "type": "boolean" },
+        "package_verified": { "type": "boolean" },
+        "integrity_mode": { "type": "string" },
+        "legacy": { "type": "boolean" },
+        "coverage_status": { "type": "string" },
+        "determination_status": { "type": "string" },
+        "evaluated": { "type": ["integer", "null"], "minimum": 0 },
+        "eligible": { "type": ["integer", "null"], "minimum": 0 }
       },
       "additionalProperties": false
     }

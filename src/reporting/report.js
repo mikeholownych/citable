@@ -82,6 +82,9 @@ export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], 
 }
 
 export function renderMarkdownReport({ findings, manifest, summary, detectorsSkipped = [], coverage = null }) {
+  const packageVerified = manifest?.package_verified === true
+    || manifest?.integrity_mode === 'sealed'
+    || manifest?.checksums_verified === true;
   const lines = [];
   lines.push(`# Citable audit report`);
   lines.push('');
@@ -173,8 +176,8 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
     determination_status: coverage?.coverage_status === 'complete' ? 'supported' : 'indeterminate',
     evaluated: coverage?.populations?.evaluated ?? 0,
     eligible: coverage?.populations?.eligible ?? 0,
-    package_verified: true,
-    legacy: !coverage,
+    package_verified: packageVerified,
+    legacy: manifest?.integrity_mode === 'legacy_unverified' || !coverage,
   });
   return rendered;
 }

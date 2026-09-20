@@ -14,6 +14,8 @@ const UNSUPPORTED_ASSURANCE_PATTERNS = Object.freeze([
   /\b100%\s+(?:clean|verified|complete|pass(?:ed)?|coverage|conversion|funnel)/i,
   /\b(?:site[- ]wide|entire\s+(?:site|corpus|population))\s+(?:clean|verified|complete|resolved|no\s+issues)/i,
   /\b(?:all|entire)\s+(?:site|corpus|population)\s+(?:passed|verified|clean|complete)\b/i,
+  /(?:^|\n)\s*(?:verified|clean|resolved|optimal|complete|site[- ]wide|entire|none|all|passed)\b/im,
+  /<(?:h[1-6]|span|strong|div)[^>]*>\s*(?:verified|clean|resolved|optimal|complete|site[- ]wide|entire|none|all|passed)\b/i,
 ]);
 
 function normaliseContext(context = {}) {

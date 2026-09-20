@@ -31,6 +31,7 @@ import {
 } from '../shared/htmlEscape.js';
 import { extractHostname } from '../shared/domainUtils.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { assertEpistemicLanguage } from '../shared/epistemicLanguage.js';
 
 function formatVal(v, suffix = '') {
   if (v === null || v === undefined) return 'NOT OBSERVED';
@@ -620,6 +621,13 @@ export async function buildExecutiveSearchReport(root, options = {}) {
     source_findings_count: findings.length,
     integrity_hash: resolved.integrity_hash,
     synthetic_evidence: isSample,
+    package_verified: resolved.package_verified === true,
+    integrity_mode: resolved.integrity_mode || 'unknown',
+    legacy: resolved.legacy === true,
+    coverage_status: resolved.coverage_status || 'indeterminate',
+    determination_status: resolved.determination_status || 'indeterminate',
+    evaluated: resolved.coverage?.populations?.evaluated ?? null,
+    eligible: resolved.coverage?.populations?.eligible ?? null,
   };
 
   const report = {
@@ -667,7 +675,10 @@ export async function buildExecutiveSearchReport(root, options = {}) {
 /**
  * Render Search Executive Report as GitHub-flavored Markdown
  */
-export function renderSearchReportMarkdown(report) {
+export function renderSearchReportMarkdown(report, evidenceContext = null) {
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const evidenceRegisterTitle = `Verified Evidence Register (Traceability Engine) — ${verifiedScope ? 'supported scope' : 'scope-limited; package integrity is not established'}`;
   const p = report.pillars;
   const lines = [
     `# ${sanitizeForMarkdown(report.report_title)}`,
@@ -786,7 +797,7 @@ export function renderSearchReportMarkdown(report) {
     `- **Consent Mode Data Loss**: ${formatVal(p[14].data.consent_mode_v2_loss_pct, '%')}`,
     `- **Limitations**: ${(p[14].data.known_limitations || []).map((l) => sanitizeForMarkdown(l)).join('; ')}`,
     ``,
-    `## 15. Verified Evidence Register (Traceability Engine) — references are scope-limited`,
+    `## 15. ${evidenceRegisterTitle}`,
     `| Evidence ID | Source | Methodology | Confidence | Observation Date |`,
     `| :--- | :--- | :--- | :--- | :--- |`,
     ...report.evidence_register.map((e) => `| **${e.evidence_id}** | \`${escapeMarkdownTableCell(e.source)}\` | ${escapeMarkdownTableCell((e.methodology || '').slice(0, 50))}... | \`${e.confidence_level}\` | ${e.observation_date} |`),
@@ -806,15 +817,24 @@ export function renderSearchReportMarkdown(report) {
     ``
   );
 
-  return lines.join('\n');
+  const rendered = lines.join('\n');
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
  * Render Search Executive Report as Standalone Enterprise HTML
  */
-export function renderSearchReportHtml(report) {
+export function renderSearchReportHtml(report, evidenceContext = null) {
   const p = report.pillars;
-  return `<!DOCTYPE html>
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const evidenceRegisterTitle = verifiedScope
+    ? 'Verified Evidence Register'
+    : 'Evidence Register (scope-limited; verified status not established)';
+  const readinessLabel = verifiedScope ? (report.overall_readiness_score >= 70 ? 'Strong observed posture' : 'Needs optimization') : 'Not established';
+  const cwvLabel = verifiedScope && p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'No flagged blockers' : 'Not established';
+  const rendered = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -861,7 +881,7 @@ export function renderSearchReportHtml(report) {
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Composite Search Readiness</div>
         <div class="card-num">${report.overall_readiness_score} / 100</div>
-        <span class="badge ${report.overall_readiness_score >= 70 ? 'badge-success' : 'badge-warning'}">${report.overall_readiness_score >= 70 ? 'Optimal' : 'Needs Optimization'}</span>
+        <span class="badge ${verifiedScope && report.overall_readiness_score >= 70 ? 'badge-success' : 'badge-warning'}">${readinessLabel}</span>
       </div>
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">AEO Direct Extraction</div>
@@ -876,11 +896,11 @@ export function renderSearchReportHtml(report) {
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Core Web Vitals Blockers</div>
         <div class="card-num">${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)}</div>
-        <span class="badge ${p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'badge-success' : 'badge-danger'}">${p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'Clean' : 'Action Required'}</span>
+        <span class="badge ${verifiedScope && p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'badge-success' : 'badge-danger'}">${cwvLabel}</span>
       </div>
     </div>
 
-    <h2 class="section-title">Verified Evidence Register (${report.evidence_register.length} Observations)</h2>
+    <h2 class="section-title">${evidenceRegisterTitle} (${report.evidence_register.length} Observations)</h2>
     <table>
       <thead>
         <tr>
@@ -915,6 +935,8 @@ export function renderSearchReportHtml(report) {
   </div>
 </body>
 </html>`;
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
@@ -922,15 +944,16 @@ export function renderSearchReportHtml(report) {
  */
 export async function exportExecutiveSearchReport(root, options = {}) {
   const report = await buildExecutiveSearchReport(root, options);
+  const evidenceContext = report.generation_provenance;
   const format = options.format || 'markdown';
   let content = '';
 
   if (format === 'html' || format === 'html-brief') {
-    content = renderSearchReportHtml(report);
+    content = renderSearchReportHtml(report, evidenceContext);
   } else if (format === 'json') {
     content = JSON.stringify(report, null, 2);
   } else {
-    content = renderSearchReportMarkdown(report);
+    content = renderSearchReportMarkdown(report, evidenceContext);
   }
 
   let outputPath = null;
