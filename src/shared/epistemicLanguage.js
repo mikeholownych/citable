@@ -28,6 +28,20 @@ function normaliseContext(context = {}) {
   return { coverage, determination, evaluated, eligible, packageVerified, legacy };
 }
 
+export function hasVerifiedEvidenceScope(context = {}) {
+  const state = normaliseContext(context);
+  return state.packageVerified === true
+    && context.integrity_mode === 'sealed'
+    && !state.legacy
+    && state.coverage === 'complete'
+    && state.determination === 'supported'
+    && Number.isInteger(state.evaluated)
+    && Number.isInteger(state.eligible)
+    && state.evaluated > 0
+    && state.eligible > 0
+    && state.evaluated === state.eligible;
+}
+
 /**
  * Find assurance phrases that are unsafe for a presentation context.
  * Complete, supported, verified packages may use the phrases when the caller
@@ -36,12 +50,7 @@ function normaliseContext(context = {}) {
 export function findEpistemicLanguageViolations(text, context = {}) {
   const value = String(text ?? '');
   const state = normaliseContext(context);
-  const cannotClaimCorpus = state.coverage !== 'complete'
-    || state.determination !== 'supported'
-    || state.legacy
-    || state.packageVerified === false
-    || state.evaluated === 0
-    || (state.eligible === 0);
+  const cannotClaimCorpus = !hasVerifiedEvidenceScope(context);
   if (!cannotClaimCorpus) return [];
   return UNSUPPORTED_ASSURANCE_PATTERNS
     .map((pattern) => {

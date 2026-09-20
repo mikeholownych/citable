@@ -31,7 +31,7 @@ import {
 } from '../shared/htmlEscape.js';
 import { extractHostname } from '../shared/domainUtils.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
-import { assertEpistemicLanguage } from '../shared/epistemicLanguage.js';
+import { assertEpistemicLanguage, hasVerifiedEvidenceScope } from '../shared/epistemicLanguage.js';
 
 function formatVal(v, suffix = '') {
   if (v === null || v === undefined) return 'NOT OBSERVED';
@@ -677,12 +677,12 @@ export async function buildExecutiveSearchReport(root, options = {}) {
  */
 export function renderSearchReportMarkdown(report, evidenceContext = null) {
   const context = evidenceContext || report.generation_provenance || {};
-  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const verifiedScope = hasVerifiedEvidenceScope(context);
   const scopedValue = (value) => {
     if (!verifiedScope && typeof value === 'string' && /^(?:verified|clean|resolved|optimal|passed)$/i.test(value)) return 'NOT ESTABLISHED';
     return value;
   };
-  const evidenceRegisterTitle = `Verified Evidence Register (Traceability Engine) — ${verifiedScope ? 'supported scope' : 'scope-limited; package integrity is not established'}`;
+  const evidenceRegisterTitle = `${verifiedScope ? 'Verified Evidence Register' : 'Evidence Register (scope-limited; verified status not established)'} (Traceability Engine)`;
   const p = report.pillars;
   const lines = [
     `# ${sanitizeForMarkdown(report.report_title)}`,
@@ -832,7 +832,7 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
 export function renderSearchReportHtml(report, evidenceContext = null) {
   const p = report.pillars;
   const context = evidenceContext || report.generation_provenance || {};
-  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const verifiedScope = hasVerifiedEvidenceScope(context);
   const evidenceRegisterTitle = verifiedScope
     ? 'Verified Evidence Register'
     : 'Evidence Register (scope-limited; verified status not established)';

@@ -50,7 +50,7 @@ test('empty, legacy, and unverified packages cannot render maximal assurance', (
 });
 
 test('supported evidence permits explicitly scoped assurance language', () => {
-  const context = { coverage_status: 'complete', determination_status: 'supported', evaluated: 12, eligible: 12, package_verified: true };
+  const context = { coverage_status: 'complete', determination_status: 'supported', evaluated: 12, eligible: 12, package_verified: true, integrity_mode: 'sealed' };
   assert.deepEqual(findEpistemicLanguageViolations('All 12 evaluated resources passed the declared detector.', context), []);
   assert.doesNotThrow(() => assertEpistemicLanguage('The package is complete and checksum-verified.', context));
 });
@@ -101,10 +101,12 @@ test('search and CRO Markdown/HTML renderers qualify incomplete, legacy, empty, 
       assert.doesNotMatch(output, /100% conversion funnel|verified[- ]clean|site[- ]wide clean claim/i);
       assert.doesNotMatch(output, /GA4\s*&\s*GSC[^\n]*(?:VERIFIED\s*\/\s*VERIFIED|\bCLEAN\b|\bOPTIMAL\b)/i);
       assert.doesNotMatch(output, /Statistically verified outcomes verified/i);
+      assert.doesNotMatch(output, /Verified (?:Evidence|Conversion Evidence) Register/i);
+      assert.doesNotMatch(output, /Verified Under Controlled Experiments/i);
     }
   }
 
-  const complete = { coverage_status: 'complete', determination_status: 'supported', evaluated: 8, eligible: 8, package_verified: true, causal_evidence_verified: true };
+  const complete = { coverage_status: 'complete', determination_status: 'supported', evaluated: 8, eligible: 8, package_verified: true, integrity_mode: 'sealed', causal_evidence_verified: true };
   assert.match(renderSearchReportMarkdown(search, complete), /GA4 & GSC/);
   assert.match(renderCroReportMarkdown(cro, complete), /Verified Under Controlled Experiments/);
 });

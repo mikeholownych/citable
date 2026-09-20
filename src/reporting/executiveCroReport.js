@@ -29,7 +29,7 @@ import {
 } from '../shared/htmlEscape.js';
 import { extractHostname } from '../shared/domainUtils.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
-import { assertEpistemicLanguage } from '../shared/epistemicLanguage.js';
+import { assertEpistemicLanguage, hasVerifiedEvidenceScope } from '../shared/epistemicLanguage.js';
 
 function formatVal(v, suffix = '') {
   if (v === null || v === undefined) return 'NOT OBSERVED';
@@ -598,9 +598,9 @@ export async function buildExecutiveCroReport(root, options = {}) {
  */
 export function renderCroReportMarkdown(report, evidenceContext = null) {
   const context = evidenceContext || report.generation_provenance || {};
-  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const verifiedScope = hasVerifiedEvidenceScope(context);
   const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
-  const evidenceRegisterTitle = `Verified Conversion Evidence Register — ${verifiedScope ? 'supported scope' : 'scope-limited; verified status not established'}`;
+  const evidenceRegisterTitle = `${verifiedScope ? 'Verified Conversion Evidence Register' : 'Conversion Evidence Register (scope-limited; verified status not established)'}`;
   const p = report.pillars;
   const ds = report.decision_summary;
   const lines = [
@@ -625,7 +625,7 @@ export function renderCroReportMarkdown(report, evidenceContext = null) {
     `*(Testable causal predictions requiring validation under controlled experimentation)*`,
     ...ds.evidence_supported_hypotheses.map((h) => `- [ ] **[HYPOTHESIS]** ${sanitizeForMarkdown(h)}`),
     ``,
-    `### 3. Causal Findings (Verified Under Controlled Experiments) — ${causalEvidenceVerified ? 'supported causal evidence' : 'causal evidence not established'}`,
+    `### 3. ${causalEvidenceVerified ? 'Causal Findings (Verified Under Controlled Experiments)' : 'Causal Findings (Causal Evidence Not Established)'}`,
     `*(${causalEvidenceVerified ? 'Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails' : 'No current causal outcome is established from this report; controlled experiment evidence is required'})*`,
     ...ds.causal_findings.map((c) => `- [=] **[CAUSAL]** ${sanitizeForMarkdown(c)}`),
     ``,
@@ -744,7 +744,7 @@ export function renderCroReportHtml(report, evidenceContext = null) {
   const p = report.pillars;
   const ds = report.decision_summary;
   const context = evidenceContext || report.generation_provenance || {};
-  const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const verifiedScope = hasVerifiedEvidenceScope(context);
   const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
   const evidenceRegisterTitle = verifiedScope
     ? 'Verified Conversion Evidence Register'
