@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 181 across 19 namespaces |
-| Tests | 846 pass across 29 test suites |
+| Tests | 861 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 123 packaged files per provider; 4 managed Claude profiles |
