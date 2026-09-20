@@ -1,0 +1,27 @@
+{
+  "$id": "citable://schemas/research-dataset.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Immutable research dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "dataset_version", "declared_purpose", "declared_population", "population_size", "inclusion_criteria", "exclusion_criteria", "collection", "source_references", "observation_references", "normalization", "derivation_references", "coverage", "coverage_status", "limitations", "dataset_hash"],
+  "properties": {
+    "dataset_id": { "type": "string", "minLength": 1 },
+    "dataset_version": { "type": "integer", "minimum": 1 },
+    "declared_purpose": { "type": "string", "minLength": 1 },
+    "declared_population": { "type": "object", "additionalProperties": false, "required": ["type", "id"], "properties": { "type": { "type": "string", "minLength": 1 }, "id": { "type": "string", "minLength": 1 }, "size": { "type": ["integer", "null"], "minimum": 0 } } },
+    "population_size": { "type": ["integer", "null"], "minimum": 0 },
+    "inclusion_criteria": { "type": "array", "items": { "type": "string" } },
+    "exclusion_criteria": { "type": "array", "items": { "type": "string" } },
+    "collection": { "type": "object", "additionalProperties": false, "required": ["started_at", "ended_at"], "properties": { "started_at": { "type": "string", "format": "date-time" }, "ended_at": { "type": "string", "format": "date-time" } } },
+    "source_references": { "type": "array", "items": { "type": "string" } },
+    "source_retrieval_timestamps": { "type": "array", "items": { "type": "string", "format": "date-time" } },
+    "observation_references": { "type": "array", "items": { "type": "string" } },
+    "normalization": { "type": "object", "additionalProperties": false, "required": ["method", "version"], "properties": { "method": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "derivation_references": { "type": "array", "items": { "type": "string" } },
+    "coverage": { "type": "object", "additionalProperties": false, "required": ["declared", "retrieved", "evaluated", "unavailable", "failed"], "properties": { "declared": { "type": "integer", "minimum": 0 }, "retrieved": { "type": "integer", "minimum": 0 }, "evaluated": { "type": "integer", "minimum": 0 }, "unavailable": { "type": "integer", "minimum": 0 }, "failed": { "type": "integer", "minimum": 0 } } },
+    "coverage_status": { "type": "string", "enum": ["complete_for_declared_population", "partial", "truncated", "indeterminate", "error"] },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "dataset_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

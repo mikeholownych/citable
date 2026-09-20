@@ -1,0 +1,32 @@
+{
+  "$id": "citable://schemas/external-observation.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Provider-neutral external observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observation_id", "observation_type", "subject", "source", "collector", "observed_at", "population", "observation_status", "retrieval_status", "data", "evidence_hash"],
+  "properties": {
+    "observation_id": { "type": "string", "minLength": 1 },
+    "observation_type": { "type": "string", "enum": ["PAGE_OBSERVATION", "EXTERNAL_OBSERVATION", "DERIVED_OBSERVATION"] },
+    "subject": { "type": "object", "additionalProperties": false, "required": ["type", "id"], "properties": { "type": { "type": "string", "minLength": 1 }, "id": { "type": "string", "minLength": 1 } } },
+    "source": { "type": "object", "additionalProperties": false, "required": ["provider", "method", "authority"], "properties": { "provider": { "type": "string", "minLength": 1 }, "method": { "type": "string", "minLength": 1 }, "authority": { "type": "string", "enum": ["first_party", "external_provider", "third_party", "synthetic", "inferred", "unknown"] }, "account_or_property": { "type": ["string", "null"] } } },
+    "collector": { "type": "object", "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "parser": { "type": ["object", "null"], "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "configuration": { "type": ["object", "null"], "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "retrieved_at": { "type": ["string", "null"], "format": "date-time" },
+    "executed_at": { "type": ["string", "null"], "format": "date-time" },
+    "population": { "$ref": "#/definitions/population" },
+    "observation_status": { "type": "string", "enum": ["observed", "not_observed", "incomplete", "indeterminate", "failed"] },
+    "retrieval_status": { "type": "string", "enum": ["retrieved", "not_retrieved", "partial", "indeterminate", "failed"] },
+    "determination_status": { "type": ["string", "null"], "enum": ["pass", "fail", "warning", "indeterminate", "not_tested", "error", "not_applicable", null] },
+    "data": { "type": "object" },
+    "context": { "type": "object", "additionalProperties": false, "properties": { "observed": { "type": "object" }, "supplied": { "type": "object" } } },
+    "lineage": { "type": "object", "additionalProperties": false, "properties": { "source_evidence": { "type": "array", "items": { "type": "string" } }, "predecessor_references": { "type": "array", "items": { "type": "string" } }, "successor_references": { "type": "array", "items": { "type": "string" } }, "derivation_inputs": { "type": "array", "items": { "type": "string" } }, "package_reference": { "type": ["string", "null"] } } },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "evidence_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "definitions": {
+    "population": { "type": "object", "additionalProperties": false, "required": ["declared", "observed", "retrieved", "evaluated", "unavailable", "failed"], "properties": { "declared": { "type": ["object", "null"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "size": { "type": "integer", "minimum": 0 } } }, "observed": { "type": "integer", "minimum": 0 }, "retrieved": { "type": "integer", "minimum": 0 }, "evaluated": { "type": "integer", "minimum": 0 }, "unavailable": { "type": "integer", "minimum": 0 }, "failed": { "type": "integer", "minimum": 0 } } }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$id": "citable://schemas/claim-evidence.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claim to evidence lineage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim_id", "claim_version", "proposition", "declared_scope", "evidence_references", "observation_references", "dataset_references", "derivation_references", "assertion", "limitations", "claim_hash"],
+  "properties": {
+    "claim_id": { "type": "string", "minLength": 1 },
+    "claim_version": { "type": "integer", "minimum": 1 },
+    "proposition": { "type": "string", "minLength": 3 },
+    "declared_scope": { "type": "object", "additionalProperties": false, "required": ["type", "generalization"], "properties": { "type": { "type": "string", "enum": ["observation", "dataset", "declared_population"] }, "observation_reference": { "type": "string" }, "dataset_reference": { "type": "string" }, "generalization": { "type": "string", "enum": ["bounded", "universal"] } } },
+    "evidence_references": { "type": "array", "items": { "type": "string" } },
+    "observation_references": { "type": "array", "items": { "type": "string" } },
+    "dataset_references": { "type": "array", "items": { "type": "string" } },
+    "derivation_references": { "type": "array", "items": { "type": "string" } },
+    "assertion": { "type": "object" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "claim_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

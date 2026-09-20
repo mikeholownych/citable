@@ -1,0 +1,16 @@
+{
+  "$id": "citable://schemas/external-comparison.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "External evidence comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["comparison_id", "left_reference", "right_reference", "status", "dimensions", "limitations"],
+  "properties": {
+    "comparison_id": { "type": "string", "minLength": 1 },
+    "left_reference": { "type": "string", "minLength": 1 },
+    "right_reference": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["COMPARABLE", "PARTIALLY_COMPARABLE", "NOT_COMPARABLE", "INDETERMINATE"] },
+    "dimensions": { "type": "object", "additionalProperties": { "type": "string", "enum": ["match", "mismatch", "missing", "unknown"] } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}

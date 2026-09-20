@@ -1,0 +1,18 @@
+{
+  "$id": "citable://schemas/claim-verification.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bounded claim verification result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim_id", "claim_version", "overall", "proposition_support", "scope_support", "reasons", "lineage"],
+  "properties": {
+    "claim_id": { "type": "string" },
+    "claim_version": { "type": "integer", "minimum": 1 },
+    "overall": { "type": "string", "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "INDETERMINATE", "NOT_OBSERVED"] },
+    "proposition_support": { "type": "string", "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "INDETERMINATE", "NOT_OBSERVED"] },
+    "scope_support": { "type": "string", "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "INDETERMINATE", "NOT_OBSERVED"] },
+    "reasons": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } } } },
+    "lineage": { "type": "object", "additionalProperties": false, "required": ["claim_reference", "observation_references", "dataset_references", "derivation_references"], "properties": { "claim_reference": { "type": "string" }, "observation_references": { "type": "array", "items": { "type": "string" } }, "dataset_references": { "type": "array", "items": { "type": "string" } }, "derivation_references": { "type": "array", "items": { "type": "string" } } } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}
