@@ -126,6 +126,7 @@ export function verifyRunPackage(runDir, options = {}) {
   let checksumsVerified = false;
   let artifactHashes = {};
   const artifactBytes = new Map();
+  const retainedArtifactNames = new Set(['findings.json', 'coverage.json', 'summary.json']);
   if (fs.existsSync(checksumsPath)) {
     if (fs.lstatSync(checksumsPath).isSymbolicLink()) throw new RunVerificationError('checksums.json is a symbolic link', { code: 'PACKAGE_SYMLINK', runDir, file: 'checksums.json' });
     let checksums;
@@ -165,7 +166,7 @@ export function verifyRunPackage(runDir, options = {}) {
         throw new RunVerificationError(`checksum artifact is not a regular file: ${relPath}`, { code: 'PACKAGE_SYMLINK', runDir, file: relPath });
       }
       const bytes = readStableBytes(artifactPath, runDir, relPath);
-      artifactBytes.set(relPath, bytes);
+      if (retainedArtifactNames.has(relPath)) artifactBytes.set(relPath, bytes);
       const actualHash = sha256(bytes);
       if (actualHash !== expectedHash) {
         tamperedFiles.push({ file: relPath, expected: expectedHash, actual: actualHash });

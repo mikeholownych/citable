@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRun } from '../../src/evidence/run.js';
 import { loadVerifiedRun } from '../../src/shared/verifiedRunLoader.js';
+import { verifyRunPackage } from '../../src/shared/runPackageVerifier.js';
 import { readJson, sha256File, writeJson } from '../../src/shared/io.js';
 
 function root() {
@@ -135,4 +136,14 @@ test('writeArtifact rejects symlinked artifact targets and parents', () => {
   fs.writeFileSync(path.join(outside, 'target.json'), '{}');
   fs.symlinkSync(path.join(outside, 'target.json'), path.join(run.dir, 'target.json'));
   assert.throws(() => run.writeArtifact('target.json', {}), /symbolic link|unsafe/i);
+});
+
+test('sealed verification does not retain bulk artifact bytes', () => {
+  const { run } = makeRun();
+  run.writeArtifact('pages/large-response.html', 'x'.repeat(1024 * 1024));
+  run.finalize('completed');
+  const verified = verifyRunPackage(run.dir, { requireCompleted: true });
+  assert.equal(verified.artifactBytes.has('pages/large-response.html'), false);
+  assert.equal(verified.artifactBytes.has('findings.json'), true);
+  assert.ok(verified.artifactHashes['pages/large-response.html']);
 });
