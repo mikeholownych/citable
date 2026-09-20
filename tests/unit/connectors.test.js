@@ -197,8 +197,8 @@ test('Webflow connector discovers properties, validates credentials, reads page,
       }
       return json(storedPage);
     }
-    if (url.endsWith('/sites/wf-site-1/pages')) return json({ pages: [storedPage] });
-    if (url.endsWith('/sites/wf-site-1/collections')) return json({ collections: [{ id: 'col-1' }] });
+    if (url.includes('/sites/wf-site-1/pages')) return json({ pages: [storedPage] });
+    if (url.includes('/sites/wf-site-1/collections')) return json({ collections: [{ id: 'col-1' }] });
     if (url.includes('/collections/col-1/items')) return json({ items: [{ id: 'item-1' }] });
     return json({ error: 'not found' }, 404);
   };
@@ -249,4 +249,3 @@ test('Webflow connector discovers properties, validates credentials, reads page,
   assert.equal(updatedPage.meta_title, 'Updated SEO Title');
   assert.equal(updatedPage.content_hash, live.after_hash);
 });
-

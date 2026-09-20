@@ -44,6 +44,7 @@ export const ga4Connector = {
     let pagesRetrieved = 0;
     let continuationState = null;
     let providerTotal = null;
+    let connectorError = null;
     let offset = 0;
     do {
       pagesRequested += 1;
@@ -57,7 +58,7 @@ export const ga4Connector = {
           },
         });
       } catch (error) {
-        if (error?.connectorState) throw error;
+        connectorError ||= error;
         errors.push(`offset ${offset}: ${errorMessage(error)}`);
         continuationState = { offset };
         break;
@@ -78,7 +79,7 @@ export const ga4Connector = {
         : offset >= result.rowCount || !pageRows.length) break;
       if (pagesRequested >= maxPages) { continuationState = { offset }; break; }
     } while (true);
-    const providerCompleteness = limitations.some((item) => /data loss/i.test(item)) ? 'unknown' : 'declared';
+    const providerCompleteness = limitations.some((item) => /data loss/i.test(item)) || providerTotal === null ? 'unknown' : 'declared';
     const collection = collectionResult({
       items,
       paginationState: { pages_requested: pagesRequested, pages_retrieved: pagesRetrieved, boundary: { max_pages: maxPages } },
@@ -88,6 +89,6 @@ export const ga4Connector = {
       limitations: [...new Set([...limitations, 'GA4 reporting identity, thresholding, attribution, and consent configuration affect results.', 'Sync is filtered to Organic Search sessions.'])],
       errors,
     });
-    return { rows, cursor: endDate, limitations: collection.limitations, collection };
+    return { rows, cursor: endDate, limitations: collection.limitations, collection, ...(connectorError ? { connectorError } : {}) };
   },
 };

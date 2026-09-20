@@ -79,6 +79,15 @@ export async function syncConnection(root, { connectionId, startDate, endDate, a
     }
     throw error;
   }
+  // Connector collection may preserve a partial result even when the provider
+  // reports an authorization/quota state. Keep the result available to direct
+  // connector callers, while retaining the command's legacy state transition.
+  if (result.connectorError?.connectorState) {
+    const error = result.connectorError;
+    const failed = { ...loaded.registries.connections, entries: loaded.registries.connections.entries.map((item) => item.connection_id === connectionId ? { ...item, state: error.connectorState, limitations: [...(result.collection?.errors || []), 'Connector synchronization did not complete; inspect collection errors.'] } : item) };
+    saveRegistry(root, 'connections', failed);
+    throw error;
+  }
   const collection = result.collection || {
     schema_version: 1,
     items: result.rows,

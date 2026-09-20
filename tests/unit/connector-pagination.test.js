@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { collectionResult } from '../../src/connectors/collectionResult.js';
 import { wordpressConnector } from '../../src/connectors/wordpress.js';
 import { webflowConnector } from '../../src/connectors/webflow.js';
+import { gscConnector } from '../../src/connectors/gsc.js';
+import { ga4Connector } from '../../src/connectors/ga4.js';
 
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
@@ -75,4 +77,47 @@ test('Webflow exposes a continuation when a configured collection boundary is re
   assert.equal(result.collection.provider_reported_total, 205);
   assert.equal(result.collection.retrieved_total, 100);
   assert.ok(result.collection.continuation_state);
+});
+
+test('GSC preserves a provider-bounded collection over 50 rows', async () => {
+  const result = await gscConnector.sync(
+    { property_id: 'sc-domain:example.test' },
+    [{ external_name: 'clicks', dimensions: ['date'] }],
+    { token: 'test', fetchImpl: async () => json({ rows: Array.from({ length: 101 }, (_, i) => ({ keys: ['2026-09-19'], clicks: i })) }) },
+  );
+  assert.equal(result.collection.retrieved_total, 101);
+  assert.equal(result.collection.coverage_status, 'provider_bounded');
+  assert.match(result.collection.limitations.join(' '), /top rows/i);
+});
+
+test('GA4 preserves a provider-bounded collection over 100 rows', async () => {
+  const result = await ga4Connector.sync(
+    { property_id: '123' },
+    [{ external_name: 'sessions', dimensions: ['date'] }],
+    { token: 'test', fetchImpl: async () => json({ rows: Array.from({ length: 101 }, () => ({ dimensionValues: [{ value: '20260919' }, { value: '/a' }], metricValues: [{ value: '1' }] })) }) },
+  );
+  assert.equal(result.collection.retrieved_total, 101);
+  assert.equal(result.collection.coverage_status, 'provider_bounded');
+});
+
+test('connector HTTP/provider failures remain visible in partial collections', async () => {
+  const result = await webflowConnector.sync(
+    { property_id: 'wf-site' },
+    [{ external_name: 'pages' }],
+    { token: 'test', fetchImpl: async () => json({ error: 'temporary failure' }, 503) },
+  );
+  assert.equal(result.collection.coverage_status, 'indeterminate');
+  assert.equal(result.collection.retrieved_total, 0);
+  assert.ok(result.collection.errors.length > 0);
+  assert.ok(result.collection.continuation_state);
+});
+
+test('malformed Webflow continuation is indeterminate and retained', async () => {
+  const result = await webflowConnector.sync(
+    { property_id: 'wf-site' },
+    [{ external_name: 'pages' }],
+    { token: 'test', fetchImpl: async () => json({ pages: [{ id: 'p1' }], pagination: { nextOffset: 'bad' } }) },
+  );
+  assert.equal(result.collection.coverage_status, 'indeterminate');
+  assert.match(result.collection.errors.join(' '), /malformed continuation/i);
 });

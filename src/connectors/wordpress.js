@@ -37,6 +37,8 @@ async function collectWordPressEndpoint(base, endpoint, context) {
   let pagesRequested = 0;
   let pagesRetrieved = 0;
   let continuationState = null;
+  let providerCompleteness = 'declared';
+  let connectorError = null;
 
   while (page <= maxPages) {
     pagesRequested += 1;
@@ -51,6 +53,7 @@ async function collectWordPressEndpoint(base, endpoint, context) {
       const headerPages = Number(response.headers.get('x-wp-totalpages'));
       if (Number.isInteger(headerTotal) && headerTotal >= 0) providerTotal = headerTotal;
       if (Number.isInteger(headerPages) && headerPages >= 1) totalPages = headerPages;
+      if (!totalPages) providerCompleteness = 'unknown';
       if (pageItems.length === 0 || (totalPages && page >= totalPages)) break;
       if (!totalPages && pageItems.length >= 100) {
         continuationState = { endpoint, page: page + 1 };
@@ -59,7 +62,7 @@ async function collectWordPressEndpoint(base, endpoint, context) {
       }
       page += 1;
     } catch (error) {
-      if (error?.connectorState) throw error;
+      connectorError ||= error;
       errors.push(`${endpoint} page ${page}: ${errorMessage(error)}`);
       continuationState = { endpoint, page };
       break;
@@ -67,7 +70,7 @@ async function collectWordPressEndpoint(base, endpoint, context) {
   }
   if (!continuationState && totalPages && page < totalPages) continuationState = { endpoint, page };
   if (continuationState && page > maxPages) limitations.push(`WordPress ${endpoint} collection reached the ${maxPages}-page boundary.`);
-  return { items, providerTotal, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
+  return { items, providerTotal, providerCompleteness, connectorError, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
 }
 
 export const wordpressConnector = {
@@ -131,6 +134,7 @@ export const wordpressConnector = {
     let continuationState = null;
     let providerTotal = 0;
     let providerTotalKnown = true;
+    let connectorError = null;
 
     if (metricNames.has('published_posts')) {
       const postsResult = await collectWordPressEndpoint(base, 'posts', context);
@@ -140,6 +144,8 @@ export const wordpressConnector = {
       pagesRequested += postsResult.pagesRequested;
       pagesRetrieved += postsResult.pagesRetrieved;
       continuationState ||= postsResult.continuationState;
+      connectorError ||= postsResult.connectorError;
+      if (postsResult.providerCompleteness === 'unknown') providerTotalKnown = false;
       if (postsResult.providerTotal === null) providerTotalKnown = false; else providerTotal += postsResult.providerTotal;
       const postMetric = metrics.find((m) => m.external_name === 'published_posts');
       rows.push({
@@ -158,6 +164,8 @@ export const wordpressConnector = {
       pagesRequested += pagesResult.pagesRequested;
       pagesRetrieved += pagesResult.pagesRetrieved;
       continuationState ||= pagesResult.continuationState;
+      connectorError ||= pagesResult.connectorError;
+      if (pagesResult.providerCompleteness === 'unknown') providerTotalKnown = false;
       if (pagesResult.providerTotal === null) providerTotalKnown = false; else providerTotal += pagesResult.providerTotal;
       const pageMetric = metrics.find((m) => m.external_name === 'published_pages');
       rows.push({
@@ -173,6 +181,7 @@ export const wordpressConnector = {
       paginationState: { pages_requested: pagesRequested, pages_retrieved: pagesRetrieved, boundary: { max_pages: paginationBoundary(context) } },
       providerReportedTotal: providerTotalKnown ? providerTotal : null,
       continuationState,
+      providerCompleteness: providerTotalKnown ? 'declared' : 'unknown',
       limitations: [...collectionLimitations, 'WordPress REST API collection is bounded to accessible posts and pages.', 'Custom post types outside standard posts and pages require dedicated endpoint parameters.'],
       errors: collectionErrors,
     });
@@ -181,6 +190,7 @@ export const wordpressConnector = {
       cursor: endDate,
       limitations: collection.limitations,
       collection,
+      ...(connectorError ? { connectorError } : {}),
     };
   },
 

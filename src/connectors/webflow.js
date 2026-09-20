@@ -37,11 +37,13 @@ async function collectWebflowList(url, field, context) {
   let cursor = null;
   let nextUrl = null;
   let continuationState = null;
+  let providerCompleteness = 'declared';
+  let connectorError = null;
   while (pagesRequested < maxPages) {
     pagesRequested += 1;
     const query = cursor
       ? `?limit=100&cursor=${encodeURIComponent(cursor)}`
-      : (offset ? `?limit=100&offset=${offset}` : '');
+      : `?limit=100${offset ? `&offset=${offset}` : ''}`;
     let result;
     try {
       result = await providerRequest(nextUrl || `${url}${query}`, context);
@@ -55,14 +57,30 @@ async function collectWebflowList(url, field, context) {
       const providerNextUrl = typeof result.next === 'string' ? result.next : (typeof pagination.next === 'string' ? pagination.next : null);
       const nextOffset = result.nextOffset ?? pagination.nextOffset ?? null;
       nextUrl = null;
+      if (next !== null && (typeof next !== 'string' || !next.trim())) {
+        errors.push(`${field} page ${pagesRequested}: malformed continuation cursor`);
+        continuationState = { cursor: next };
+        break;
+      }
+      if (providerNextUrl !== null && (!/^https:\/\//i.test(providerNextUrl))) {
+        errors.push(`${field} page ${pagesRequested}: malformed continuation URL`);
+        continuationState = { next: providerNextUrl };
+        break;
+      }
       if (next) cursor = String(next);
       else if (providerNextUrl) { nextUrl = providerNextUrl; cursor = null; }
+      else if (nextOffset !== null && (!Number.isInteger(nextOffset) || nextOffset <= offset)) {
+        errors.push(`${field} page ${pagesRequested}: malformed continuation offset`);
+        continuationState = { offset: nextOffset };
+        break;
+      }
+      else if (providerTotal !== null && items.length >= providerTotal) break;
       else if (Number.isInteger(nextOffset) && nextOffset >= 0) { offset = nextOffset; cursor = null; }
       else if (pageItems.length >= 100 && (providerTotal === null || items.length < providerTotal)) offset += pageItems.length;
-      else break;
+      else { providerCompleteness = 'unknown'; break; }
       if (providerTotal !== null && items.length >= providerTotal) break;
     } catch (error) {
-      if (error?.connectorState) throw error;
+      connectorError ||= error;
       errors.push(`${field} page ${pagesRequested}: ${errorMessage(error)}`);
       continuationState = cursor ? { cursor } : nextUrl ? { next: nextUrl } : { offset };
       break;
@@ -72,7 +90,7 @@ async function collectWebflowList(url, field, context) {
     continuationState = cursor ? { cursor } : { offset: offset + 100 };
     limitations.push(`Webflow ${field} collection reached the ${maxPages}-page boundary.`);
   }
-  return { items, providerTotal, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
+  return { items, providerTotal, providerCompleteness, connectorError, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
 }
 
 export const webflowConnector = {
@@ -121,6 +139,7 @@ export const webflowConnector = {
     let continuationState = null;
     let providerTotal = 0;
     let providerTotalKnown = true;
+    let connectorError = null;
 
     if (metricNames.has('pages')) {
       const pageResult = await collectWebflowList(`${BASE}/sites/${encodeURIComponent(siteId)}/pages`, 'pages', context);
@@ -129,6 +148,8 @@ export const webflowConnector = {
       errors.push(...pageResult.errors); limitations.push(...pageResult.limitations);
       pagesRequested += pageResult.pagesRequested; pagesRetrieved += pageResult.pagesRetrieved;
       continuationState ||= pageResult.continuationState;
+      connectorError ||= pageResult.connectorError;
+      if (pageResult.providerCompleteness === 'unknown') providerTotalKnown = false;
       if (pageResult.providerTotal === null) providerTotalKnown = false; else providerTotal += pageResult.providerTotal;
       const pageMetric = metrics.find((m) => m.external_name === 'pages');
       rows.push({
@@ -146,6 +167,8 @@ export const webflowConnector = {
       errors.push(...collectionsResult.errors); limitations.push(...collectionsResult.limitations);
       pagesRequested += collectionsResult.pagesRequested; pagesRetrieved += collectionsResult.pagesRetrieved;
       continuationState ||= collectionsResult.continuationState;
+      connectorError ||= collectionsResult.connectorError;
+      if (collectionsResult.providerCompleteness === 'unknown') providerTotalKnown = false;
       if (collectionsResult.providerTotal === null) providerTotalKnown = false; else providerTotal += collectionsResult.providerTotal;
 
       if (metricNames.has('collections')) {
@@ -167,6 +190,8 @@ export const webflowConnector = {
           errors.push(...itemsResult.errors); limitations.push(...itemsResult.limitations);
           pagesRequested += itemsResult.pagesRequested; pagesRetrieved += itemsResult.pagesRetrieved;
           continuationState ||= itemsResult.continuationState;
+          connectorError ||= itemsResult.connectorError;
+          if (itemsResult.providerCompleteness === 'unknown') providerTotalKnown = false;
           if (itemsResult.providerTotal === null) providerTotalKnown = false; else providerTotal += itemsResult.providerTotal;
         }
         const itemMetric = metrics.find((m) => m.external_name === 'items');
@@ -184,6 +209,7 @@ export const webflowConnector = {
       paginationState: { pages_requested: pagesRequested, pages_retrieved: pagesRetrieved, boundary: { max_pages: paginationBoundary(context) } },
       providerReportedTotal: providerTotalKnown ? providerTotal : null,
       continuationState,
+      providerCompleteness: providerTotalKnown ? 'declared' : 'unknown',
       limitations: [...new Set([...limitations, 'Webflow API enforces rate limits of 60 requests per minute.', 'Staged CMS changes require site publish to appear on live domains.'])],
       errors,
     });
@@ -192,6 +218,7 @@ export const webflowConnector = {
       cursor: endDate,
       limitations: collection.limitations,
       collection,
+      ...(connectorError ? { connectorError } : {}),
     };
   },
 

@@ -33,6 +33,7 @@ export const gscConnector = {
     let pagesRetrieved = 0;
     let continuationState = null;
     let providerTotal = null;
+    let connectorError = null;
     do {
       pagesRequested += 1;
       let result;
@@ -41,7 +42,7 @@ export const gscConnector = {
           ...context, method: 'POST', body: { startDate, endDate, dimensions, rowLimit: 25000, startRow, dataState: 'final' },
         });
       } catch (error) {
-        if (error?.connectorState) throw error;
+        connectorError ||= error;
         errors.push(`start row ${startRow}: ${errorMessage(error)}`);
         continuationState = { start_row: startRow };
         break;
@@ -70,6 +71,6 @@ export const gscConnector = {
       limitations: ['Search Console privacy filtering and aggregation apply.', 'Search Analytics does not guarantee every data row; the API can return top rows only.', 'Final data can still be revised by the provider.'],
       errors,
     });
-    return { rows, cursor: endDate, limitations: collection.limitations, collection };
+    return { rows, cursor: endDate, limitations: collection.limitations, collection, ...(connectorError ? { connectorError } : {}) };
   },
 };
