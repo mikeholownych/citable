@@ -247,6 +247,50 @@ test('reversed discovery order has the same normalized coverage populations', as
   assert.deepEqual(byUrl(firstPages), byUrl(secondPages));
 });
 
+test('default and explicit sequential concurrency produce identical same-fixture outputs', async () => {
+  const root = project();
+  const first = await runFixture(root, createSite257(), 500);
+  const second = await runFixture(root, createSite257(), 500, { concurrency: 1 });
+  assert.deepEqual(
+    readJson(path.join(first.dir, 'coverage.json')),
+    readJson(path.join(second.dir, 'coverage.json')),
+  );
+  const normalizeFinding = (finding) => {
+    const copy = structuredClone(finding);
+    delete copy.finding_id;
+    delete copy.run_id;
+    delete copy.timestamp;
+    if (copy.status) {
+      delete copy.status.first_seen;
+      delete copy.status.last_seen;
+    }
+    return copy;
+  };
+  assert.deepEqual(
+    readJson(path.join(first.dir, 'findings.json')).map(normalizeFinding),
+    readJson(path.join(second.dir, 'findings.json')).map(normalizeFinding),
+  );
+  assert.deepEqual(
+    readJson(path.join(first.dir, 'pages', 'index.json')),
+    readJson(path.join(second.dir, 'pages', 'index.json')),
+  );
+  for (const artifact of ['coverage.json', 'summary.json', 'inputs.json', 'report.md', 'pages/index.json']) {
+    const readOutput = (runDir, relative) => {
+      const bytes = fs.readFileSync(path.join(runDir, relative));
+      if (relative !== 'report.md') return bytes;
+      return bytes.toString()
+        .replace(/\d{8}T\d{6}-audit-[a-z0-9-]+/g, '<run-id>')
+        .replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z/g, '<timestamp>')
+        .replace(/F-[a-z0-9]+/g, '<finding>');
+    };
+    assert.deepEqual(
+      readOutput(first.dir, artifact),
+      readOutput(second.dir, artifact),
+      artifact,
+    );
+  }
+});
+
 test('every sealed execution component rejects tampering', async () => {
   const root = project();
   const result = await runFixture(root, createSite257(), 50);
