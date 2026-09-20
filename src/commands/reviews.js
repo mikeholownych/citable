@@ -41,7 +41,7 @@ export function queueReviews(root, { runId, policyId, write = false }) {
 export function prioritizeReviews(root, { write = false } = {}) {
   const { registries, problems } = loadRegistries(root); if (problems.length) throw new Error(`registry validation failed: ${problems.join('; ')}`);
   const cache = new Map();
-  const entries = registries.review_items.entries.map((item) => { const file=path.join(root,'.citable','runs',item.source_run_id,'findings.json'); if(!cache.has(file)) cache.set(file,fs.existsSync(file)?new Map(readJson(file).map(f=>[f.finding_id,f])):new Map()); const ranked=priority(item,cache.get(file).get(item.finding_id)); return {...item,priority_score:ranked.score,priority_tier:ranked.tier,missing_inputs:ranked.missing}; });
+  const entries = registries.review_items.entries.map((item) => { const file=path.join(root,'.citable','runs',item.source_run_id,'findings.json'); if(!cache.has(file)) cache.set(file,fs.existsSync(file)?new Map(loadVerifiedRun(path.dirname(file), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings.map(f=>[f.finding_id,f])):new Map()); const ranked=priority(item,cache.get(file).get(item.finding_id)); return {...item,priority_score:ranked.score,priority_tier:ranked.tier,missing_inputs:ranked.missing}; });
   if(write) saveRegistry(root,'review_items',{...registries.review_items,entries});
   return { items:entries.sort((a,b)=>b.priority_score-a.priority_score), written:write };
 }
@@ -68,7 +68,32 @@ export function selectSample(root,{planId,write=false}) {
 }
 
 export function evaluateReviews(root) {
-  const {registries,problems}=loadRegistries(root); const reviewers=new Map(registries.reviewers.entries.map(r=>[r.reviewer_id,r])); const results=[];
-  for(const item of registries.review_items.entries){const issues=[];const binding=reviewBindingHash(item);const source=path.join(root,'.citable','runs',item.source_run_id,'findings.json');const finding=fs.existsSync(source)?readJson(source).find(f=>f.finding_id===item.finding_id):null;if(!finding||sha256(JSON.stringify(finding))!==item.finding_hash)issues.push('source finding is unavailable or changed');for(const d of item.decisions){const r=reviewers.get(d.reviewer_id);const reviewRole=r?.roles.some(role=>['technical_reviewer','subject_matter_reviewer','independent_reviewer'].includes(role));if(!r||r.status!=='active'||!reviewRole||!item.assigned_reviewer_ids.includes(d.reviewer_id))issues.push(`${d.reviewer_id} is not an active assigned semantic reviewer`);if(d.review_item_hash!==binding)issues.push(`${d.reviewer_id} decision is stale`);}const verdicts=[...new Set(item.decisions.map(d=>d.verdict))];let state=item.decisions.length?'completed':'review_required';if(verdicts.length>1){state='adjudication_required';const a=reviewers.get(item.adjudication?.reviewer_id);if(item.adjudication&&a?.status==='active'&&a.roles.includes('independent_reviewer')&&item.adjudication.review_item_hash===binding)state='completed';else issues.push('reviewer disagreement requires a current decision from an active independent adjudicator');}results.push({review_item_id:item.review_item_id,state,verdict:state==='completed'&&!issues.length?(item.adjudication?.verdict||verdicts[0]):null,issues});}
-  return {ok:problems.length===0&&results.every(r=>!r.issues.length),problems,results};
+  const { registries, problems } = loadRegistries(root);
+  const reviewers = new Map(registries.reviewers.entries.map((r) => [r.reviewer_id, r]));
+  const results = [];
+  for (const item of registries.review_items.entries) {
+    const issues = [];
+    const binding = reviewBindingHash(item);
+    const source = path.join(root, '.citable', 'runs', item.source_run_id, 'findings.json');
+    const finding = fs.existsSync(source)
+      ? loadVerifiedRun(path.dirname(source), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings.find((f) => f.finding_id === item.finding_id)
+      : null;
+    if (!finding || sha256(JSON.stringify(finding)) !== item.finding_hash) issues.push('source finding is unavailable or changed');
+    for (const decision of item.decisions) {
+      const reviewer = reviewers.get(decision.reviewer_id);
+      const reviewRole = reviewer?.roles.some((role) => ['technical_reviewer', 'subject_matter_reviewer', 'independent_reviewer'].includes(role));
+      if (!reviewer || reviewer.status !== 'active' || !reviewRole || !item.assigned_reviewer_ids.includes(decision.reviewer_id)) issues.push(`${decision.reviewer_id} is not an active assigned semantic reviewer`);
+      if (decision.review_item_hash !== binding) issues.push(`${decision.reviewer_id} decision is stale`);
+    }
+    const verdicts = [...new Set(item.decisions.map((d) => d.verdict))];
+    let state = item.decisions.length ? 'completed' : 'review_required';
+    if (verdicts.length > 1) {
+      state = 'adjudication_required';
+      const adjudicator = reviewers.get(item.adjudication?.reviewer_id);
+      if (item.adjudication && adjudicator?.status === 'active' && adjudicator.roles.includes('independent_reviewer') && item.adjudication.review_item_hash === binding) state = 'completed';
+      else issues.push('reviewer disagreement requires a current decision from an active independent adjudicator');
+    }
+    results.push({ review_item_id: item.review_item_id, state, verdict: state === 'completed' && !issues.length ? (item.adjudication?.verdict || verdicts[0]) : null, issues });
+  }
+  return { ok: problems.length === 0 && results.every((r) => !r.issues.length), problems, results };
 }

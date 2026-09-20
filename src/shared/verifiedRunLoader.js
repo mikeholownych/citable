@@ -59,12 +59,12 @@ export function loadVerifiedRun(runDir, {
       requireChecksums: !allowLegacy,
       });
     } catch (error) {
-      if (!allowLegacy || !['MANIFEST_SCHEMA_INVALID', 'CHECKSUMS_MISSING', 'MANIFEST_MISSING'].includes(error.code)) throw error;
+      if (!allowLegacy || !['CHECKSUMS_MISSING', 'MANIFEST_MISSING'].includes(error.code)) throw error;
       const manifestPath = path.join(runDir, 'manifest.json');
       const manifest = fs.existsSync(manifestPath) ? readJson(manifestPath) : { run_id: path.basename(runDir), status: 'incomplete' };
       const findings = readContractArtifact(runDir, 'findings.json', null);
       const coverageFile = path.join(runDir, 'coverage.json');
-      const coverage = fs.existsSync(coverageFile) ? readJson(coverageFile) : null;
+      const coverage = fs.existsSync(coverageFile) ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json') : null;
       return {
         verified: false, verification_version: VERIFIED_RUN_LOADER_VERSION,
         integrity_mode: 'legacy_unverified', package_dir: path.resolve(runDir),

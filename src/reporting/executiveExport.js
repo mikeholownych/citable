@@ -97,14 +97,12 @@ export async function exportExecutiveReport(root, runId, {
   let coverage = null;
 
   if (targetRun) {
-    try {
-      const loaded = loadVerifiedRun(path.join(runsDir, targetRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
-      summary = loaded.summary || summary;
-      findings = loaded.findings;
-      coverage = loaded.coverage;
-      summary.coverage_status = loaded.coverage_status;
-      summary.determination_status = loaded.determination_status;
-    } catch {}
+    const loaded = loadVerifiedRun(path.join(runsDir, targetRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+    summary = loaded.summary || summary;
+    findings = loaded.findings;
+    coverage = loaded.coverage;
+    summary.coverage_status = loaded.coverage_status;
+    summary.determination_status = loaded.determination_status;
   }
 
   const evidence = downstreamEnvelope(coverage);

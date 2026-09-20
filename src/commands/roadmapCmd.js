@@ -3,6 +3,7 @@ import path from 'node:path';
 import { contextDir, loadRegistryFile } from '../registries/index.js';
 import { readJson, writeJson } from '../shared/io.js';
 import { buildStrategicRoadmap, formatRoadmapMarkdown } from '../analysis/strategicRoadmap.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 /**
  * `citable roadmap [generate|show]` — generate or view the 30/90/180-day strategic roadmap.
@@ -20,10 +21,7 @@ export async function roadmapCommand(root, { runId, target, write = true } = {})
   }
 
   if (sourceRun) {
-    const findingsFile = path.join(runsDir, sourceRun, 'findings.json');
-    if (fs.existsSync(findingsFile)) {
-      findings = JSON.parse(fs.readFileSync(findingsFile, 'utf8'));
-    }
+    findings = loadVerifiedRun(path.join(runsDir, sourceRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
   }
 
   // 2. Load initiatives if present
