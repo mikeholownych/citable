@@ -72,7 +72,21 @@
     },
     "resources": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": {
+        "type": "object",
+        "properties": {
+          "resource_id": { "type": ["string", "null"] },
+          "requested_url": { "type": ["string", "null"] },
+          "effective_url": { "type": ["string", "null"] },
+          "canonical_url": { "type": ["string", "null"] },
+          "response_body_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "rendered_dom_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "extracted_text_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "structured_data_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "evidence_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "artifact_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
     },
     "stop_reason": {
       "type": "string",

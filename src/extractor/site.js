@@ -8,6 +8,7 @@ import { fetchUrl } from '../crawler/fetch.js';
 import { classifyResource } from '../crawler/resourceValidity.js';
 import { createUrlIdentity } from '../crawler/urlIdentity.js';
 import { createCoverageLedger } from '../evidence/coverage.js';
+import { hashPageArtifact } from '../evidence/hashes.js';
 
 const MAX_PAGE_FETCH_ATTEMPTS = 100;
 const SAFE_FETCH_ERROR_CODES = new Set([
@@ -99,6 +100,7 @@ function attachResourceMetadata(page, {
     redirectChain: page.redirectChain,
     declaredCanonicalUrl,
   });
+  page.artifact_hash = hashPageArtifact(page);
   return page;
 }
 
@@ -124,9 +126,11 @@ export function buildSiteFromDir(dir, { baseUrl = 'https://example.test' } = {})
         let urlPath = '/' + rel;
         if (urlPath.endsWith('/index.html')) urlPath = urlPath.slice(0, -'index.html'.length);
         const t = transport['/' + rel] || transport[urlPath] || {};
+        const responseBody = fs.readFileSync(p);
         const page = extractPage({
           url: new URL(urlPath, baseUrl).href,
-          html: fs.readFileSync(p, 'utf8'),
+          html: responseBody.toString('utf8'),
+          responseBody,
           status: t.status ?? 200,
           headers: { 'content-type': 'text/html', ...(t.headers || {}) },
           sourceFile: p,
@@ -271,7 +275,7 @@ export async function buildSiteFromUrl(startUrl, {
         body_complete: response.bodyComplete ?? true,
       });
       const page = extractPage({
-        url: response.url, html: response.body, status: response.status,
+        url: response.url, html: response.body, responseBody: response.bodyBytes ?? response.body, status: response.status,
         headers: response.headers, redirectChain: response.redirectChain,
       });
       attachResourceMetadata(page, {
@@ -284,6 +288,15 @@ export async function buildSiteFromUrl(startUrl, {
         coverageLedger.classify(next.url, {
           state: 'valid_resource',
           resource_id: page.urlIdentity?.resource_id,
+          requested_url: page.urlIdentity?.requested?.url ?? page.requestedUrl ?? null,
+          effective_url: page.urlIdentity?.effective?.url ?? page.url ?? null,
+          canonical_url: page.urlIdentity?.canonical?.url ?? null,
+          url_identity: page.urlIdentity,
+          response_body_hash: page.response_body_hash,
+          extracted_text_hash: page.extracted_text_hash,
+          structured_data_hash: page.structured_data_hash,
+          evidence_hash: page.evidence_hash,
+          artifact_hash: page.artifact_hash,
         });
       } else {
         coverageLedger.markIndeterminate(next.url, {

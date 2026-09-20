@@ -91,6 +91,15 @@
         },
         "rendered_selector": {
           "type": "string"
+        },
+        "resource_id": {
+          "type": "string"
+        },
+        "url_identity": {
+          "type": "object"
+        },
+        "evidence_identity": {
+          "$ref": "#/definitions/evidenceIdentity"
         }
       }
     },
@@ -113,7 +122,10 @@
           }
         },
         "captured_value": {},
-        "expected_value": {}
+        "expected_value": {},
+        "evidence_identity": {
+          "$ref": "#/definitions/evidenceIdentity"
+        }
       }
     },
     "classification": {
@@ -437,6 +449,19 @@
     }
   ],
   "definitions": {
+    "evidenceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash_schema_version", "representation", "hash"],
+      "properties": {
+        "hash_schema_version": { "type": "string", "minLength": 1 },
+        "representation": {
+          "type": "string",
+          "enum": ["response_body", "rendered_dom", "extracted_text", "structured_data", "evidence", "artifact"]
+        },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
     "impactLevel": {
       "type": "string",
       "enum": [

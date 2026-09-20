@@ -10,6 +10,7 @@ import { writeJson, sha256 } from '../shared/io.js';
 import { extractModified } from '../detectors/lifeMeas.js';
 import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
+import { pageArtifactRecord } from '../evidence/hashes.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
 export async function audit(root, {
@@ -131,9 +132,8 @@ export async function audit(root, {
   });
   if (ctx.site) {
     run.writeArtifact('pages/index.json', ctx.site.pages.map((p) => ({
-      url: p.url, status: p.status, title: p.title, canonicals: p.canonicals,
-      noindex: p.noindex, wordCount: p.wordCount, sourceFile: p.sourceFile,
-      contentHash: ctx.hashPage(p),
+      ...pageArtifactRecord(p),
+      artifact_hash: p.artifact_hash ?? null,
     })));
     if (ctx.site.robotsText != null) run.writeArtifact('robots/robots.txt', ctx.site.robotsText);
     for (const sm of ctx.site.sitemaps) {
@@ -160,7 +160,19 @@ export async function audit(root, {
   if (ctx.site) {
     const snap = { taken_at: run.manifest.timestamp, run_id: run.runId, pages: {} };
     for (const p of ctx.site.pages) {
-      snap.pages[p.url] = { contentHash: ctx.hashPage(p), dateModified: extractModified(p), status: p.status };
+      snap.pages[p.url] = {
+        contentHash: p.extracted_text_hash ?? ctx.hashPage(p),
+        hash_semantics: 'extracted_text_v1',
+        extracted_text_hash: p.extracted_text_hash ?? ctx.hashPage(p),
+        response_body_hash: p.response_body_hash ?? null,
+        structured_data_hash: p.structured_data_hash ?? null,
+        evidence_hash: p.evidence_hash ?? null,
+        artifact_hash: p.artifact_hash ?? null,
+        resource_id: p.urlIdentity?.resource_id ?? null,
+        url_identity: p.urlIdentity ?? null,
+        dateModified: extractModified(p),
+        status: p.status,
+      };
     }
     const snapDir = path.join(root, '.citable', 'snapshots');
     fs.mkdirSync(snapDir, { recursive: true });

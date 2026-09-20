@@ -143,7 +143,7 @@ async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
   if (Number.isFinite(declared) && declared > maxBodyBytes) {
     throw bodyLimitError(maxBodyBytes);
   }
-  if (!res.body) return responseType === 'buffer' ? Buffer.alloc(0) : '';
+  if (!res.body) return { body: responseType === 'buffer' ? Buffer.alloc(0) : '', bodyBytes: Buffer.alloc(0) };
   const reader = res.body.getReader();
   const chunks = [];
   let total = 0;
@@ -161,7 +161,8 @@ async function readBodyLimited(res, maxBodyBytes, responseType = 'text') {
   const bytes = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  return responseType === 'buffer' ? Buffer.from(bytes) : new TextDecoder().decode(bytes);
+  const bodyBytes = Buffer.from(bytes);
+  return { body: responseType === 'buffer' ? bodyBytes : new TextDecoder().decode(bytes), bodyBytes };
 }
 
 function bodyLimitError(maxBodyBytes) {
@@ -316,7 +317,7 @@ export async function fetchUrl(url, {
       continue;
     }
     try {
-      const body = await readBodyLimited(res, maxBodyBytes, responseType);
+      const { body, bodyBytes } = await readBodyLimited(res, maxBodyBytes, responseType);
       const endedAtMs = performance.now();
       attempts.push({
         attempt: attemptNumber, url: attemptUrl(current), startedAtMs: responseStartedAtMs, endedAtMs,
@@ -324,7 +325,7 @@ export async function fetchUrl(url, {
         status: res.status, errorCode: null, retryDecision: res.status >= 500 ? 'stop' : 'complete',
       });
       return {
-        url: current, requestedUrl: url, status: res.status, headers, body,
+        url: current, requestedUrl: url, status: res.status, headers, body, bodyBytes,
         bodyComplete: true, redirectChain: chain, attempts,
       };
     } catch (error) {

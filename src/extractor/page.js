@@ -1,10 +1,11 @@
 import { parse } from 'node-html-parser';
+import { createEvidenceHashes, hashPageArtifact } from '../evidence/hashes.js';
 
 /**
  * Extract a PageModel from raw HTML plus transport metadata.
  * Everything downstream (detectors, inspect, schema) consumes this model.
  */
-export function extractPage({ url, html, status = 200, headers = {}, sourceFile = null, redirectChain = [] }) {
+export function extractPage({ url, html, responseBody = null, status = 200, headers = {}, sourceFile = null, redirectChain = [], renderedDom = null }) {
   const root = parse(html, { comment: true });
   const head = root.querySelector('head');
 
@@ -282,7 +283,7 @@ export function extractPage({ url, html, status = 200, headers = {}, sourceFile 
   };
   walkDom(root, 1);
 
-  return {
+  const page = {
     url,
     sourceFile,
     status,
@@ -323,4 +324,30 @@ export function extractPage({ url, html, status = 200, headers = {}, sourceFile 
     domNodeCount,
     maxDomDepth,
   };
+
+  // Keep representation identity explicit. These hashes deliberately do not
+  // share a generic `contentHash`: raw response bytes, extracted text,
+  // structured data, evaluator evidence, and the persisted page artifact are
+  // different claims and may change independently.
+  const hashes = createEvidenceHashes({
+    responseBody: responseBody ?? html,
+    renderedDom,
+    extractedText: text,
+    structuredData: jsonLd.length
+      ? jsonLd.map(({ parsed, blocks, parseError }) => ({ parsed, blocks, parseError }))
+      : null,
+    evidence: {
+      extracted_text: text,
+      headings,
+      paragraphs,
+      structured_data: jsonLd.map(({ parsed, blocks, parseError }) => ({ parsed, blocks, parseError })),
+    },
+    // This is replaced after URL/resource metadata is attached; keeping the
+    // field null here prevents a pre-persistence model from being presented as
+    // the persisted artifact identity.
+    artifact: null,
+  });
+  const withHashes = { ...page, ...hashes };
+  withHashes.artifact_hash = hashPageArtifact(withHashes);
+  return withHashes;
 }
