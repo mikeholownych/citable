@@ -72,6 +72,11 @@ export function loadVerifiedRun(runDir, {
         coverage, summary: null, legacy: true,
         coverage_status: coverage?.coverage_status || 'indeterminate', determination_status: 'indeterminate',
         checksumsVerified: false,
+        artifactHashes: {
+          ...(fs.existsSync(path.join(runDir, 'manifest.json')) ? { 'manifest.json': sha256File(path.join(runDir, 'manifest.json')) } : {}),
+          'findings.json': sha256File(path.join(runDir, 'findings.json')),
+          ...(fs.existsSync(coverageFile) ? { 'coverage.json': sha256File(coverageFile) } : {}),
+        },
       };
     }
 
@@ -98,6 +103,7 @@ export function loadVerifiedRun(runDir, {
       legacy: !hasCoverage,
       coverage_status: coverage?.coverage_status || 'indeterminate',
       determination_status: coverage ? verification.manifest.determination_status : 'indeterminate',
+      artifactHashes: verification.artifactHashes,
     };
   } catch (error) {
     if (error instanceof VerifiedRunLoadError) throw error;

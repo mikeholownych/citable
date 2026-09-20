@@ -80,7 +80,9 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       writeJson(path.join(stage, 'manifest.json'), manifest);
       const summaryFile = path.join(stage, 'summary.json');
       if (fs.existsSync(summaryFile)) {
-        const now = new Date();
+        // Keep the persisted ordering contract deterministic even on filesystems
+        // with coarse timestamp resolution or delayed copy metadata updates.
+        const now = new Date(Date.now() + 1000);
         fs.utimesSync(summaryFile, now, now);
       }
       // checksums over every artifact in the package

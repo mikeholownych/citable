@@ -103,3 +103,12 @@ test('completed package without durable checksum seal is not consumable', () => 
   assert.ok(project);
 });
 
+test('unknown manifest schema versions are rejected before legacy fallback', () => {
+  const { run } = makeRun({ noFinalize: true });
+  const manifest = run.manifest;
+  writeJson(path.join(run.dir, 'manifest.json'), { ...manifest, schema_version: 99 });
+  assert.throws(
+    () => loadVerifiedRun(run.dir, { allowLegacy: true, requireCoverage: false }),
+    (error) => error.code === 'MANIFEST_SCHEMA_UNSUPPORTED' && /schema_version/.test(error.message),
+  );
+});

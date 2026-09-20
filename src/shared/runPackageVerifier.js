@@ -54,6 +54,12 @@ export function verifyRunPackage(runDir, options = {}) {
   }
 
   const schemaValidation = validateAgainst('run.schema.json', manifest);
+  if (Object.prototype.hasOwnProperty.call(manifest, 'schema_version')
+    && ![1, 2].includes(manifest.schema_version)) {
+    throw new RunVerificationError(`Unsupported run manifest schema_version: ${String(manifest.schema_version)}`, {
+      code: 'MANIFEST_SCHEMA_UNSUPPORTED', runDir, schema_version: manifest.schema_version,
+    });
+  }
   if (!schemaValidation.valid) {
     throw new RunVerificationError(`Run manifest violates run.schema.json: ${schemaValidation.errors.join('; ')}`, {
       code: 'MANIFEST_SCHEMA_INVALID',
@@ -97,6 +103,7 @@ export function verifyRunPackage(runDir, options = {}) {
   // Verify checksums.json
   const checksumsPath = path.join(runDir, 'checksums.json');
   let checksumsVerified = false;
+  let artifactHashes = {};
   if (fs.existsSync(checksumsPath)) {
     let checksums;
     try {
@@ -107,6 +114,7 @@ export function verifyRunPackage(runDir, options = {}) {
         runDir,
       });
     }
+    artifactHashes = checksums;
 
     const tamperedFiles = [];
     const missingFiles = [];
@@ -197,5 +205,6 @@ export function verifyRunPackage(runDir, options = {}) {
     findingsPath: fs.existsSync(findingsPath) ? findingsPath : null,
     findingsCount: Array.isArray(findings) ? findings.length : 0,
     findings,
+    artifactHashes,
   };
 }
