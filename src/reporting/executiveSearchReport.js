@@ -678,6 +678,10 @@ export async function buildExecutiveSearchReport(root, options = {}) {
 export function renderSearchReportMarkdown(report, evidenceContext = null) {
   const context = evidenceContext || report.generation_provenance || {};
   const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const scopedValue = (value) => {
+    if (!verifiedScope && typeof value === 'string' && /^(?:verified|clean|resolved|optimal|passed)$/i.test(value)) return 'NOT ESTABLISHED';
+    return value;
+  };
   const evidenceRegisterTitle = `Verified Evidence Register (Traceability Engine) — ${verifiedScope ? 'supported scope' : 'scope-limited; package integrity is not established'}`;
   const p = report.pillars;
   const lines = [
@@ -793,7 +797,7 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
     `- **Assisted Conversions Share**: ${formatVal(p[13].data.assisted_conversions_share_pct, '%')}`,
     ``,
     `## 14. Measurement Integrity & Analytics Instrumentation`,
-    `- **GA4 & GSC**: ${formatVal(p[14].data.ga4_instrumentation).toUpperCase()} / ${formatVal(p[14].data.gsc_property_binding).toUpperCase()}`,
+    `- **GA4 & GSC**: ${formatVal(scopedValue(p[14].data.ga4_instrumentation)).toUpperCase()} / ${formatVal(scopedValue(p[14].data.gsc_property_binding)).toUpperCase()}`,
     `- **Consent Mode Data Loss**: ${formatVal(p[14].data.consent_mode_v2_loss_pct, '%')}`,
     `- **Limitations**: ${(p[14].data.known_limitations || []).map((l) => sanitizeForMarkdown(l)).join('; ')}`,
     ``,

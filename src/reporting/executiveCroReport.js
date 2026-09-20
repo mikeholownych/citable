@@ -550,7 +550,7 @@ export async function buildExecutiveCroReport(root, options = {}) {
     epistemological_framework: {
       observation: 'Raw empirical facts measured directly from DOM geometry, HTTP status, or analytics telemetry',
       hypothesis: 'Testable causal explanations predicting why the observed friction occurs',
-      causation: 'Statistically verified outcomes demonstrated under controlled A/B experiments with SRM checks',
+      causation: 'No current causal outcome is established; controlled A/B experiment evidence is required',
       unknowns: 'Gaps in telemetry or attribution that require further instrumentation before forming hypotheses',
     },
     pillars: {
@@ -599,6 +599,7 @@ export async function buildExecutiveCroReport(root, options = {}) {
 export function renderCroReportMarkdown(report, evidenceContext = null) {
   const context = evidenceContext || report.generation_provenance || {};
   const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
   const evidenceRegisterTitle = `Verified Conversion Evidence Register — ${verifiedScope ? 'supported scope' : 'scope-limited; verified status not established'}`;
   const p = report.pillars;
   const ds = report.decision_summary;
@@ -624,8 +625,8 @@ export function renderCroReportMarkdown(report, evidenceContext = null) {
     `*(Testable causal predictions requiring validation under controlled experimentation)*`,
     ...ds.evidence_supported_hypotheses.map((h) => `- [ ] **[HYPOTHESIS]** ${sanitizeForMarkdown(h)}`),
     ``,
-    `### 3. Causal Findings (Verified Under Controlled Experiments) — ${verifiedScope ? 'supported scope' : 'scope-limited; package integrity is not established'}`,
-    `*(Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails)*`,
+    `### 3. Causal Findings (Verified Under Controlled Experiments) — ${causalEvidenceVerified ? 'supported causal evidence' : 'causal evidence not established'}`,
+    `*(${causalEvidenceVerified ? 'Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails' : 'No current causal outcome is established from this report; controlled experiment evidence is required'})*`,
     ...ds.causal_findings.map((c) => `- [=] **[CAUSAL]** ${sanitizeForMarkdown(c)}`),
     ``,
     `### 4. Critical Unresolved Unknowns (Measurement Gaps)`,
@@ -744,6 +745,7 @@ export function renderCroReportHtml(report, evidenceContext = null) {
   const ds = report.decision_summary;
   const context = evidenceContext || report.generation_provenance || {};
   const verifiedScope = context.package_verified === true && context.coverage_status === 'complete' && context.determination_status === 'supported';
+  const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
   const evidenceRegisterTitle = verifiedScope
     ? 'Verified Conversion Evidence Register'
     : 'Conversion Evidence Register (scope-limited; verified status not established)';
@@ -835,7 +837,7 @@ export function renderCroReportHtml(report, evidenceContext = null) {
 
     <div class="epistemic-box" style="border-left: 4px solid var(--accent-light);">
       <span class="epistemic-tag badge-causal">Causal Findings</span>
-      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">Statistically verified outcomes verified under controlled A/B experiments with SRM checks.</p>
+      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">${causalEvidenceVerified ? 'Statistically verified outcomes under controlled A/B experiments with SRM checks.' : 'Causal evidence is not established; controlled A/B experiment evidence is required.'}</p>
       <ul>
         ${ds.causal_findings.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
       </ul>

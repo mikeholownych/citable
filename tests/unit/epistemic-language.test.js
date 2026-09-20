@@ -99,6 +99,12 @@ test('search and CRO Markdown/HTML renderers qualify incomplete, legacy, empty, 
     ]) {
       assert.match(output, /scope-limited|not established|unknown|unresolved/i);
       assert.doesNotMatch(output, /100% conversion funnel|verified[- ]clean|site[- ]wide clean claim/i);
+      assert.doesNotMatch(output, /GA4\s*&\s*GSC[^\n]*(?:VERIFIED\s*\/\s*VERIFIED|\bCLEAN\b|\bOPTIMAL\b)/i);
+      assert.doesNotMatch(output, /Statistically verified outcomes verified/i);
     }
   }
+
+  const complete = { coverage_status: 'complete', determination_status: 'supported', evaluated: 8, eligible: 8, package_verified: true, causal_evidence_verified: true };
+  assert.match(renderSearchReportMarkdown(search, complete), /GA4 & GSC/);
+  assert.match(renderCroReportMarkdown(cro, complete), /Verified Under Controlled Experiments/);
 });
