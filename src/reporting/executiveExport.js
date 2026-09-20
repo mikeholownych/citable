@@ -80,7 +80,7 @@ export async function exportExecutiveReport(root, runId, {
   }
 
   const runsDir = path.join(root, ".citable", "runs");
-  let targetRun = runId;
+  let targetRun = runId && fs.existsSync(path.join(root, '.citable', 'runs', runId)) ? runId : null;
 
   if (!targetRun && fs.existsSync(runsDir)) {
     const runs = fs.readdirSync(runsDir).filter((d) => !d.startsWith("."));

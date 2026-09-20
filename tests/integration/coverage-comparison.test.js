@@ -32,8 +32,10 @@ function coverage({ state = 'evaluated', coverageStatus = 'complete', url = `${O
 function finding(summary = 'Finding on page 200') {
   return {
     finding_id: 'F-TECH-200', detector_id: 'TECH-200',
+    run_id: 'fixture', timestamp: '2026-09-19T00:00:00Z', discipline: ['seo'],
     subject: { type: 'page', identifier: `${ORIGIN}/200` },
-    observation: { summary }, classification: { severity: 'high' },
+    observation: { summary, evidence: ['fixture'] }, classification: { finding_type: 'deterministic_observation', severity: 'high', confidence: 'high', deterministic: true, impact: { citation: 'high' } },
+    remediation: { preferred: 'Review', review_required: false }, verification: { method: 'fixture' }, status: { state: 'open' },
   };
 }
 
@@ -45,7 +47,7 @@ function run(root, id, findings, cov, overrides = {}) {
   writeJson(path.join(dir, 'manifest.json'), {
     timestamp: `2026-09-19T00:00:${id === 'A' ? '00' : '01'}Z`, tool_version: '1.19.0', command: 'audit', argv: [],
     target: { kind: 'url', location: ORIGIN }, configuration_hash: 'same', input_hashes: {}, output_hashes: {}, detectors_run: ['TECH-200'],
-    schema_version: 2, execution_status: 'completed', coverage_status: cov.coverage_status,
+    run_id: id, skill_version: '1.19.0', status: 'completed', schema_version: 2, execution_status: 'completed', coverage_status: cov.coverage_status,
     determination_status: cov.coverage_status === 'complete' ? 'supported' : 'qualified', ...overrides,
   });
 }

@@ -91,7 +91,7 @@ export function loadVerifiedRun(runDir, {
       verification_version: VERIFIED_RUN_LOADER_VERSION,
       integrity_mode: hasCoverage ? 'sealed' : 'legacy_unverified',
       package_dir: path.resolve(runDir),
-      package_hash: sha256File(path.join(runDir, 'checksums.json')),
+      package_hash: verification.checksumsVerified ? sha256File(path.join(runDir, 'checksums.json')) : null,
       findings: verification.findings,
       coverage,
       summary,

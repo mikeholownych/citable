@@ -72,14 +72,14 @@ test('action plans retain source coverage and limitations for incomplete runs', 
   const runDir = path.join(root, '.citable', 'runs', 'RUN-INCOMPLETE');
   fs.mkdirSync(runDir, { recursive: true });
   writeJson(path.join(runDir, 'findings.json'), [{
-    finding_id: 'F-TECH-1', detector_id: 'TECH-001', subject: { type: 'site', identifier: 'site' },
-    discipline: ['seo'], classification: { severity: 'high', deterministic: true },
+    finding_id: 'F-TECH-1', detector_id: 'TECH-001', run_id: 'RUN-INCOMPLETE', timestamp: '2026-09-19T00:00:00Z', subject: { type: 'site', identifier: 'site' },
+    discipline: ['seo'], classification: { finding_type: 'deterministic_observation', severity: 'high', confidence: 'high', deterministic: true, impact: { citation: 'high' } },
     observation: { summary: 'Observed condition', evidence: ['coverage'] },
     remediation: { preferred: 'Review condition', owner: null, review_required: true },
-    verification: { method: 'rerun', detector_to_rerun: 'TECH-001', expected_result: 'not reported' },
+    verification: { method: 'rerun', detector_to_rerun: 'TECH-001', expected_result: 'not reported' }, status: { state: 'open' },
     reasoning: { limitations: ['Site-wide absence is not established.'] },
   }]);
-  writeJson(path.join(runDir, 'manifest.json'), { run_id: 'RUN-INCOMPLETE', target: { kind: 'url', location: 'https://example.test' } });
+  writeJson(path.join(runDir, 'manifest.json'), { run_id: 'RUN-INCOMPLETE', command: 'audit', tool_version: '1.19.0', skill_version: '1.19.0', timestamp: '2026-09-19T00:00:00Z', status: 'completed', target: { kind: 'url', location: 'https://example.test' } });
   writeJson(path.join(runDir, 'coverage.json'), truncated);
   const plan = actionPlan(root, { runId: 'RUN-INCOMPLETE' });
   assert.equal(plan.source_coverage.coverage_status, 'truncated');
@@ -94,14 +94,14 @@ test('action plans re-evaluate exhaustive requirements instead of trusting persi
   const runDir = path.join(root, '.citable', 'runs', 'RUN-EXHAUSTIVE');
   fs.mkdirSync(runDir, { recursive: true });
   writeJson(path.join(runDir, 'findings.json'), [{
-    finding_id: 'F-TECH-EXHAUSTIVE', detector_id: 'TECH-EXHAUSTIVE', subject: { type: 'site', identifier: 'site' },
-    discipline: ['seo'], classification: { severity: 'high', deterministic: true },
+    finding_id: 'F-TECH-EXHAUSTIVE', detector_id: 'TECH-EXHAUSTIVE', run_id: 'RUN-EXHAUSTIVE', timestamp: '2026-09-19T00:00:00Z', subject: { type: 'site', identifier: 'site' },
+    discipline: ['seo'], classification: { finding_type: 'deterministic_observation', severity: 'high', confidence: 'high', deterministic: true, impact: { citation: 'high' } },
     observation: { summary: 'Persisted site-wide absence', evidence: ['coverage'], determination_status: 'supported' },
     evidence_scope: { requirement: 'exhaustive_requested_scope', satisfaction: 'supported', coverage_ref: 'coverage.json', resource_ids: [] },
     remediation: { preferred: 'Review condition', owner: 'Owner', review_required: false },
-    verification: { method: 'rerun', detector_to_rerun: 'TECH-EXHAUSTIVE', expected_result: 'not reported' },
+    verification: { method: 'rerun', detector_to_rerun: 'TECH-EXHAUSTIVE', expected_result: 'not reported' }, status: { state: 'open' },
   }]);
-  writeJson(path.join(runDir, 'manifest.json'), { run_id: 'RUN-EXHAUSTIVE', target: { kind: 'url', location: 'https://example.test' } });
+  writeJson(path.join(runDir, 'manifest.json'), { run_id: 'RUN-EXHAUSTIVE', command: 'audit', tool_version: '1.19.0', skill_version: '1.19.0', timestamp: '2026-09-19T00:00:00Z', status: 'completed', target: { kind: 'url', location: 'https://example.test' } });
   writeJson(path.join(runDir, 'coverage.json'), truncated);
   const plan = actionPlan(root, { runId: 'RUN-EXHAUSTIVE' });
   assert.equal(plan.actions[0].status, 'blocked');
@@ -114,8 +114,8 @@ test('executive export includes coverage populations and limitations, not status
   init(root);
   const runDir = path.join(root, '.citable', 'runs', 'RUN-COVERAGE');
   fs.mkdirSync(runDir, { recursive: true });
-  writeJson(path.join(runDir, 'manifest.json'), { coverage_status: 'truncated', determination_status: 'qualified' });
-  writeJson(path.join(runDir, 'summary.json'), { counts: { critical: 0, high: 0, medium: 0, low: 0 } });
+  writeJson(path.join(runDir, 'manifest.json'), { run_id: 'RUN-COVERAGE', command: 'audit', tool_version: '1.19.0', skill_version: '1.19.0', timestamp: '2026-09-19T00:00:00Z', status: 'completed', target: { kind: 'url', location: 'https://example.test' } });
+  writeJson(path.join(runDir, 'summary.json'), { coverage: { status: 'truncated', populations: truncated.populations, stop_reason: 'page_budget_exhausted' }, posture: { retrieval_eligibility: { result: 'qualified' }, source_extraction_and_support: { result: 'qualified' }, observed_citation_behavior: { result: 'not_evidenced' } } });
   writeJson(path.join(runDir, 'findings.json'), []);
   writeJson(path.join(runDir, 'coverage.json'), truncated);
   const result = await exportExecutiveReport(root, 'RUN-COVERAGE', { format: 'markdown-deck' });
