@@ -1,0 +1,47 @@
+{
+  "$id": "citable://schemas/prompt-set.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Immutable versioned prompt population",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prompt_set_id", "prompt_set_version", "purpose", "generation_method", "generated_at", "population_size", "sampling_method", "included_prompts", "excluded_prompts", "intended_population", "limitations", "prompt_set_hash"],
+  "properties": {
+    "prompt_set_id": { "type": "string", "minLength": 1 },
+    "prompt_set_version": { "type": "integer", "minimum": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "generation_method": { "type": "string", "minLength": 1 },
+    "generation_method_version": { "type": ["string", "null"] },
+    "generation_input": {},
+    "generated_at": { "type": "string", "format": "date-time" },
+    "population_size": { "type": "integer", "minimum": 0 },
+    "sampling_method": { "type": "string", "minLength": 1 },
+    "included_prompts": { "type": "array", "items": { "$ref": "#/definitions/prompt" } },
+    "excluded_prompts": { "type": "array", "items": { "$ref": "#/definitions/excludedPrompt" } },
+    "intended_population": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "prompt_set_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "definitions": {
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_id", "prompt_text"],
+      "properties": {
+        "prompt_id": { "type": "string", "minLength": 1 },
+        "prompt_text": { "type": "string", "minLength": 1 },
+        "context": { "type": ["object", "null"] },
+        "locale": { "type": ["string", "null"] }
+      }
+    },
+    "excludedPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_id", "exclusion_reason"],
+      "properties": {
+        "prompt_id": { "type": "string", "minLength": 1 },
+        "prompt_text": { "type": ["string", "null"] },
+        "exclusion_reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

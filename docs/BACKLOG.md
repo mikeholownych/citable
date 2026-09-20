@@ -384,11 +384,15 @@ ER-7  IMPLEMENTED
 ER-8  IMPLEMENTED
 ER-11 IMPLEMENTED
 ER-9  IMPLEMENTED
-ER-1, ER-2, ER-3, ER-4, ER-5, ER-6, ER-10, ER-12, ER-13 BACKLOGGED
+ER-1  IMPLEMENTED
+ER-2  IMPLEMENTED
+ER-3  IMPLEMENTED
+ER-4  IMPLEMENTED
+ER-5, ER-6, ER-10, ER-12, ER-13 BACKLOGGED
 ```
 
-ER-3 remains `PRESERVE_OPTION`; the other listed items remain `EVIDENCE_TRIGGER`
-or `DEFER` according to their dependency and consumer gates.
+ER-5, ER-6, ER-10, ER-12, and ER-13 remain `EVIDENCE_TRIGGER` or `DEFER`
+according to their dependency and consumer gates.
 
 “Implemented” here means available in the isolated Citable development source
 after tests and review; it does not mean released, adopted by Nebula, or

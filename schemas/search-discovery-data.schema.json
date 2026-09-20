@@ -1,0 +1,20 @@
+{
+  "$id": "citable://schemas/search-discovery-data.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Search discovery observation data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "page", "interval", "metrics", "request", "coverage_status", "evidence_origin"],
+  "properties": {
+    "query": { "type": ["string", "null"] },
+    "page": { "type": ["string", "null"], "format": "uri" },
+    "interval": { "type": "object", "additionalProperties": false, "required": ["start_date", "end_date"], "properties": { "start_date": { "type": "string", "format": "date" }, "end_date": { "type": "string", "format": "date" } } },
+    "metrics": { "type": "object", "additionalProperties": false, "required": ["impressions", "clicks", "ctr", "average_position"], "properties": { "impressions": { "type": ["number", "null"], "minimum": 0 }, "clicks": { "type": ["number", "null"], "minimum": 0 }, "ctr": { "type": ["number", "null"], "minimum": 0 }, "average_position": { "type": ["number", "null"], "minimum": 0 } } },
+    "dimensions": { "type": "object", "additionalProperties": false, "properties": { "country": { "type": ["string", "null"] }, "device": { "type": ["string", "null"] }, "search_appearance": { "type": ["string", "null"] }, "date": { "type": ["string", "null"], "format": "date" } } },
+    "request": { "type": "object", "additionalProperties": false, "required": ["property_id", "dimensions", "filters", "row_limit"], "properties": { "property_id": { "type": "string", "minLength": 1 }, "dimensions": { "type": "array", "items": { "type": "string" } }, "filters": { "type": "object" }, "row_limit": { "type": "integer", "minimum": 1, "maximum": 25000 } } },
+    "provider_reported": { "type": "object", "additionalProperties": false, "properties": { "row_count": { "type": ["integer", "null"], "minimum": 0 }, "page_start": { "type": "integer", "minimum": 0 } } },
+    "response_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "coverage_status": { "type": "string", "enum": ["complete", "truncated", "indeterminate", "provider_bounded"] },
+    "evidence_origin": { "type": "string", "enum": ["LIVE_PROVIDER", "RECORDED_FIXTURE", "SYNTHETIC_TEST"] }
+  }
+}

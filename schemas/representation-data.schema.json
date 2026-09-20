@@ -1,0 +1,21 @@
+{
+  "$id": "citable://schemas/representation-data.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Provider-neutral AI representation observation data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provider", "product", "surface", "model", "prompt", "prompt_set", "execution", "response", "representation", "evidence_origin"],
+  "properties": {
+    "provider": { "type": "string", "minLength": 1 },
+    "product": { "type": "string", "minLength": 1 },
+    "surface": { "type": "string", "minLength": 1 },
+    "model": { "type": "object", "additionalProperties": false, "required": ["value", "status"], "properties": { "value": { "type": ["string", "null"] }, "status": { "type": "string", "enum": ["known", "UNKNOWN", "UNAVAILABLE", "NOT_DISCLOSED"] } } },
+    "prompt": { "type": "object", "additionalProperties": false, "required": ["prompt_id", "prompt_version", "prompt_text"], "properties": { "prompt_id": { "type": "string", "minLength": 1 }, "prompt_version": { "type": "integer", "minimum": 1 }, "prompt_text": { "type": "string", "minLength": 1 } } },
+    "prompt_set": { "type": "object", "additionalProperties": false, "required": ["prompt_set_id", "prompt_set_version"], "properties": { "prompt_set_id": { "type": "string", "minLength": 1 }, "prompt_set_version": { "type": "integer", "minimum": 1 } } },
+    "execution": { "type": "object", "additionalProperties": false, "required": ["executed_at", "configuration"], "properties": { "executed_at": { "type": "string", "format": "date-time" }, "configuration": { "type": "object", "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } } } },
+    "response": { "type": "object", "additionalProperties": false, "required": ["status", "response_hash", "parser", "raw_response_retained"], "properties": { "status": { "type": "string", "enum": ["succeeded", "refused", "error", "timeout", "rate_limited", "malformed", "unavailable", "parser_failed"] }, "response_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }, "parser": { "type": "object", "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string", "minLength": 1 } } }, "raw_response_retained": { "type": "boolean" }, "provider_metadata": { "type": "object" } } },
+    "representation": { "type": "object", "additionalProperties": false, "required": ["brand_mentioned", "domain_mentioned", "domain_cited", "cited_urls", "mentioned_entities", "cited_domains"], "properties": { "brand_mentioned": { "type": ["boolean", "null"] }, "domain_mentioned": { "type": ["boolean", "null"] }, "domain_cited": { "type": ["boolean", "null"] }, "cited_urls": { "type": "array", "items": { "type": "string", "format": "uri" } }, "mentioned_entities": { "type": "array", "items": { "type": "string" } }, "cited_domains": { "type": "array", "items": { "type": "string" } } } },
+    "evidence_origin": { "type": "string", "enum": ["LIVE_PROVIDER", "RECORDED_FIXTURE", "SYNTHETIC_TEST"] },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}

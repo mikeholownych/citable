@@ -1,5 +1,6 @@
 import { providerRequest } from './http.js';
 import { collectionResult, errorMessage, paginationBoundary } from './collectionResult.js';
+import { collectSearchConsoleObservations } from '../discovery/searchConsole.js';
 
 const BASE = 'https://www.googleapis.com/webmasters/v3';
 const METRICS = {
@@ -72,5 +73,8 @@ export const gscConnector = {
       errors,
     });
     return { rows, cursor: endDate, limitations: collection.limitations, collection, ...(connectorError ? { connectorError } : {}) };
+  },
+  async collectObservations(connection, request, context = {}) {
+    return collectSearchConsoleObservations({ connection, request, ...context });
   },
 };
