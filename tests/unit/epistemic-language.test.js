@@ -103,6 +103,7 @@ test('search and CRO Markdown/HTML renderers qualify incomplete, legacy, empty, 
       assert.doesNotMatch(output, /Statistically verified outcomes verified/i);
       assert.doesNotMatch(output, /Verified (?:Evidence|Conversion Evidence) Register/i);
       assert.doesNotMatch(output, /Verified Under Controlled Experiments/i);
+      assert.doesNotMatch(output, /verified_source|clean_profile/i);
     }
   }
 

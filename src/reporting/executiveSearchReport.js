@@ -679,9 +679,10 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
   const context = evidenceContext || report.generation_provenance || {};
   const verifiedScope = hasVerifiedEvidenceScope(context);
   const scopedValue = (value) => {
-    if (!verifiedScope && typeof value === 'string' && /^(?:verified|clean|resolved|optimal|passed)$/i.test(value)) return 'NOT ESTABLISHED';
+    if (!verifiedScope && typeof value === 'string' && /\b(?:verified|clean|resolved|optimal|passed)\b|(?:verified_source|clean_profile)/i.test(value)) return 'NOT ESTABLISHED';
     return value;
   };
+  const scopedFormat = (value, suffix = '') => scopedValue(formatVal(value, suffix));
   const evidenceRegisterTitle = `${verifiedScope ? 'Verified Evidence Register' : 'Evidence Register (scope-limited; verified status not established)'} (Traceability Engine)`;
   const p = report.pillars;
   const lines = [
@@ -718,13 +719,13 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
     `- **Evidence Link**: \`${p[1].data.evidence_ref}\``,
     `- **Google Organic Indexing**: ${formatVal(p[1].data.google_organic?.indexed_status).toUpperCase()}`,
     `- **Google AI Overviews**: ${formatVal(p[1].data.google_ai_overviews?.inclusion_rate_pct, '%')} inclusion rate (Risk: \`${formatVal(p[1].data.google_ai_overviews?.risk_exposure)}\`)`,
-    `- **AI Engine Presence**: Perplexity (\`${formatVal(p[1].data.ai_answer_engines?.perplexity)}\`), ChatGPT (\`${formatVal(p[1].data.ai_answer_engines?.chatgpt_search)}\`), Copilot (\`${formatVal(p[1].data.ai_answer_engines?.copilot)}\`)`,
+    `- **AI Engine Presence**: Perplexity (\`${scopedFormat(p[1].data.ai_answer_engines?.perplexity)}\`), ChatGPT (\`${scopedFormat(p[1].data.ai_answer_engines?.chatgpt_search)}\`), Copilot (\`${scopedFormat(p[1].data.ai_answer_engines?.copilot)}\`)`,
     ``,
     `## 2. Technical Search Infrastructure & Core Web Vitals`,
     `- **Evidence Link**: \`${p[2].data.evidence_ref}\``,
-    `- **Crawlability & Canonicals**: ${formatVal(p[2].data.canonical_integrity).toUpperCase()}`,
-    `- **LCP Readiness**: ${formatVal(p[2].data.core_web_vitals?.lcp_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)} render-blocking assets)`,
-    `- **CLS Readiness**: ${formatVal(p[2].data.core_web_vitals?.cls_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.unsized_images)} unsized images)`,
+    `- **Crawlability & Canonicals**: ${scopedFormat(p[2].data.canonical_integrity).toUpperCase()}`,
+    `- **LCP Readiness**: ${scopedFormat(p[2].data.core_web_vitals?.lcp_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)} render-blocking assets)`,
+    `- **CLS Readiness**: ${scopedFormat(p[2].data.core_web_vitals?.cls_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.unsized_images)} unsized images)`,
     ``,
     `## 3. Organic Performance & Search Intent Analysis`,
     `- **Evidence Link**: \`${p[3].data.evidence_ref}\``,
@@ -739,7 +740,7 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
     ``,
     `## 5. AEO Readiness Assessment (Answer Engine Optimization)`,
     `- **Evidence Link**: \`${p[5].data.evidence_ref}\``,
-    `- **Overall AEO Readiness Score**: **${formatVal(p[5].data.readiness_score)} / 100** (${formatVal(p[5].data.status).toUpperCase()})`,
+    `- **Overall AEO Readiness Score**: **${formatVal(p[5].data.readiness_score)} / 100** (${scopedFormat(p[5].data.status).toUpperCase()})`,
     `- **Direct Answer Density**: ${formatVal(p[5].data.direct_extract_density)}`,
     ``,
     `## 6. GEO Assessment (Generative Engine Optimization)`,
@@ -758,7 +759,7 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
     `## 8. Entity & Knowledge Graph Integrity`,
     `- **Evidence Link**: \`${p[8].data.evidence_ref}\``,
     `- **Organization Node Resolved**: ${p[8].data.organization_node_resolved ? 'YES' : 'NO'}`,
-    `- **External Corroboration**: ${formatVal(p[8].data.wikidata_corroboration).toUpperCase()}`,
+    `- **External Corroboration**: ${scopedFormat(p[8].data.wikidata_corroboration).toUpperCase()}`,
     ``,
     `## 9. Structured-Data & Schema Architecture`,
     `- **Evidence Link**: \`${p[9].data.evidence_ref}\``,
@@ -768,12 +769,12 @@ export function renderSearchReportMarkdown(report, evidenceContext = null) {
     `## 10. Competitive Search Intelligence & Share of Voice`,
     `- **Evidence Link**: \`${p[10].data.evidence_ref}\``,
     `- **1st-Party Citation Share**: **${formatVal(p[10].data.first_party_citation_share_pct, '%')}** vs Competitors (${formatVal(p[10].data.top_competitor_share_pct, '%')})`,
-    `- **Primary Gap**: ${formatVal(p[10].data.primary_authority_gap)}`,
+    `- **Primary Gap**: ${scopedFormat(p[10].data.primary_authority_gap)}`,
     ``,
     `## 11. Backlink & Off-Page Authority Profile`,
     `- **Evidence Link**: \`${p[11].data.evidence_ref}\``,
     `- **Referring Domains**: ${formatVal(p[11].data.referring_domains)} (Authority Score: ${formatVal(p[11].data.authority_score)}/100)`,
-    `- **Toxic Domains**: ${formatVal(p[11].data.toxic_domain_count)} flagged (\`${formatVal(p[11].data.disavow_recommendation)}\`)`,
+    `- **Toxic Domains**: ${formatVal(p[11].data.toxic_domain_count)} flagged (\`${scopedFormat(p[11].data.disavow_recommendation)}\`)`,
     ``,
     `## 12. Search Demand & Addressable Market Opportunity`,
   ];
@@ -838,6 +839,12 @@ export function renderSearchReportHtml(report, evidenceContext = null) {
     : 'Evidence Register (scope-limited; verified status not established)';
   const readinessLabel = verifiedScope ? (report.overall_readiness_score >= 70 ? 'Strong observed posture' : 'Needs optimization') : 'Not established';
   const cwvLabel = verifiedScope && p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'No flagged blockers' : 'Not established';
+  const scopedFormat = (value, suffix = '') => {
+    const rendered = formatVal(value, suffix);
+    return !verifiedScope && typeof rendered === 'string' && /\b(?:verified|clean|resolved|optimal|passed)\b|(?:verified_source|clean_profile)/i.test(rendered)
+      ? 'NOT ESTABLISHED'
+      : rendered;
+  };
   const rendered = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -890,7 +897,7 @@ export function renderSearchReportHtml(report, evidenceContext = null) {
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">AEO Direct Extraction</div>
         <div class="card-num">${formatVal(p[5].data.readiness_score)}</div>
-        <span class="badge badge-success">${formatVal(p[5].data.status).toUpperCase()}</span>
+        <span class="badge badge-success">${scopedFormat(p[5].data.status).toUpperCase()}</span>
       </div>
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">E-E-A-T Quality Score</div>
