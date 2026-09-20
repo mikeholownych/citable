@@ -78,6 +78,11 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       fs.rmSync(stage, { recursive: true, force: true });
       fs.cpSync(dir, stage, { recursive: true, dereference: false, errorOnExist: true });
       writeJson(path.join(stage, 'manifest.json'), manifest);
+      const summaryFile = path.join(stage, 'summary.json');
+      if (fs.existsSync(summaryFile)) {
+        const now = new Date();
+        fs.utimesSync(summaryFile, now, now);
+      }
       // checksums over every artifact in the package
       const checksumEntries = [];
       const walk = (d) => {
