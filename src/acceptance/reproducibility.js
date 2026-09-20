@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../release/governance.js';
-import { nowIso, readJson, sha256, sha256File, writeJson } from '../shared/io.js';
+import { nowIso, readJson, sha256, writeJson } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 const INCLUDED_FIELDS = [
   'property.target', 'property.source_commit', 'property.content_hashes',
@@ -37,25 +38,6 @@ function normalizedArguments(argv = []) {
   return normalized;
 }
 
-function verifyRunPackage(runDir, manifest) {
-  const manifestCheck = validateAgainst('run.schema.json', manifest);
-  if (!manifestCheck.valid) throw new Error(`run manifest violates contract: ${manifestCheck.errors.join('; ')}`);
-  const checksumsFile = path.join(runDir, 'checksums.json');
-  if (!fs.existsSync(checksumsFile)) throw new Error(`run ${manifest.run_id} has no checksums.json`);
-  const checksums = readJson(checksumsFile);
-  if (!checksums || Array.isArray(checksums) || typeof checksums !== 'object') throw new Error('run checksums must be an object');
-  const failures = [];
-  for (const [relative, expected] of Object.entries(checksums)) {
-    const file = path.resolve(runDir, relative);
-    if (path.isAbsolute(relative) || (!file.startsWith(`${path.resolve(runDir)}${path.sep}`))) failures.push(`${relative} escapes the run package`);
-    else if (!/^[a-f0-9]{64}$/.test(expected)) failures.push(`${relative} has an invalid checksum`);
-    else if (!fs.existsSync(file)) failures.push(`${relative} is missing`);
-    else if (sha256File(file) !== expected) failures.push(`${relative} checksum differs`);
-  }
-  if (failures.length) throw new Error(`run package integrity failed: ${failures.join('; ')}`);
-  return checksums;
-}
-
 function fingerprintPayload(receipt) {
   return {
     property: { target: receipt.property.target, source_commit: receipt.property.source_commit, content_hashes: receipt.property.content_hashes },
@@ -78,7 +60,10 @@ export function createAcceptanceReceipt(root, { runId, context = {}, createdAt =
   if (!fs.existsSync(manifestFile)) throw new Error(`run ${runId} not found`);
   const manifest = readJson(manifestFile);
   if (manifest.run_id !== runId) throw new Error(`run manifest id ${manifest.run_id} does not match requested run ${runId}`);
-  const checksums = verifyRunPackage(runDir, manifest);
+  const verified = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const sealedManifest = verified.manifest;
+  if (sealedManifest.run_id !== manifest.run_id) throw new Error('verified run manifest mismatch');
+  const checksums = readJson(path.join(runDir, 'checksums.json'));
   const canonicalArtifacts = sortedObject(Object.fromEntries(
     Object.entries(checksums).filter(([name]) => name !== 'manifest.json'),
   ));

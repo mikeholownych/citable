@@ -51,11 +51,28 @@ export function loadVerifiedRun(runDir, {
   requireCoverage = !allowLegacy,
 } = {}) {
   try {
-    const verification = verifyRunPackage(runDir, {
+    let verification;
+    try {
+      verification = verifyRunPackage(runDir, {
       requireFindings: true,
       requireCompleted: requireCompletedExecution,
-      requireChecksums: true,
-    });
+      requireChecksums: !allowLegacy,
+      });
+    } catch (error) {
+      if (!allowLegacy || !['MANIFEST_SCHEMA_INVALID', 'CHECKSUMS_MISSING'].includes(error.code)) throw error;
+      const manifest = readJson(path.join(runDir, 'manifest.json'));
+      const findings = readContractArtifact(runDir, 'findings.json', null);
+      const coverageFile = path.join(runDir, 'coverage.json');
+      const coverage = fs.existsSync(coverageFile) ? readJson(coverageFile) : null;
+      return {
+        verified: false, verification_version: VERIFIED_RUN_LOADER_VERSION,
+        integrity_mode: 'legacy_unverified', package_dir: path.resolve(runDir),
+        package_hash: null, manifest, findings, findingsCount: findings.length,
+        coverage, summary: null, legacy: true,
+        coverage_status: coverage?.coverage_status || 'indeterminate', determination_status: 'indeterminate',
+        checksumsVerified: false,
+      };
+    }
 
     const coveragePath = path.join(runDir, 'coverage.json');
     const hasCoverage = fs.existsSync(coveragePath);
@@ -65,13 +82,13 @@ export function loadVerifiedRun(runDir, {
       });
     }
     const coverage = hasCoverage ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json') : null;
-    const summary = readContractArtifact(runDir, 'summary.json', null, { required: false });
+    const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false });
 
     return {
       ...verification,
-      verified: true,
+      verified: hasCoverage,
       verification_version: VERIFIED_RUN_LOADER_VERSION,
-      integrity_mode: 'sealed',
+      integrity_mode: hasCoverage ? 'sealed' : 'legacy_unverified',
       package_dir: path.resolve(runDir),
       package_hash: sha256File(path.join(runDir, 'checksums.json')),
       findings: verification.findings,

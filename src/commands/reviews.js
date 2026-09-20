@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { loadRegistries, saveRegistry } from '../registries/index.js';
 import { readJson, readYaml, sha256, nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
@@ -23,7 +24,7 @@ export function queueReviews(root, { runId, policyId, write = false }) {
   if (!runId || !policyId) throw new Error('reviews queue requires <run-id> <policy-id>');
   const file = path.join(root,'.citable','runs',runId,'findings.json');
   if (!fs.existsSync(file)) throw new Error(`source findings not found for run ${runId}`);
-  const findings = readJson(file);
+  const findings = loadVerifiedRun(path.dirname(file), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
   const { registries, problems } = loadRegistries(root);
   if (problems.length) throw new Error(`registry validation failed: ${problems.join('; ')}`);
   if (!registries.review_policies.entries.some((p) => p.policy_id === policyId && p.status === 'active')) throw new Error(`active review policy not found: ${policyId}`);

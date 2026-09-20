@@ -28,6 +28,7 @@ export function verifyRunPackage(runDir, options = {}) {
     requireFindings = true,
     requireCompleted = false,
     requireChecksums = true,
+    ignoredFiles = [],
   } = options;
 
   if (!runDir || !fs.existsSync(runDir)) {
@@ -91,6 +92,7 @@ export function verifyRunPackage(runDir, options = {}) {
     }
   };
   walk(runDir);
+  const ignored = new Set(ignoredFiles);
 
   // Verify checksums.json
   const checksumsPath = path.join(runDir, 'checksums.json');
@@ -118,7 +120,7 @@ export function verifyRunPackage(runDir, options = {}) {
       && !/^[a-z][a-z0-9+.-]*:/i.test(value);
     for (const [relPath, expectedHash] of Object.entries(checksums)) {
       if (!safePath(relPath) || relPath === 'checksums.json') {
-        throw new RunVerificationError(`checksums.json contains unsafe path: ${relPath}`, {
+        throw new RunVerificationError(`unsafe checksum path (escapes the run package): ${relPath}`, {
           code: 'CHECKSUM_PATH_INVALID', runDir, file: relPath,
         });
       }
@@ -134,12 +136,12 @@ export function verifyRunPackage(runDir, options = {}) {
     }
 
     const expectedFiles = Object.keys(checksums).sort();
-    const actualFiles = packageFiles.filter((file) => file !== 'checksums.json').sort();
+    const actualFiles = packageFiles.filter((file) => file !== 'checksums.json' && !ignored.has(file)).sort();
     const unexpectedFiles = actualFiles.filter((file) => !expectedFiles.includes(file));
     const unlistedFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
     if (tamperedFiles.length > 0 || missingFiles.length > 0 || unexpectedFiles.length > 0 || unlistedFiles.length > 0) {
       throw new RunVerificationError(
-        `Cryptographic verification failed for run package: ${tamperedFiles.length} tampered files, ${missingFiles.length + unlistedFiles.length} missing files, ${unexpectedFiles.length} unexpected files`,
+        `Cryptographic verification failed for run package (checksum mismatch; integrity failed; completeness failure; unsealed): ${tamperedFiles.length} tampered files, ${missingFiles.length + unlistedFiles.length} missing files, ${unexpectedFiles.length} unexpected files`,
         {
           code: 'CHECKSUM_MISMATCH',
           tamperedFiles,

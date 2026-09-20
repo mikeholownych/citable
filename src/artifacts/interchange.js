@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { canonicalJson } from '../release/governance.js';
 import { nowIso, readJson, sha256, sha256File, writeJson } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { verifyRunPackage } from '../shared/runPackageVerifier.js';
 
 const PACKAGE = readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json'));
 const ENVELOPE = 'citable-artifact.json';
@@ -37,18 +38,13 @@ function validateRunPackage(runDir) {
   const checksumsFile = path.join(runDir, 'checksums.json');
   if (!fs.existsSync(manifestFile) || !fs.existsSync(checksumsFile)) throw new Error('run package requires manifest.json and checksums.json');
   const manifest = readJson(manifestFile);
-  const manifestCheck = validateAgainst('run.schema.json', manifest);
-  if (!manifestCheck.valid) throw new Error(`run manifest invalid: ${manifestCheck.errors.join('; ')}`);
   const checksums = readJson(checksumsFile);
-  if (!checksums || Array.isArray(checksums) || typeof checksums !== 'object') throw new Error('checksums.json must be an object');
+  verifyRunPackage(runDir, { requireFindings: false, requireCompleted: false, requireChecksums: true, ignoredFiles: [ENVELOPE] });
   const actualFiles = filesUnder(runDir).filter((name) => name !== ENVELOPE);
   const expectedFiles = [...Object.keys(checksums), 'checksums.json'].sort();
   if (new Set(expectedFiles).size !== expectedFiles.length) throw new Error('checksums.json contains duplicate package paths');
   for (const rel of Object.keys(checksums)) {
     if (!safeRelativePath(rel) || rel === ENVELOPE || rel === 'checksums.json') throw new Error(`unsafe checksum path: ${rel}`);
-    const file = path.join(runDir, ...rel.split('/'));
-    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) throw new Error(`checksummed artifact is missing: ${rel}`);
-    if (!/^[a-f0-9]{64}$/.test(checksums[rel]) || sha256File(file) !== checksums[rel]) throw new Error(`artifact checksum mismatch: ${rel}`);
   }
   const extras = actualFiles.filter((name) => !expectedFiles.includes(name));
   const missing = expectedFiles.filter((name) => !actualFiles.includes(name));

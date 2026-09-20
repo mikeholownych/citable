@@ -13,6 +13,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { contextDir, loadRegistryFile, registryLoadProblems } from '../registries/index.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
 import { buildIceMatrix, formatIceMatrixOutput } from '../analysis/iceMatrix.js';
@@ -96,7 +97,7 @@ function initiativeMatrix(file, root, rest = []) {
   if (runId) {
     const findingsPath = path.join(root, '.citable', 'runs', runId, 'findings.json');
     if (!fs.existsSync(findingsPath)) throw new Error(`run ${runId} findings.json not found`);
-    const findings = JSON.parse(fs.readFileSync(findingsPath, 'utf8'));
+    const findings = loadVerifiedRun(path.dirname(findingsPath), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
     const matrix = buildIceMatrix(findings, { type: 'findings' });
     return { ...matrix, formatted: formatIceMatrixOutput(matrix) };
   }
@@ -106,7 +107,7 @@ function initiativeMatrix(file, root, rest = []) {
   if (fs.existsSync(runsDir)) {
     const runs = fs.readdirSync(runsDir).filter((r) => fs.existsSync(path.join(runsDir, r, 'findings.json'))).sort().reverse();
     if (runs.length > 0 && rest.includes('--findings')) {
-      const findings = JSON.parse(fs.readFileSync(path.join(runsDir, runs[0], 'findings.json'), 'utf8'));
+      const findings = loadVerifiedRun(path.join(runsDir, runs[0]), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
       const matrix = buildIceMatrix(findings, { type: 'findings' });
       return { ...matrix, formatted: formatIceMatrixOutput(matrix) };
     }

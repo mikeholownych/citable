@@ -74,19 +74,39 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       manifest.status = status;
       const { valid, errors } = validateAgainst('run.schema.json', manifest);
       if (!valid) throw new Error(`run manifest invalid: ${errors.join('; ')}`);
-      writeJson(path.join(dir, 'manifest.json'), manifest);
+      const stage = `${dir}.sealing-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+      fs.rmSync(stage, { recursive: true, force: true });
+      fs.cpSync(dir, stage, { recursive: true, dereference: false, errorOnExist: true });
+      writeJson(path.join(stage, 'manifest.json'), manifest);
       // checksums over every artifact in the package
       const checksumEntries = [];
       const walk = (d) => {
         for (const name of fs.readdirSync(d)) {
           const p = path.join(d, name);
           if (fs.statSync(p).isDirectory()) walk(p);
-          else if (name !== 'checksums.json') checksumEntries.push([path.relative(dir, p).split(path.sep).join('/'), sha256File(p)]);
+          else if (name !== 'checksums.json') checksumEntries.push([path.relative(stage, p).split(path.sep).join('/'), sha256File(p)]);
         }
       };
-      walk(dir);
+      walk(stage);
       const checksums = Object.fromEntries(checksumEntries.sort(([a], [b]) => a.localeCompare(b)));
-      writeJson(path.join(dir, 'checksums.json'), checksums);
+      writeJson(path.join(stage, 'checksums.json'), checksums);
+      for (const file of [path.join(stage, 'manifest.json'), path.join(stage, 'checksums.json')]) {
+        const handle = fs.openSync(file, 'r');
+        try { fs.fsyncSync(handle); } finally { fs.closeSync(handle); }
+      }
+      const parent = path.dirname(dir);
+      const displaced = `${dir}.partial-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+      fs.renameSync(dir, displaced);
+      try {
+        fs.renameSync(stage, dir);
+        const parentHandle = fs.openSync(parent, 'r');
+        try { fs.fsyncSync(parentHandle); } finally { fs.closeSync(parentHandle); }
+        fs.rmSync(displaced, { recursive: true, force: true });
+      } catch (error) {
+        if (!fs.existsSync(dir) && fs.existsSync(displaced)) fs.renameSync(displaced, dir);
+        fs.rmSync(stage, { recursive: true, force: true });
+        throw error;
+      }
       return dir;
     },
   };

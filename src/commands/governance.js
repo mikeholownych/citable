@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { createRun } from '../evidence/run.js';
 import { loadRegistries, checkReferentialIntegrity } from '../registries/index.js';
 import { readJson, sha256, parseRefDate } from '../shared/io.js';
@@ -80,7 +81,7 @@ export function validateGovernance(root, { refDate } = {}) {
   const activeByFinding = new Map();
   for (const exception of registries.exceptions.entries) {
     const file = path.join(root, '.citable', 'runs', exception.source_run_id, 'findings.json');
-    const findings = new Map(fs.existsSync(file) ? readJson(file).map((item) => [item.finding_id, item]) : []);
+    const findings = new Map(fs.existsSync(file) ? loadVerifiedRun(path.dirname(file), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings.map((item) => [item.finding_id, item]) : []);
     const exceptionIssues = exceptionProblems(exception, policies.get(exception.policy_id), reviewers, findings, evidence, reference);
     problems.push(...exceptionIssues.map((problem) => `exceptions/${exception.exception_id}: ${problem}`));
     if (exceptionIssues.length === 0) {
@@ -101,7 +102,7 @@ export function evaluateDispositions(root, { runId, refDate } = {}) {
   const findingsFile = path.join(root, '.citable', 'runs', runId, 'findings.json');
   if (!fs.existsSync(findingsFile)) throw new Error(`source findings not found for run ${runId}`);
   const sourceBytes = fs.readFileSync(findingsFile);
-  const sourceFindings = JSON.parse(sourceBytes);
+  const sourceFindings = loadVerifiedRun(path.dirname(findingsFile), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
   const findings = new Map(sourceFindings.map((item) => [item.finding_id, item]));
   const { registries, problems } = loadRegistries(root);
   const integrity = checkReferentialIntegrity(registries);

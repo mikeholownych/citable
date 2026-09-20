@@ -6,6 +6,7 @@ import { compareSnapshots } from './compareSnapshots.js';
 import { buildAlertPayload, dispatchAlertWebhook, filterAlerts } from '../monitoring/alertDelivery.js';
 import { loadRegistries } from '../registries/index.js';
 import { readJson, sha256, writeJson, nowIso } from '../shared/io.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 const PKG = readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json'));
 
@@ -117,9 +118,10 @@ export function projectGithub(root, { runId } = {}) {
   const findingsFile = path.join(runDir, 'findings.json');
   const manifestFile = path.join(runDir, 'manifest.json');
   if (!fs.existsSync(findingsFile) || !fs.existsSync(manifestFile)) throw new Error(`run ${runId} is missing findings or manifest evidence`);
+  const loaded = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
   const findingsBytes = fs.readFileSync(findingsFile);
   const manifestBytes = fs.readFileSync(manifestFile);
-  const annotations = JSON.parse(findingsBytes).map((finding) => ({
+  const annotations = loaded.findings.map((finding) => ({
     level: annotationLevel(finding.classification.severity),
     title: `${finding.detector_id}: ${finding.classification.severity}`,
     message: finding.observation.summary,

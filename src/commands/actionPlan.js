@@ -5,6 +5,7 @@ import { validateAgainst } from '../shared/schemaValidator.js';
 import { downstreamEnvelope } from '../evidence/downstream.js';
 import { REQUIREMENTS, evaluateRequirement } from '../evidence/determination.js';
 import { checklistItem, toStringArray } from '../shared/checklist.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 const SEVERITY = { critical: 0, high: 1, medium: 2, low: 3, informational: 3, experimental: 3 };
 const PHASE = { unblock: 0, governance: 1, content: 2, optimization: 3 };
@@ -82,11 +83,11 @@ export function actionPlan(root, { runId } = {}) {
   const sourceDir = path.join(runsDir, sourceRunId);
   const findingsFile = path.join(sourceDir, 'findings.json');
   if (!fs.existsSync(findingsFile)) throw new Error(`run ${sourceRunId} has no findings.json`);
-  const rawFindings = fs.readFileSync(findingsFile, 'utf8');
-  const findings = JSON.parse(rawFindings);
-  const manifest = readJson(path.join(sourceDir, 'manifest.json'));
-  const coveragePath = path.join(sourceDir, 'coverage.json');
-  const coverage = fs.existsSync(coveragePath) ? readJson(coveragePath) : null;
+  const loaded = loadVerifiedRun(sourceDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const findings = loaded.findings;
+  const rawFindings = JSON.stringify(findings);
+  const manifest = loaded.manifest;
+  const coverage = loaded.coverage;
   const sourceCoverage = downstreamEnvelope(coverage, {
     artifact: coverage ? 'coverage.json' : null,
   });

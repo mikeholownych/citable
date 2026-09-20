@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import crypto from 'node:crypto';
 import { readJson, writeJson, nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
@@ -109,10 +110,9 @@ export async function verifyRemediation(root, options = {}) {
     return finalizeResult(result);
   }
 
-  const beforeFindings = readJson(path.join(runDir, 'findings.json'));
-  const manifest = fs.existsSync(path.join(runDir, 'manifest.json'))
-    ? readJson(path.join(runDir, 'manifest.json'))
-    : null;
+  const source = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const beforeFindings = source.findings;
+  const manifest = source.manifest;
   result.tool_version = manifest?.tool_version || PKG_VERSION;
   result.repository_commit = manifest?.repository_commit ?? null;
 

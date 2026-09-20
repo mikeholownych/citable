@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readJson } from '../shared/io.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { normalizeUrlIdentity } from '../crawler/urlIdentity.js';
 
 export const COMPARISON_STATES = Object.freeze([
@@ -122,7 +123,8 @@ export function compareSnapshots(root, { runA, runB } = {}) {
   const load = (runId) => {
     const dir = path.join(runsDir, runId);
     if (!fs.existsSync(path.join(dir, 'findings.json'))) throw new Error(`run ${runId} has no findings.json`);
-    return { findings: readJson(path.join(dir, 'findings.json')), manifest: readJson(path.join(dir, 'manifest.json')), coverage: loadCoverage(dir) };
+    const loaded = loadVerifiedRun(dir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+    return { findings: loaded.findings, manifest: loaded.manifest, coverage: loaded.coverage };
   };
   const a = load(runA); const b = load(runB);
   const comparability = comparabilityFor(a, b);

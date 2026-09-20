@@ -1,0 +1,12 @@
+{
+  "$id": "citable://schemas/summary.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Run summary",
+  "type": "object",
+  "required": ["coverage", "posture"],
+  "properties": {
+    "coverage": {},
+    "posture": {}
+  },
+  "additionalProperties": true
+}

@@ -4,6 +4,7 @@ import { readJson } from "../shared/io.js";
 import { exportExecutiveSearchReport, buildExecutiveSearchReport, renderSearchReportMarkdown, renderSearchReportHtml } from "./executiveSearchReport.js";
 import { exportExecutiveCroReport, buildExecutiveCroReport, renderCroReportMarkdown, renderCroReportHtml } from "./executiveCroReport.js";
 import { downstreamEnvelope } from '../evidence/downstream.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 export {
   exportExecutiveSearchReport,
@@ -96,26 +97,14 @@ export async function exportExecutiveReport(root, runId, {
   let coverage = null;
 
   if (targetRun) {
-    const sumPath = path.join(runsDir, targetRun, "summary.json");
-    if (fs.existsSync(sumPath)) {
-      try { summary = readJson(sumPath); } catch {}
-    }
-    const findPath = path.join(runsDir, targetRun, "findings.json");
-    if (fs.existsSync(findPath)) {
-      try { findings = readJson(findPath); } catch {}
-    }
-    const coveragePath = path.join(runsDir, targetRun, 'coverage.json');
-    if (fs.existsSync(coveragePath)) {
-      try { coverage = readJson(coveragePath); } catch {}
-    }
-    const manifestPath = path.join(runsDir, targetRun, 'manifest.json');
-    if (fs.existsSync(manifestPath)) {
-      try {
-        const manifest = readJson(manifestPath);
-        summary.coverage_status = manifest.coverage_status || 'indeterminate';
-        summary.determination_status = manifest.determination_status || 'indeterminate';
-      } catch {}
-    }
+    try {
+      const loaded = loadVerifiedRun(path.join(runsDir, targetRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+      summary = loaded.summary || summary;
+      findings = loaded.findings;
+      coverage = loaded.coverage;
+      summary.coverage_status = loaded.coverage_status;
+      summary.determination_status = loaded.determination_status;
+    } catch {}
   }
 
   const evidence = downstreamEnvelope(coverage);
