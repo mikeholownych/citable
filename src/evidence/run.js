@@ -76,15 +76,16 @@ export function createRun(root, { command, argv = [], target, locale = process.e
       if (!valid) throw new Error(`run manifest invalid: ${errors.join('; ')}`);
       writeJson(path.join(dir, 'manifest.json'), manifest);
       // checksums over every artifact in the package
-      const checksums = {};
+      const checksumEntries = [];
       const walk = (d) => {
         for (const name of fs.readdirSync(d)) {
           const p = path.join(d, name);
           if (fs.statSync(p).isDirectory()) walk(p);
-          else if (name !== 'checksums.json') checksums[path.relative(dir, p)] = sha256File(p);
+          else if (name !== 'checksums.json') checksumEntries.push([path.relative(dir, p).split(path.sep).join('/'), sha256File(p)]);
         }
       };
       walk(dir);
+      const checksums = Object.fromEntries(checksumEntries.sort(([a], [b]) => a.localeCompare(b)));
       writeJson(path.join(dir, 'checksums.json'), checksums);
       return dir;
     },
