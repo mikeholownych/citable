@@ -10,10 +10,16 @@ import { writeJson, sha256 } from '../shared/io.js';
 import { extractModified } from '../detectors/lifeMeas.js';
 import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
+import { pageArtifactRecord } from '../evidence/hashes.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
-export async function audit(root, { target, scope, baseUrl, refDate, viewport = null } = {}) {
-  const ctx = await buildContext(root, { target, baseUrl, refDate, viewport });
+export async function audit(root, {
+  target, scope, baseUrl, refDate, viewport = null,
+  maxPages, timeBudgetSeconds, fetcher, concurrency = 1,
+} = {}) {
+  const ctx = await buildContext(root, {
+    target, baseUrl, refDate, viewport, maxPages, timeBudgetSeconds, fetcher, concurrency,
+  });
   const detectors = selectDetectors({ scope });
 
   const run = createRun(root, {
@@ -36,16 +42,59 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
   if (ctx.site?.fetchErrors?.length) {
     run.manifest.errors.push(...ctx.site.fetchErrors);
   }
-  if (ctx.site?.crawl?.truncated) {
+  if (ctx.site?.crawl?.stopReason === 'page_budget_exhausted') {
     run.manifest.incomplete_checks.push(
       `URL collection reached the ${ctx.site.crawl.maxPages}-page limit with ${ctx.site.crawl.pendingUrlCount} discovered URL(s) pending; sitemap absence checks are incomplete.`
     );
+  } else if (ctx.site?.crawl?.stopReason === 'time_budget_exhausted') {
+    run.manifest.incomplete_checks.push(
+      `URL collection reached the ${ctx.site.crawl.timeBudgetSeconds}-second time budget; sitemap absence checks are incomplete.`
+    );
+  }
+
+  // Establish and persist the collection contract before detectors execute.
+  // Detectors receive this exact provisional evidence envelope through ctx so
+  // they cannot infer completeness from page-array length or legacy crawl data.
+  let coverage = null;
+  if (ctx.site?.previewCoverage) {
+    try {
+      coverage = ctx.site.previewCoverage();
+      run.manifest.coverage_status = coverage.coverage_status;
+      run.writeArtifact('coverage.json', coverage);
+      ctx.coverage = coverage;
+    } catch (error) {
+      run.manifest.execution_status = 'failed';
+      run.manifest.errors.push(`coverage: ${error.message}`);
+      run.finalize('failed');
+      throw error;
+    }
   }
 
   const { findings, detectorsRun, detectorsSkipped, errors } = runDetectors(detectors, ctx);
   run.manifest.detectors_run = detectorsRun;
   run.manifest.detectors_skipped = detectorsSkipped;
   run.manifest.errors.push(...errors);
+
+  // Seal the ledger after detector evaluation so the same artifact records
+  // evaluated resources while retaining the pre-detector persistence proof.
+  if (ctx.site?.finalizeCoverage) {
+    try {
+      coverage = ctx.site.finalizeCoverage({ evaluated: true });
+      run.manifest.coverage_status = coverage.coverage_status;
+      run.manifest.determination_status = coverage.coverage_status === 'complete' ? 'supported' : 'qualified';
+      run.writeArtifact('coverage.json', coverage);
+      if (coverage.coverage_status !== 'complete') {
+        run.manifest.incomplete_checks.push(
+          `Coverage is ${coverage.coverage_status}; conclusions are limited to the successfully observed corpus.`,
+        );
+      }
+    } catch (error) {
+      run.manifest.execution_status = 'failed';
+      run.manifest.errors.push(`coverage: ${error.message}`);
+      run.finalize('failed');
+      throw error;
+    }
+  }
 
   // Validate every finding against the data contract; a contract breach fails the run.
   const invalid = [];
@@ -66,6 +115,7 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
     detectorsSkipped,
     promptResults: ctx.promptResults || [],
     targetOrigin: ctx.site?.baseUrl ? new URL(ctx.site.baseUrl).origin : null,
+    coverage,
   });
   run.writeArtifact('summary.json', summary);
   run.writeArtifact('inputs.json', {
@@ -73,6 +123,8 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
     registry_counts: Object.fromEntries(Object.entries(ctx.registries).map(([k, v]) => [k, v.entries.length])),
     pages_audited: ctx.site?.pages.length ?? 0,
     crawl_coverage: ctx.site?.crawl ?? null,
+    coverage_status: coverage?.coverage_status ?? 'not_applicable',
+    coverage_populations: coverage?.populations ?? null,
   });
   run.writeArtifact('environment.json', {
     node: process.version, platform: process.platform, cwd: root,
@@ -80,9 +132,8 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
   });
   if (ctx.site) {
     run.writeArtifact('pages/index.json', ctx.site.pages.map((p) => ({
-      url: p.url, status: p.status, title: p.title, canonicals: p.canonicals,
-      noindex: p.noindex, wordCount: p.wordCount, sourceFile: p.sourceFile,
-      contentHash: ctx.hashPage(p),
+      ...pageArtifactRecord(p),
+      artifact_hash: p.artifact_hash ?? null,
     })));
     if (ctx.site.robotsText != null) run.writeArtifact('robots/robots.txt', ctx.site.robotsText);
     for (const sm of ctx.site.sitemaps) {
@@ -102,14 +153,26 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
     }
   }
 
-  const report = renderMarkdownReport({ findings, manifest: run.manifest, summary, detectorsSkipped });
+  const report = renderMarkdownReport({ findings, manifest: run.manifest, summary, detectorsSkipped, coverage });
   run.writeArtifact('report.md', report);
 
   // Update the latest page snapshot for regression/freshness comparison
   if (ctx.site) {
     const snap = { taken_at: run.manifest.timestamp, run_id: run.runId, pages: {} };
     for (const p of ctx.site.pages) {
-      snap.pages[p.url] = { contentHash: ctx.hashPage(p), dateModified: extractModified(p), status: p.status };
+      snap.pages[p.url] = {
+        contentHash: p.extracted_text_hash ?? ctx.hashPage(p),
+        hash_semantics: 'extracted_text_v1',
+        extracted_text_hash: p.extracted_text_hash ?? ctx.hashPage(p),
+        response_body_hash: p.response_body_hash ?? null,
+        structured_data_hash: p.structured_data_hash ?? null,
+        evidence_hash: p.evidence_hash ?? null,
+        artifact_hash: p.artifact_hash ?? null,
+        resource_id: p.urlIdentity?.resource_id ?? null,
+        url_identity: p.urlIdentity ?? null,
+        dateModified: extractModified(p),
+        status: p.status,
+      };
     }
     const snapDir = path.join(root, '.citable', 'snapshots');
     fs.mkdirSync(snapDir, { recursive: true });
@@ -121,6 +184,10 @@ export async function audit(root, { target, scope, baseUrl, refDate, viewport = 
 
   const status = run.manifest.errors.length ? 'completed_with_warnings'
     : run.manifest.incomplete_checks.length ? 'incomplete' : 'completed';
+  // Successful persistence/execution is independent from collection coverage
+  // and legacy warning status. A run with fetch warnings can still complete as
+  // an execution while its coverage remains indeterminate or truncated.
+  run.manifest.execution_status = 'completed';
   const dir = run.finalize(status);
   return { runId: run.runId, dir, findings, summary, manifest: run.manifest, report };
 }

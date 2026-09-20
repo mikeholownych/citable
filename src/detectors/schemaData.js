@@ -4,6 +4,7 @@ import { isPastDate } from '../shared/io.js';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-001', name: 'JSON-LD parse failure', namespace: 'SCHEMA',
   description: 'A JSON-LD script block does not parse as JSON.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -29,6 +30,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-002', name: 'Schema headline/name mismatch with visible content', namespace: 'SCHEMA',
   description: 'Article/WebPage headline in JSON-LD does not match the visible title or H1.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -61,6 +63,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-003', name: 'Schema URL conflicts with canonical', namespace: 'SCHEMA',
   description: 'JSON-LD url/mainEntityOfPage disagrees with the page canonical.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -91,6 +94,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-004', name: 'Inaccurate schema dates', namespace: 'SCHEMA',
   description: 'datePublished is in the future, or dateModified precedes datePublished.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -128,6 +132,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-005', name: 'Rating/review markup without visible reviews', namespace: 'SCHEMA',
   description: 'aggregateRating or review markup exists but the visible page contains no review content.',
   discipline: ['seo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -157,6 +162,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-006', name: 'Stale offer price validity', namespace: 'SCHEMA',
   description: 'Offer markup carries a priceValidUntil in the past.',
   discipline: ['seo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -187,6 +193,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-007', name: 'FAQPage markup without matching visible questions', namespace: 'SCHEMA',
   description: 'FAQPage JSON-LD questions do not appear in the visible page text.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -217,6 +224,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-008', name: 'Contradictory Organization graphs', namespace: 'SCHEMA',
   description: 'Multiple Organization blocks exist with the same @id but different names, or different @id values with the same name (split identity).',
   discipline: ['geo', 'seo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -247,6 +255,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-009', name: 'Structured data entity facts unsupported by visible content', namespace: 'SCHEMA',
   description: 'Material entity facts in JSON-LD (such as contact phone, address, pricing, or founding year) are absent from visible page content.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -330,6 +339,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-010', name: 'Dangling or circular @id reference in entity graph', namespace: 'SCHEMA',
   description: 'A JSON-LD node references an @id URI that is not defined on the site or creates a circular self-reference.',
   discipline: ['geo', 'seo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -417,6 +427,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-011', name: 'BreadcrumbList schema broken or unanchored', namespace: 'SCHEMA',
   description: 'BreadcrumbList structured data has invalid sequential positions, missing or empty item URLs/names, or broken hierarchical continuity.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -503,6 +514,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-012', name: 'Temporal contradiction between schema dates, visible text, and HTTP headers', namespace: 'SCHEMA',
   description: 'Structured data dates contradict visible page text timestamps or HTTP Last-Modified headers, undermining search engine freshness consensus.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -592,6 +604,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-013', name: 'VideoObject schema missing critical SERP playback prerequisites', namespace: 'SCHEMA',
   description: 'A VideoObject JSON-LD block is missing required attributes for Google SERP rich video display (name, description, uploadDate, thumbnailUrl, contentUrl or embedUrl).',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -635,6 +648,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-014', name: 'Organization or LocalBusiness schema missing authoritative identity attributes', namespace: 'SCHEMA',
   description: 'An Organization or LocalBusiness JSON-LD block lacks essential identity signals for Google Knowledge Graph or SERP inclusion (name, url, logo, or contactPoint/address).',
   discipline: ['seo', 'aeo', 'geo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -679,6 +693,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-015', name: 'Circular or self-referential JSON-LD @id node reference', namespace: 'SCHEMA',
   description: 'A JSON-LD structured data graph contains an @id node that points to itself or forms a direct circular reference cycle, breaking search engine graph crawlers and parsers.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -728,6 +743,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'SCHEMA-016', name: 'Author Person entity lacks external disambiguation URL or sameAs', namespace: 'SCHEMA',
   description: 'An Article, BlogPosting, NewsArticle, or Review defines an author Person entity without an external profile URL or sameAs link, preventing search engine Knowledge Graph author disambiguation and weakening E-E-A-T trust signals.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -774,5 +790,4 @@ D.push(defineDetector({
 }));
 
 export default D;
-
 

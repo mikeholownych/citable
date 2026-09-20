@@ -7,6 +7,7 @@ const D = [];
 /* ---------------- EXT: external corroboration ---------------- */
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EXT-001', name: 'Corroboration claimed from owned surface', namespace: 'EXT',
   description: 'A claim lists "external corroboration" whose source is the organization’s own domain — self-corroboration.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -40,6 +41,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EXT-002', name: 'Comparative claim lacking independent corroboration', namespace: 'EXT',
   description: 'A verified comparative claim has no external corroboration recorded at all.',
   discipline: ['geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -62,6 +64,7 @@ D.push(defineDetector({
 /* ---------------- GEO: generative representation ---------------- */
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-001', name: 'Hidden instructions targeting language models', namespace: 'GEO',
   description: 'Hidden page text or HTML comments contain instruction-like phrasing aimed at AI systems (crawler prompt injection).',
   discipline: ['geo'], severity: 'critical', deterministic: true, requires: ['site'],
@@ -99,6 +102,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-002', name: 'Proprietary concept without stable definition', namespace: 'GEO',
   description: 'A proprietary-concept entity has no definition recorded and/or no canonical page.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -119,6 +123,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-003', name: 'Entity absent from its category page', namespace: 'GEO',
   description: 'A product entity declares a category for which a category page exists, but the page never mentions the entity.',
   discipline: ['geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
@@ -153,6 +158,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-004', name: 'llms.txt treated as authority mechanism', namespace: 'GEO',
   description: 'llms.txt exists and contains directive/authority language, which no engine honors as an authorization mechanism.',
   discipline: ['geo'], severity: 'low', deterministic: false, requires: ['site'],
@@ -178,6 +184,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-005', name: 'Generative target lacks primary entity mapping', namespace: 'GEO',
   description: 'A page intended to define, compare, categorize, or recommend entities does not declare its primary entities.',
   discipline: ['geo', 'aeo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
@@ -200,6 +207,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-006', name: 'Active prompt lacks evaluation brief', namespace: 'GEO',
   description: 'An active prompt lacks the expected answer components, desired outcome, risk classification, or accountable owner needed for reproducible GEO evaluation.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -226,6 +234,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-007', name: 'Unfavorable or distorted entity stance in recorded generative answers', namespace: 'GEO',
   description: 'Recorded generative engine answers express an unfavorable, negative, or critically distorted stance toward a registered entity.',
   discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
@@ -326,6 +335,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-008', name: 'Generative citation attributes unverified or distorted claim to brand', namespace: 'GEO',
   description: 'Recorded generative engine answers attribute contradicted, distorted, or unverified factual claims to a registered entity or brand.',
   discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
@@ -430,6 +440,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-009', name: 'Unstable citation presence across repeated probes', namespace: 'GEO',
   description: 'Brand citation status exhibits high volatility or flapping (alternating between cited and unmentioned) across repeated probe runs for the same prompt and engine.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: false, requires: ['registries'],
@@ -508,6 +519,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-010', name: 'Brand erasure in multi-competitor category prompt', namespace: 'GEO',
   description: 'A generative engine observation for a relevant category or comparison prompt cites multiple registered competitors but completely omits the first-party entity or brand.',
   discipline: ['geo', 'aeo'], severity: 'high', deterministic: false, requires: ['registries'],
@@ -568,6 +580,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-011', name: 'RAG chunk fracture: claim separated from citation across oversized section', namespace: 'GEO',
   description: 'A section under a single heading exceeds 450 words without structural sub-headings or lists, separating claims from qualifying citations and causing retrieval fracture in RAG chunking pipelines.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -616,6 +629,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-012', name: 'Repetitive phrase stuffing in section headings degrading dense retrieval', namespace: 'GEO',
   description: 'Multiple headings repeat the identical multi-word phrase or entity prefix, degrading dense vector discriminability and triggering keyword stuffing penalties in neural search rankers.',
   discipline: ['geo', 'seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -670,6 +684,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'GEO-013', name: 'AI engine assertion contradicts verified publisher claim registry', namespace: 'GEO',
   description: 'An external AI search engine or generative model assertion directly contradicts or negates a verified publisher claim registered in claims.yaml.',
   discipline: ['geo', 'aeo'], severity: 'high', deterministic: true, requires: ['observations', 'registries'],
@@ -745,6 +760,7 @@ const RECO_CHECKS = [
 
 for (const [id, label, rx, desc, req] of RECO_CHECKS) {
   D.push(defineDetector({
+    coverage_requirement: 'evaluated_subset',
     id, name: `Recommendation data missing: ${label}`, namespace: 'RECO',
     description: desc,
     discipline: ['geo'], severity: 'medium', deterministic: false, requires: ['site', 'registries'],

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createRun } from '../evidence/run.js';
 import { readJson, sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 function inside(root, candidate) {
   const base = path.resolve(root) + path.sep;
@@ -19,11 +20,10 @@ export function applyRemediation(root, { input, write = false } = {}) {
   const spec = readJson(input);
   const valid = validateAgainst('remediation-spec.schema.json', spec);
   if (!valid.valid) throw new Error(`remediation spec invalid: ${valid.errors.join('; ')}`);
-  const manifestFile = path.join(root, '.citable', 'runs', spec.source_run_id, 'manifest.json');
-  if (!fs.existsSync(manifestFile)) throw new Error(`source run not found: ${spec.source_run_id}`);
-  const findingsFile = path.join(root, '.citable', 'runs', spec.source_run_id, 'findings.json');
-  if (!fs.existsSync(findingsFile)) throw new Error(`source run has no findings: ${spec.source_run_id}`);
-  const sourceFindingIds = new Set(readJson(findingsFile).map((finding) => finding.finding_id));
+  const sourceDir = path.join(root, '.citable', 'runs', spec.source_run_id);
+  if (!fs.existsSync(sourceDir)) throw new Error(`source run not found: ${spec.source_run_id}`);
+  const source = loadVerifiedRun(sourceDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const sourceFindingIds = new Set(source.findings.map((finding) => finding.finding_id));
   const results = [];
   const pending = [];
   for (const operation of spec.operations) {

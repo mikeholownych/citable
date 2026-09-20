@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { init } from '../../src/commands/init.js';
 import { audit } from '../../src/commands/audit.js';
-import { verifyRemediation } from '../../src/commands/verifyRemediation.js';
+import { recheckComparability, verifyRemediation } from '../../src/commands/verifyRemediation.js';
 import { readJson } from '../../src/shared/io.js';
 
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
@@ -109,4 +110,52 @@ test('verify remediation fails closed: missing run, unknown finding, refused pat
   assert.equal(persisted.status, 'not_resolved');
   assert.equal(persisted.verdict.resolved, false);
   assert.equal(persisted.verdict.after_finding_ids.length, 1, 'unpatched finding must persist');
+});
+
+test('verify remediation never calls a missing recheck resource resolved', async (t) => {
+  const dir = project();
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const siteDir = site(dir);
+  const run = await audit(dir, { target: siteDir, baseUrl: 'https://example.test', refDate: '2026-09-08' });
+  assert.ok(run.findings.some((f) => f.detector_id === 'CRO-007'));
+  const missingTarget = path.join(dir, 'missing-recheck');
+  fs.mkdirSync(missingTarget);
+  const result = await verifyRemediation(dir, {
+    run: run.runId, finding: 'CRO-007', recheckTarget: missingTarget,
+    baseUrl: 'https://example.test', refDate: '2026-09-08',
+  });
+  assert.equal(result.status, 'not_reobserved');
+  assert.equal(result.verdict.resolved, false);
+  assert.equal(result.verdict.comparison_state, 'not_reobserved');
+  assert.equal(result.comparison.coverage_status, 'not_available');
+});
+
+test('verify remediation refuses a resolution from a non-comparable source envelope', async (t) => {
+  const dir = project();
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const siteDir = site(dir);
+  const run = await audit(dir, { target: siteDir, baseUrl: 'https://example.test', refDate: '2026-09-08' });
+  const manifestPath = path.join(run.dir, 'manifest.json');
+  const manifest = readJson(manifestPath);
+  manifest.tool_version = '0.0.0-uncomparable';
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await assert.rejects(() => verifyRemediation(dir, {
+    run: run.runId, finding: 'CRO-007', recheckTarget: siteDir,
+    baseUrl: 'https://example.test', refDate: '2026-09-08',
+  }), /checksum mismatch|integrity failed/i);
+});
+
+test('equal viewport configurations remain comparable despite distinct object instances', async (t) => {
+  const viewport = { width: 390, height: 844, deviceScaleFactor: 2 };
+  const config = { site: { base_url: 'https://example.test' } };
+  const hash = (value) => crypto.createHash('sha256').update(value, 'utf8').digest('hex');
+  const result = recheckComparability(
+    { tool_version: '1.19.0', target: { kind: 'built_output' }, configuration_hash: hash(JSON.stringify(config)) },
+    { provenance: { detector_version: 1, viewport: { ...viewport } } },
+    { provenance: { detector_version: 1, viewport: { ...viewport } } },
+    { site: { mode: 'built_output' }, viewport: { ...viewport }, config },
+    { version: 1 },
+  );
+  assert.equal(result.comparable, true);
+  assert.equal(result.dimensions.observation_method_changed, false);
 });

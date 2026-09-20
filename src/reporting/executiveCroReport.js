@@ -29,6 +29,7 @@ import {
 } from '../shared/htmlEscape.js';
 import { extractHostname } from '../shared/domainUtils.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { assertEpistemicLanguage, hasVerifiedEvidenceScope } from '../shared/epistemicLanguage.js';
 
 function formatVal(v, suffix = '') {
   if (v === null || v === undefined) return 'NOT OBSERVED';
@@ -529,6 +530,13 @@ export async function buildExecutiveCroReport(root, options = {}) {
     source_findings_count: findings.length,
     integrity_hash: resolved.integrity_hash,
     synthetic_evidence: isSample,
+    package_verified: resolved.package_verified === true,
+    integrity_mode: resolved.integrity_mode || 'unknown',
+    legacy: resolved.legacy === true,
+    coverage_status: resolved.coverage_status || 'indeterminate',
+    determination_status: resolved.determination_status || 'indeterminate',
+    evaluated: resolved.coverage?.populations?.evaluated ?? null,
+    eligible: resolved.coverage?.populations?.eligible ?? null,
   };
 
   const report = {
@@ -542,7 +550,7 @@ export async function buildExecutiveCroReport(root, options = {}) {
     epistemological_framework: {
       observation: 'Raw empirical facts measured directly from DOM geometry, HTTP status, or analytics telemetry',
       hypothesis: 'Testable causal explanations predicting why the observed friction occurs',
-      causation: 'Statistically verified outcomes demonstrated under controlled A/B experiments with SRM checks',
+      causation: 'No current causal outcome is established; controlled A/B experiment evidence is required',
       unknowns: 'Gaps in telemetry or attribution that require further instrumentation before forming hypotheses',
     },
     pillars: {
@@ -588,7 +596,11 @@ export async function buildExecutiveCroReport(root, options = {}) {
 /**
  * Render CRO Executive Report as GitHub-flavored Markdown
  */
-export function renderCroReportMarkdown(report) {
+export function renderCroReportMarkdown(report, evidenceContext = null) {
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = hasVerifiedEvidenceScope(context);
+  const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
+  const evidenceRegisterTitle = `${verifiedScope ? 'Verified Conversion Evidence Register' : 'Conversion Evidence Register (scope-limited; verified status not established)'}`;
   const p = report.pillars;
   const ds = report.decision_summary;
   const lines = [
@@ -597,7 +609,7 @@ export function renderCroReportMarkdown(report) {
     `- **Client / Property**: \`${sanitizeForMarkdown(report.client_name)}\` (\`${sanitizeForMarkdown(report.target_domain)}\`)`,
     `- **Generated At**: \`${report.generated_at}\``,
     `- **Conversion Readiness Index**: **${report.overall_conversion_readiness} / 100**`,
-    `- **Evidence Register Traceability**: ${report.evidence_register.length} verified evidence references`,
+    `- **Evidence Register Traceability**: ${report.evidence_register.length} evidence references (authority and scope recorded below)`,
     `- **Generation Mode**: \`${report.generation_provenance.generation_mode}\`${report.generation_provenance.synthetic_evidence ? ' *(Synthetic Demo Evidence)*' : ''}`,
     ``,
     `> **Scientific Epistemology & Governance Notice**: Citable enforces a strict separation between **Observable Facts**, **Predictive Hypotheses**, and **Causal Evidence**. In adherence to empirical governance, **no conversion rates, ARR lift, or metric improvements are guaranteed**.`,
@@ -613,8 +625,8 @@ export function renderCroReportMarkdown(report) {
     `*(Testable causal predictions requiring validation under controlled experimentation)*`,
     ...ds.evidence_supported_hypotheses.map((h) => `- [ ] **[HYPOTHESIS]** ${sanitizeForMarkdown(h)}`),
     ``,
-    `### 3. Causal Findings (Verified Under Controlled Experiments)`,
-    `*(Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails)*`,
+    `### 3. ${causalEvidenceVerified ? 'Causal Findings (Verified Under Controlled Experiments)' : 'Causal Findings (Causal Evidence Not Established)'}`,
+    `*(${causalEvidenceVerified ? 'Demonstrated metric shifts under A/B testing with Sample Ratio Mismatch guardrails' : 'No current causal outcome is established from this report; controlled experiment evidence is required'})*`,
     ...ds.causal_findings.map((c) => `- [=] **[CAUSAL]** ${sanitizeForMarkdown(c)}`),
     ``,
     `### 4. Critical Unresolved Unknowns (Measurement Gaps)`,
@@ -694,7 +706,7 @@ export function renderCroReportMarkdown(report) {
     `- **Evidence Link**: \`${p[15].data.evidence_ref}\``,
     ...(p[15].data.top_customer_objections || []).map((o) => `- "${sanitizeForMarkdown(o)}"`),
     ``,
-    `## 15. Verified Conversion Evidence Register`,
+    `## 15. ${evidenceRegisterTitle}`,
     `| Evidence ID | Source Channel | Methodology | Confidence | Observation Date |`,
     `| :--- | :--- | :--- | :--- | :--- |`,
     ...report.evidence_register.map((e) => `| **${e.evidence_id}** | \`${escapeMarkdownTableCell(e.source)}\` | ${escapeMarkdownTableCell((e.methodology || '').slice(0, 50))}... | \`${e.confidence_level}\` | ${e.observation_date} |`),
@@ -720,16 +732,24 @@ export function renderCroReportMarkdown(report) {
     ``,
   ];
 
-  return lines.join('\n');
+  const rendered = lines.join('\n');
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
  * Render CRO Executive Report as Standalone Enterprise HTML
  */
-export function renderCroReportHtml(report) {
+export function renderCroReportHtml(report, evidenceContext = null) {
   const p = report.pillars;
   const ds = report.decision_summary;
-  return `<!DOCTYPE html>
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = hasVerifiedEvidenceScope(context);
+  const causalEvidenceVerified = verifiedScope && context.causal_evidence_verified === true;
+  const evidenceRegisterTitle = verifiedScope
+    ? 'Verified Conversion Evidence Register'
+    : 'Conversion Evidence Register (scope-limited; verified status not established)';
+  const rendered = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -817,13 +837,13 @@ export function renderCroReportHtml(report) {
 
     <div class="epistemic-box" style="border-left: 4px solid var(--accent-light);">
       <span class="epistemic-tag badge-causal">Causal Findings</span>
-      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">Statistically verified outcomes verified under controlled A/B experiments with SRM checks.</p>
+      <p style="font-size:12px; color:var(--muted); margin: 0 0 8px 0;">${causalEvidenceVerified ? 'Statistically verified outcomes under controlled A/B experiments with SRM checks.' : 'Causal evidence is not established; controlled A/B experiment evidence is required.'}</p>
       <ul>
         ${ds.causal_findings.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
       </ul>
     </div>
 
-    <h2 class="section-title">Verified Conversion Evidence Register (${report.evidence_register.length} Observations)</h2>
+    <h2 class="section-title">${evidenceRegisterTitle} (${report.evidence_register.length} Observations)</h2>
     <table>
       <thead>
         <tr>
@@ -858,6 +878,8 @@ export function renderCroReportHtml(report) {
   </div>
 </body>
 </html>`;
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
@@ -865,15 +887,16 @@ export function renderCroReportHtml(report) {
  */
 export async function exportExecutiveCroReport(root, options = {}) {
   const report = await buildExecutiveCroReport(root, options);
+  const evidenceContext = report.generation_provenance;
   const format = options.format || 'markdown';
   let content = '';
 
   if (format === 'html' || format === 'html-brief') {
-    content = renderCroReportHtml(report);
+    content = renderCroReportHtml(report, evidenceContext);
   } else if (format === 'json') {
     content = JSON.stringify(report, null, 2);
   } else {
-    content = renderCroReportMarkdown(report);
+    content = renderCroReportMarkdown(report, evidenceContext);
   }
 
   let outputPath = null;

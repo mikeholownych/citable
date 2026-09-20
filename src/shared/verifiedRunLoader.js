@@ -1,0 +1,129 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { readJson, sha256File } from './io.js';
+import { verifyRunPackage, RunVerificationError } from './runPackageVerifier.js';
+import { validateAgainst } from './schemaValidator.js';
+
+export const VERIFIED_RUN_LOADER_VERSION = 'verified-run-loader-v1';
+
+export class VerifiedRunLoadError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = 'VerifiedRunLoadError';
+    this.code = details.code || 'VERIFIED_RUN_LOAD_FAILED';
+    this.details = details;
+  }
+}
+
+function readContractArtifact(runDir, file, schema, { required = true, bytes = null } = {}) {
+  const filePath = path.join(runDir, file);
+  if (!fs.existsSync(filePath)) {
+    if (required) throw new VerifiedRunLoadError(`Verified run is missing ${file}`, { code: 'ARTIFACT_MISSING', file });
+    return null;
+  }
+  if (fs.lstatSync(filePath).isSymbolicLink()) {
+    throw new VerifiedRunLoadError(`${file} is a symbolic link`, { code: 'PACKAGE_SYMLINK', file });
+  }
+  let value;
+  try {
+    value = bytes ? JSON.parse(bytes.toString('utf8')) : readJson(filePath);
+  } catch (error) {
+    throw new VerifiedRunLoadError(`${file} is invalid JSON: ${error.message}`, { code: 'ARTIFACT_INVALID', file });
+  }
+  const validation = schema ? validateAgainst(schema, value) : { valid: true, errors: [] };
+  if (!validation.valid) {
+    throw new VerifiedRunLoadError(`${file} violates ${schema}: ${validation.errors.join('; ')}`, {
+      code: 'ARTIFACT_SCHEMA_INVALID', file, errors: validation.errors,
+    });
+  }
+  return value;
+}
+
+function readFindingsArtifact(runDir, bytes = null) {
+  const findings = readContractArtifact(runDir, 'findings.json', null, { bytes });
+  if (!Array.isArray(findings)) throw new VerifiedRunLoadError('findings.json must contain an array of findings', { code: 'ARTIFACT_SCHEMA_INVALID', file: 'findings.json' });
+  for (const [index, finding] of findings.entries()) {
+    const validation = validateAgainst('finding.schema.json', finding);
+    if (!validation.valid) throw new VerifiedRunLoadError(`findings.json finding[${index}] violates finding.schema.json: ${validation.errors.join('; ')}`, { code: 'ARTIFACT_SCHEMA_INVALID', file: 'findings.json' });
+  }
+  return findings;
+}
+
+/**
+ * Load a run only after its closed-world checksum seal and execution contracts
+ * have been verified. Consumers must use this API rather than reading
+ * findings.json directly: the returned findings are bound to the verified
+ * package, manifest, and (when present) coverage artifact.
+ *
+ * Legacy packages can be opened explicitly for migration. Their coverage is
+ * indeterminate and never receives a synthesized complete default.
+ */
+export function loadVerifiedRun(runDir, {
+  requireCompletedExecution = true,
+  allowLegacy = false,
+  requireCoverage = !allowLegacy,
+} = {}) {
+  try {
+    let verification;
+    try {
+      verification = verifyRunPackage(runDir, {
+      requireFindings: true,
+      requireCompleted: requireCompletedExecution,
+      requireChecksums: !allowLegacy,
+      });
+    } catch (error) {
+      if (!allowLegacy || !['CHECKSUMS_MISSING', 'MANIFEST_MISSING'].includes(error.code)) throw error;
+      const manifestPath = path.join(runDir, 'manifest.json');
+      const manifest = fs.existsSync(manifestPath) ? readJson(manifestPath) : { run_id: path.basename(runDir), status: 'incomplete' };
+      const findings = readFindingsArtifact(runDir);
+      const coverageFile = path.join(runDir, 'coverage.json');
+      const coverage = fs.existsSync(coverageFile) ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json') : null;
+      const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false });
+      return {
+        verified: false, verification_version: VERIFIED_RUN_LOADER_VERSION,
+        integrity_mode: 'legacy_unverified', package_dir: path.resolve(runDir),
+        package_hash: null, manifest, findings, findingsCount: findings.length,
+        coverage, summary, legacy: true,
+        coverage_status: coverage?.coverage_status || 'indeterminate', determination_status: 'indeterminate',
+        checksumsVerified: false,
+        artifactHashes: {
+          ...(fs.existsSync(path.join(runDir, 'manifest.json')) ? { 'manifest.json': sha256File(path.join(runDir, 'manifest.json')) } : {}),
+          'findings.json': sha256File(path.join(runDir, 'findings.json')),
+          ...(fs.existsSync(coverageFile) ? { 'coverage.json': sha256File(coverageFile) } : {}),
+        },
+      };
+    }
+
+    const coveragePath = path.join(runDir, 'coverage.json');
+    const hasCoverage = fs.existsSync(coveragePath);
+    if (!hasCoverage && !allowLegacy && requireCoverage) {
+      throw new VerifiedRunLoadError('Verified run is missing coverage.json; use explicit legacy mode to open historical packages', {
+        code: 'COVERAGE_MISSING',
+      });
+    }
+    const coverage = hasCoverage ? readContractArtifact(runDir, 'coverage.json', 'audit-coverage.schema.json', { bytes: verification.artifactBytes.get('coverage.json') }) : null;
+    const summary = readContractArtifact(runDir, 'summary.json', 'summary.schema.json', { required: false, bytes: verification.artifactBytes.get('summary.json') });
+
+    return {
+      ...verification,
+      verified: hasCoverage,
+      verification_version: VERIFIED_RUN_LOADER_VERSION,
+      integrity_mode: hasCoverage ? 'sealed' : 'legacy_unverified',
+      package_dir: path.resolve(runDir),
+      package_hash: verification.checksumsVerified ? sha256File(path.join(runDir, 'checksums.json')) : null,
+      findings: verification.findings,
+      coverage,
+      summary,
+      legacy: !hasCoverage,
+      coverage_status: coverage?.coverage_status || 'indeterminate',
+      determination_status: coverage ? verification.manifest.determination_status : 'indeterminate',
+      artifactHashes: verification.artifactHashes,
+    };
+  } catch (error) {
+    if (error instanceof VerifiedRunLoadError) throw error;
+    if (error instanceof RunVerificationError) {
+      throw new VerifiedRunLoadError(error.message, { code: error.code, cause: error });
+    }
+    throw new VerifiedRunLoadError(error.message, { cause: error });
+  }
+}

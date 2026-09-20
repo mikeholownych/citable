@@ -1,3 +1,5 @@
+import { assertEpistemicLanguage, evidenceScopeStatement } from '../shared/epistemicLanguage.js';
+
 const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3, informational: 4, experimental: 5 };
 
 const RETRIEVAL_NAMESPACES = new Set(['TECH', 'CRAWL', 'LINK', 'HREFLANG']);
@@ -39,7 +41,7 @@ function citationPosture(promptResults, targetOrigin) {
   };
 }
 
-export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], promptResults = [], targetOrigin = null } = {}) {
+export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], promptResults = [], targetOrigin = null, coverage = null } = {}) {
   const bySeverity = {};
   const byNamespace = {};
   const byDiscipline = { seo: 0, aeo: 0, geo: 0 };
@@ -51,6 +53,18 @@ export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], 
     for (const d of f.discipline) byDiscipline[d] = (byDiscipline[d] || 0) + 1;
     if (f.classification.deterministic) deterministic++;
   }
+  const coverageIncomplete = coverage && coverage.coverage_status !== 'complete';
+  const posture = {
+    retrieval_eligibility: readinessPosture(findings, detectorsRun, detectorsSkipped, RETRIEVAL_NAMESPACES),
+    source_extraction_and_support: readinessPosture(findings, detectorsRun, detectorsSkipped, SOURCE_NAMESPACES),
+    observed_citation_behavior: citationPosture(promptResults, targetOrigin),
+  };
+  if (coverageIncomplete) {
+    for (const key of ['retrieval_eligibility', 'source_extraction_and_support']) {
+      posture[key].result = 'qualified';
+      posture[key].coverage_status = coverage.coverage_status;
+    }
+  }
   return {
     total: findings.length,
     deterministic_observations: deterministic,
@@ -58,15 +72,22 @@ export function summarize(findings, { detectorsRun = [], detectorsSkipped = [], 
     by_severity: bySeverity,
     by_namespace: byNamespace,
     by_discipline: byDiscipline,
-    posture: {
-      retrieval_eligibility: readinessPosture(findings, detectorsRun, detectorsSkipped, RETRIEVAL_NAMESPACES),
-      source_extraction_and_support: readinessPosture(findings, detectorsRun, detectorsSkipped, SOURCE_NAMESPACES),
-      observed_citation_behavior: citationPosture(promptResults, targetOrigin),
-    },
+    coverage: coverage ? {
+      status: coverage.coverage_status,
+      populations: coverage.populations,
+      stop_reason: coverage.stop_reason,
+    } : null,
+    posture,
   };
 }
 
-export function renderMarkdownReport({ findings, manifest, summary, detectorsSkipped = [] }) {
+export function renderMarkdownReport({ findings, manifest, summary, detectorsSkipped = [], coverage = null, verifiedRun = null }) {
+  // Only the verified loader can establish package integrity. Manifest flags
+  // are part of the package input and therefore cannot establish their own
+  // trustworthiness when this renderer is called directly.
+  const packageVerified = verifiedRun?.verified === true
+    && verifiedRun?.integrity_mode === 'sealed'
+    && typeof verifiedRun?.verification_version === 'string';
   const lines = [];
   lines.push(`# Citable audit report`);
   lines.push('');
@@ -85,10 +106,18 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
   lines.push(`| Total findings | ${summary.total} |`);
   lines.push(`| Deterministic observations | ${summary.deterministic_observations} |`);
   lines.push(`| Heuristic / semantic findings | ${summary.semantic_or_heuristic} |`);
+  if (coverage) {
+    lines.push(`| Coverage status | ${coverage.coverage_status} |`);
+    lines.push(`| Evaluated resources | ${coverage.populations.evaluated} of ${coverage.populations.discovered - coverage.populations.excluded} eligible |`);
+  }
   for (const [sev, n] of Object.entries(summary.by_severity).sort((a, b) => SEV_ORDER[a[0]] - SEV_ORDER[b[0]])) {
     lines.push(`| ${sev} | ${n} |`);
   }
   lines.push('');
+  if (coverage && coverage.coverage_status !== 'complete') {
+    lines.push(`> Coverage status: **${coverage.coverage_status}**. This report describes the observed corpus and does not establish a complete site-wide determination.`);
+    lines.push('');
+  }
   lines.push('## Separate eligibility and observation states');
   lines.push('');
   lines.push('| Dimension | Result | Evidence |');
@@ -132,8 +161,26 @@ export function renderMarkdownReport({ findings, manifest, summary, detectorsSki
     lines.push('');
   }
   if (findings.length === 0) {
-    lines.push(`No findings from the executed detectors. Absence of findings is not proof of eligibility — see skipped and incomplete checks above.`);
+    const population = coverage?.populations?.evaluated ?? 0;
+    lines.push(population > 0
+      ? `No findings were produced for the ${population} successfully evaluated resource(s). Absence of findings is not proof of eligibility — see skipped and incomplete checks above.`
+      : evidenceScopeStatement({
+        coverage_status: coverage?.coverage_status || 'indeterminate',
+        determination_status: summary?.posture?.source_extraction_and_support?.result === 'pass' ? 'supported' : 'indeterminate',
+        evaluated: 0,
+        eligible: coverage?.populations?.eligible ?? 0,
+        legacy: !coverage,
+      }));
     lines.push('');
   }
-  return lines.join('\n');
+  const rendered = lines.join('\n');
+  assertEpistemicLanguage(rendered, {
+    coverage_status: coverage?.coverage_status || 'indeterminate',
+    determination_status: coverage?.coverage_status === 'complete' ? 'supported' : 'indeterminate',
+    evaluated: coverage?.populations?.evaluated ?? 0,
+    eligible: coverage?.populations?.eligible ?? 0,
+    package_verified: packageVerified,
+    legacy: verifiedRun?.legacy === true || !coverage,
+  });
+  return rendered;
 }

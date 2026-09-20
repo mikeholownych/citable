@@ -12,6 +12,7 @@ function allJsonLdBlocks(site) {
 }
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-001', name: 'Entity missing canonical URL', namespace: 'ENTITY',
   description: 'A registry entity has no canonical URL, so engines have no authoritative page to resolve it to.',
   discipline: ['geo', 'aeo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -31,6 +32,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-002', name: 'Schema entity name conflicts with registry', namespace: 'ENTITY',
   description: 'A JSON-LD Organization/Product name does not match the registry canonical name or a documented alias.',
   discipline: ['geo', 'seo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
@@ -64,6 +66,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-003', name: 'Unstable @id for same entity', namespace: 'ENTITY',
   description: 'The same entity name appears in JSON-LD with different @id values across pages.',
   discipline: ['geo', 'seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -90,6 +93,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-004', name: 'sameAs profile not in authoritative list', namespace: 'ENTITY',
   description: 'JSON-LD sameAs references a profile URL not recorded as an authoritative profile in the entity registry.',
   discipline: ['geo'], severity: 'low', deterministic: true, requires: ['site', 'registries'],
@@ -121,6 +125,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-005', name: 'Product entity without owner relationship', namespace: 'ENTITY',
   description: 'A product/product-family entity records no owning organization.',
   discipline: ['geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -141,6 +146,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-006', name: 'Unregistered name variant in page text', namespace: 'ENTITY',
   description: 'Page text uses a variant of an entity name that is neither the canonical name nor a documented alias.',
   discipline: ['geo', 'seo'], severity: 'low', deterministic: false, requires: ['site', 'registries'],
@@ -178,6 +184,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ENTITY-007', name: 'Entity verification stale', namespace: 'ENTITY',
   description: 'An active entity has not been verified within the last 12 months (or last_verified missing).',
   discipline: ['geo'], severity: 'low', deterministic: true, requires: ['registries'],

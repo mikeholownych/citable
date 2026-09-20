@@ -12,7 +12,7 @@ test('generateCiWorkflow generates valid GitHub Actions YAML workflow', () => {
 
 test('formatPrReviewComment formats findings and clean states for PR comments', () => {
   const cleanComment = formatPrReviewComment([]);
-  assert.ok(cleanComment.includes('All conversion funnels and components verified clean'));
+  assert.match(cleanComment, /No determination.*insufficient evidence/i);
 
   const brokenComment = formatPrReviewComment([
     { detector_id: 'CRO-007', severity: 'medium', summary: 'Missing autocomplete tokens', remediation: 'Add autocomplete' },

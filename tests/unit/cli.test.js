@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadRegistries, saveRegistry } from '../../src/registries/index.js';
+import * as cliModule from '../../src/cli/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -40,6 +41,29 @@ test('top-level help exposes audit-to-action commands', () => {
   assert.match(output, /--interactions/);
   assert.match(output, /--resume-run/);
   assert.match(output, /--lighthouse/);
+  assert.match(output, /--max-pages <count>/);
+  assert.match(output, /--time-budget-seconds <seconds>/);
+});
+
+test('audit budget CLI flags use numeric camelCase parser names', () => {
+  assert.equal(typeof cliModule.parseArgs, 'function');
+  const args = cliModule.parseArgs(['--max-pages', '17', '--time-budget-seconds', '42']);
+  assert.equal(args.maxPages, 17);
+  assert.equal(args.timeBudgetSeconds, 42);
+  assert.deepEqual(args._, []);
+});
+
+test('human and JSON audit paths reject the same invalid budget before collection', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-cli-budget-'));
+  execFileSync(process.execPath, [path.join(ROOT, 'cli/bin/citable.js'), 'init'], { cwd: dir, encoding: 'utf8' });
+  for (const extra of [[], ['--json']]) {
+    const result = spawnSync(process.execPath, [
+      path.join(ROOT, 'cli/bin/citable.js'), 'audit',
+      '--target', 'http://[::1]:1/', '--max-pages', '0', ...extra,
+    ], { cwd: dir, encoding: 'utf8', timeout: 10_000 });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /--max-pages/);
+  }
 });
 
 test('report dashboard runs via CLI against synthesized runs', () => {

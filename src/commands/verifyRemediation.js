@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import crypto from 'node:crypto';
 import { readJson, writeJson, nowIso } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
@@ -7,6 +8,7 @@ import { buildContext } from './context.js';
 import { runDetectors } from '../detectors/framework.js';
 import { selectDetectors } from '../detectors/index.js';
 import { remediateCommand } from './remediate.js';
+import { assessReobservation, resourceIdentityFor, sameResourceIdentity } from './compareSnapshots.js';
 
 const PKG_VERSION = JSON.parse(
   fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
@@ -20,12 +22,47 @@ function sha256(content) {
   return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
 }
 
-function subjectKey(subject) {
-  return subject?.identifier || subject?.url || JSON.stringify(subject) || 'unknown';
+function findingIdentityKey(finding) {
+  const identity = resourceIdentityFor(finding);
+  const id = identity.resourceIds.size ? [...identity.resourceIds].sort().join(',')
+    : identity.effective || identity.requested || (identity.fallbackUrls.size === 1 ? [...identity.fallbackUrls][0] : JSON.stringify(finding?.subject || {}));
+  return `${finding?.detector_id || ''}|${id}`;
 }
 
 function newVerificationId() {
   return `VR-${nowIso().replace(/\D/g, '')}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function recheckComparability(manifest, sourceFinding, afterFinding, ctx, detector) {
+  const sourceKind = manifest?.target?.kind || null;
+  const recheckKind = ctx.site?.mode || null;
+  const sourceDetectorVersion = sourceFinding?.provenance?.detector_version ?? 1;
+  const recheckDetectorVersion = afterFinding?.provenance?.detector_version ?? detector?.version ?? 1;
+  const sourceViewport = sourceFinding?.provenance?.viewport ?? null;
+  const recheckViewport = ctx.viewport ?? null;
+  const sourceConfig = manifest?.configuration_hash || null;
+  const recheckConfig = sha256(JSON.stringify(ctx.config));
+  const dimensions = {
+    tool_changed: (manifest?.tool_version || null) !== PKG_VERSION,
+    evaluator_changed: sourceDetectorVersion !== recheckDetectorVersion,
+    observation_method_changed: sourceKind !== recheckKind
+      || canonicalJson(sourceViewport) !== canonicalJson(recheckViewport),
+    configuration_changed: sourceConfig !== recheckConfig,
+  };
+  return {
+    comparable: !Object.values(dimensions).some(Boolean),
+    dimensions,
+    source: { tool_version: manifest?.tool_version || null, evaluator_version: sourceDetectorVersion, target_kind: sourceKind, configuration_hash: sourceConfig },
+    recheck: { tool_version: PKG_VERSION, evaluator_version: recheckDetectorVersion, target_kind: recheckKind, configuration_hash: recheckConfig },
+  };
 }
 
 /**
@@ -37,7 +74,7 @@ function newVerificationId() {
  * never a silent `verified`.
  */
 export async function verifyRemediation(root, options = {}) {
-  const { run: runId, finding, target, apply = false, subject = null } = options;
+  const { run: runId, finding, target, apply = false, subject = null, viewport = null } = options;
   const runDir = path.join(root, '.citable', 'runs', runId || '');
   const limitations = [
     RESOLUTION_DEFINITION,
@@ -55,7 +92,7 @@ export async function verifyRemediation(root, options = {}) {
     recheck_run_id: null,
     detector_id: finding ? String(finding).toUpperCase() : null,
     subject: null,
-    verdict: { resolved: false, before_finding_ids: [], after_finding_ids: [], new_regressions: [], resolution_definition: RESOLUTION_DEFINITION },
+    verdict: { resolved: false, comparison_state: 'indeterminate', before_finding_ids: [], after_finding_ids: [], new_regressions: [], resolution_definition: RESOLUTION_DEFINITION },
     patch: null,
     provenance: { command: 'verify remediation', recheck_target: target || null, detectors_run: [], detectors_skipped: [], recheck_errors: [], recheck_warnings: [] },
     limitations,
@@ -73,23 +110,23 @@ export async function verifyRemediation(root, options = {}) {
     return finalizeResult(result);
   }
 
-  const beforeFindings = readJson(path.join(runDir, 'findings.json'));
-  const manifest = fs.existsSync(path.join(runDir, 'manifest.json'))
-    ? readJson(path.join(runDir, 'manifest.json'))
-    : null;
+  const source = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const beforeFindings = source.findings;
+  const manifest = source.manifest;
   result.tool_version = manifest?.tool_version || PKG_VERSION;
   result.repository_commit = manifest?.repository_commit ?? null;
 
+  const requestedSubject = subject ? { subject: { identifier: subject } } : null;
   const matches = beforeFindings.filter((f) =>
     (f.detector_id || '').toUpperCase() === result.detector_id
-    && (!subject || subjectKey(f.subject) === subject));
+    && (!requestedSubject || sameResourceIdentity(f, requestedSubject)));
   if (matches.length === 0) {
     result.provenance.recheck_errors.push(`finding ${result.detector_id} not present in source run ${runId}`);
     result.status = 'blocked';
     return finalizeResult(result);
   }
   result.verdict.before_finding_ids = matches.map((f) => f.finding_id);
-  result.subject = { type: matches[0].subject?.type || 'unknown', identifier: subject || subjectKey(matches[0].subject) };
+  result.subject = { type: matches[0].subject?.type || 'unknown', identifier: subject || matches[0].subject?.identifier || matches[0].subject?.url || 'unknown' };
 
   // Optional gated patch application (production-safe pipeline from remediate.js)
   if (target && apply) {
@@ -133,7 +170,7 @@ export async function verifyRemediation(root, options = {}) {
   const namespace = result.detector_id.split('-')[0];
   let ctx;
   try {
-    ctx = await buildContext(root, { target: recheckTarget, baseUrl: options.baseUrl, refDate: options.refDate });
+    ctx = await buildContext(root, { target: recheckTarget, baseUrl: options.baseUrl, refDate: options.refDate, viewport });
   } catch (err) {
     result.provenance.recheck_errors.push(`re-check context failed: ${err.message}`);
     result.limitations.push('required_input: a readable target directory or URL for the detector re-run.');
@@ -155,24 +192,62 @@ export async function verifyRemediation(root, options = {}) {
 
   const afterMatches = afterFindings.filter((f) =>
     (f.detector_id || '').toUpperCase() === result.detector_id
-    && subjectKey(f.subject) === subjectKey(matches[0].subject));
+    && sameResourceIdentity(f, matches[0]));
   result.verdict.after_finding_ids = afterMatches.map((f) => f.finding_id);
 
-  const beforeKeys = new Set(beforeFindings.map((f) => `${f.detector_id}|${subjectKey(f.subject)}|${f.observation?.summary}`));
-  const afterKeys = new Set(afterFindings.map((f) => `${f.detector_id}|${subjectKey(f.subject)}|${f.observation?.summary}`));
+  const beforeKeys = new Set(beforeFindings.map((f) => `${findingIdentityKey(f)}|${f.observation?.summary}`));
+  const afterKeys = new Set(afterFindings.map((f) => `${findingIdentityKey(f)}|${f.observation?.summary}`));
   result.verdict.new_regressions = afterFindings
     .filter((f) => ['critical', 'high'].includes(f.classification?.severity))
-    .filter((f) => !beforeKeys.has(`${f.detector_id}|${subjectKey(f.subject)}|${f.observation?.summary}`))
+    .filter((f) => !beforeKeys.has(`${findingIdentityKey(f)}|${f.observation?.summary}`))
     .map((f) => ({ finding_id: f.finding_id, detector_id: f.detector_id, severity: f.classification.severity, summary: f.observation?.summary }));
+
+  const detectorDefinition = selectDetectors({ namespaces: [namespace] })
+    .find((candidate) => candidate.id === result.detector_id);
+  const comparability = recheckComparability(manifest, matches[0], afterMatches[0], ctx, detectorDefinition);
+
+  // Finalize the same collection envelope used by audit so detector absence
+  // is only resolution when the responsible resource was actually observed.
+  let recheckCoverage = null;
+  if (ctx.site?.finalizeCoverage) {
+    try { recheckCoverage = ctx.site.finalizeCoverage({ evaluated: true }); }
+    catch (error) { result.provenance.recheck_errors.push(`coverage finalization failed: ${error.message}`); }
+  }
+  let reobservation = assessReobservation(matches[0], recheckCoverage);
+  // Directory re-checks predate the coverage ledger and intentionally do not
+  // manufacture a package artifact. Their concrete page model is still a
+  // sufficient page-local observation when the subject is present.
+  if (!recheckCoverage && ctx.site?.pages?.some((page) => sameResourceIdentity(matches[0], page))) {
+    reobservation = { state: 'resolved', reason: 'page_present_in_recheck_model', resource: null };
+  }
+  result.comparison = {
+    state: comparability.comparable ? reobservation.state : 'not_comparable',
+    reason: reobservation.reason,
+    coverage_status: recheckCoverage?.coverage_status || 'not_available',
+    resource: reobservation.resource?.normalized_url || null,
+    comparability,
+  };
+  result.verdict.comparison_state = comparability.comparable ? reobservation.state : 'not_comparable';
 
   const errorsDuringRecheck = result.provenance.recheck_errors.length > 0;
   if (errorsDuringRecheck) {
-    result.status = 'blocked';
+    result.status = 'indeterminate';
     result.verdict.resolved = false;
-    result.limitations.push('Detector errors occurred during the re-check; resolution cannot be established from a failed observation.');
+    result.verdict.comparison_state = 'indeterminate';
+    result.limitations.push('Detector or collection errors occurred during the re-check; resolution cannot be established from a failed observation.');
+  } else if (!comparability.comparable) {
+    result.status = 'not_comparable';
+    result.verdict.resolved = false;
+    result.limitations.push('The source and re-check evaluator/tool/method/configuration envelopes are not comparable; resolution is not established.');
   } else if (afterMatches.length === 0) {
-    result.status = 'verified';
-    result.verdict.resolved = true;
+    if (reobservation.state === 'resolved') {
+      result.status = 'verified';
+      result.verdict.resolved = true;
+    } else {
+      result.status = reobservation.state === 'indeterminate' ? 'indeterminate' : 'not_reobserved';
+      result.verdict.resolved = false;
+      result.limitations.push(`The source subject was not sufficiently reobserved: ${reobservation.reason}.`);
+    }
   } else {
     result.status = 'not_resolved';
     result.verdict.resolved = false;

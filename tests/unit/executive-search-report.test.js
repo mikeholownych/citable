@@ -50,7 +50,7 @@ test('buildExecutiveSearchReport constructs all 19 enterprise pillars with evide
   assert.ok(md.includes('# Enterprise Search Intelligence & Discovery Governance Briefing'));
   assert.ok(md.includes('Acme Enterprise'));
   assert.ok(md.includes('Executive Decision Summary (Traceable Conclusions)'));
-  assert.ok(md.includes('Verified Evidence Register (Traceability Engine)'));
+  assert.ok(md.includes('Evidence Register (scope-limited; verified status not established) (Traceability Engine)'));
   assert.ok(md.includes('EVD-SRCH-'));
 
   // HTML rendering

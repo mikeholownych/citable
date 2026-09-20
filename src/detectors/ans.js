@@ -6,6 +6,7 @@ const D = [];
 const PREAMBLE_RX = /\b(in today'?s (rapidly |ever[- ])?(evolving|changing)|in the (modern|current|digital) (era|age|landscape|world)|now more than ever|as (technology|ai) continues to (evolve|advance)|in an increasingly)\b/i;
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-001', name: 'Generic preamble before answer', namespace: 'ANS',
   description: 'The opening paragraph uses generic scene-setting boilerplate instead of answering the page’s question.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -26,6 +27,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-002', name: 'Question heading without direct answer', namespace: 'ANS',
   description: 'A heading phrased as a question is not followed by prose before the next heading.',
   discipline: ['aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -53,6 +55,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-003', name: 'Circular definition', namespace: 'ANS',
   description: 'A definitional sentence defines a term using the term itself as the definition head.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -85,6 +88,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-004', name: 'Deictic dependency in answer text', namespace: 'ANS',
   description: 'Answer-bearing prose depends on preceding visual context ("as shown above", "in the diagram below"), which breaks when extracted.',
   discipline: ['aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -108,6 +112,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-005', name: 'Relative quantity without baseline or timeframe', namespace: 'ANS',
   description: 'Text asserts a relative numeric improvement ("3x faster", "50% reduction") without a nearby baseline, unit, or timeframe.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -138,6 +143,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-006', name: 'Procedure content without ordered steps', namespace: 'ANS',
   description: 'A page registered as implementation/how-to content contains no ordered list or numbered steps.',
   discipline: ['aeo'], severity: 'low', deterministic: true, requires: ['site', 'registries'],
@@ -164,6 +170,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-007', name: 'Comparison without explicit basis', namespace: 'ANS',
   description: 'A comparison page has neither a comparison table nor prose stating the comparison criteria.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
@@ -190,6 +197,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-008', name: 'Missing scope or limitations on answer page', namespace: 'ANS',
   description: 'A definition/comparison/recommendation page never states scope boundaries, exclusions, or limitations.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site', 'registries'],
@@ -218,6 +226,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-009', name: 'Answer-target page has no prompt coverage', namespace: 'ANS',
   description: 'An answer-bearing page is intended for discovery but is not mapped to any prompt in the governed prompt corpus.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site', 'registries'],
@@ -240,6 +249,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-010', name: 'Published claims lack page evidence mapping', namespace: 'ANS',
   description: 'A page publishes governed claims but records no page-level evidence references, preventing evidence-adjacency review.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
@@ -261,6 +271,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-011', name: 'Over-diluted answer passage (missing direct answer lead)', namespace: 'ANS',
   description: 'A section targeting an informational query or question heading lacks a concise, direct answer passage in its opening sentences, burying key factual answers behind excessive preamble or rambling prose.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -320,6 +331,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-012', name: 'Ungrounded quantitative metric in answer passage', namespace: 'ANS',
   description: 'An answer-bearing passage asserts high-stakes quantitative metrics, percentages, or multiples without adjacent evidence citation, benchmark reference, or registered evidence link.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: false, requires: ['site'],
@@ -359,6 +371,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-013', name: 'Comparative or procedural section lacking structured table or ordered sequence', namespace: 'ANS',
   description: 'A section covering comparative evaluation (vs, alternatives, comparison) or multi-step execution (how to, steps) lacks structured <table>, <ol>, or <ul> markup, diminishing answer engine extraction fidelity.',
   discipline: ['aeo', 'seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -420,6 +433,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-014', name: 'Low information-gain fluff ratio in answer prose', namespace: 'ANS',
   description: 'An answer passage contains excessive rhetorical filler, clichés, or conversational padding, reducing factual density for generative engine extraction.',
   discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -467,6 +481,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-015', name: 'Definitional page lacks direct copular definition', namespace: 'ANS',
   description: 'A page with definitional intent (page_type=definition, /definition/, /glossary/, or "What is" heading) does not provide a direct copular definition ("X is a Y that Z") in the opening paragraph.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -506,6 +521,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ANS-016', name: 'Comprehensive long-form guide lacks executive summary or key takeaways', namespace: 'ANS',
   description: 'An in-depth article or guide exceeding 1,200 words does not provide an executive summary, key takeaways, or TL;DR block, increasing RAG chunk fragmentation and extraction ambiguity.',
   discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -541,4 +557,3 @@ D.push(defineDetector({
 }));
 
 export default D;
-

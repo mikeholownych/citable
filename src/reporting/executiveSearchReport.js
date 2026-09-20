@@ -31,6 +31,7 @@ import {
 } from '../shared/htmlEscape.js';
 import { extractHostname } from '../shared/domainUtils.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { assertEpistemicLanguage, hasVerifiedEvidenceScope } from '../shared/epistemicLanguage.js';
 
 function formatVal(v, suffix = '') {
   if (v === null || v === undefined) return 'NOT OBSERVED';
@@ -620,6 +621,13 @@ export async function buildExecutiveSearchReport(root, options = {}) {
     source_findings_count: findings.length,
     integrity_hash: resolved.integrity_hash,
     synthetic_evidence: isSample,
+    package_verified: resolved.package_verified === true,
+    integrity_mode: resolved.integrity_mode || 'unknown',
+    legacy: resolved.legacy === true,
+    coverage_status: resolved.coverage_status || 'indeterminate',
+    determination_status: resolved.determination_status || 'indeterminate',
+    evaluated: resolved.coverage?.populations?.evaluated ?? null,
+    eligible: resolved.coverage?.populations?.eligible ?? null,
   };
 
   const report = {
@@ -667,7 +675,15 @@ export async function buildExecutiveSearchReport(root, options = {}) {
 /**
  * Render Search Executive Report as GitHub-flavored Markdown
  */
-export function renderSearchReportMarkdown(report) {
+export function renderSearchReportMarkdown(report, evidenceContext = null) {
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = hasVerifiedEvidenceScope(context);
+  const scopedValue = (value) => {
+    if (!verifiedScope && typeof value === 'string' && /\b(?:verified|clean|resolved|optimal|passed)\b|(?:verified_source|clean_profile)/i.test(value)) return 'NOT ESTABLISHED';
+    return value;
+  };
+  const scopedFormat = (value, suffix = '') => scopedValue(formatVal(value, suffix));
+  const evidenceRegisterTitle = `${verifiedScope ? 'Verified Evidence Register' : 'Evidence Register (scope-limited; verified status not established)'} (Traceability Engine)`;
   const p = report.pillars;
   const lines = [
     `# ${sanitizeForMarkdown(report.report_title)}`,
@@ -675,7 +691,7 @@ export function renderSearchReportMarkdown(report) {
     `- **Client / Property**: \`${sanitizeForMarkdown(report.client_name)}\` (\`${sanitizeForMarkdown(report.target_domain)}\`)`,
     `- **Generated At**: \`${report.generated_at}\``,
     `- **Overall Search & AEO Readiness Score**: **${report.overall_readiness_score} / 100**`,
-    `- **Evidence Register Traceability**: ${report.evidence_register.length} verified evidence references`,
+    `- **Evidence Register Traceability**: ${report.evidence_register.length} evidence references (authority and scope recorded below)`,
     `- **Generation Mode**: \`${report.generation_provenance.generation_mode}\`${report.generation_provenance.synthetic_evidence ? ' *(Synthetic Demo Evidence)*' : ''}`,
     ``,
     `> **Operating Premise & Governance Notice**: This executive report presents observable technical search infrastructure, content extraction posture, and controlled citation behavior. In adherence to Citable governance principles, **no search ranking, AI citation, or conversion outcomes are guaranteed**.`,
@@ -684,7 +700,7 @@ export function renderSearchReportMarkdown(report) {
     `## Executive Decision Summary (Traceable Conclusions)`,
     ``,
     `### 1. Confirmed Findings (Deterministic Observations)`,
-    ...report.decision_summary.confirmed_findings.map((f) => `- [x] **[VERIFIED]** ${sanitizeForMarkdown(f)}`),
+    ...report.decision_summary.confirmed_findings.map((f) => `- [x] **[OBSERVED]** ${sanitizeForMarkdown(f)}`),
     ``,
     `### 2. Inferred Opportunities (Modeled Projections)`,
     ...report.decision_summary.inferred_opportunities.map((o) => `- [ ] **[OPPORTUNITY]** ${sanitizeForMarkdown(o)}`),
@@ -703,13 +719,13 @@ export function renderSearchReportMarkdown(report) {
     `- **Evidence Link**: \`${p[1].data.evidence_ref}\``,
     `- **Google Organic Indexing**: ${formatVal(p[1].data.google_organic?.indexed_status).toUpperCase()}`,
     `- **Google AI Overviews**: ${formatVal(p[1].data.google_ai_overviews?.inclusion_rate_pct, '%')} inclusion rate (Risk: \`${formatVal(p[1].data.google_ai_overviews?.risk_exposure)}\`)`,
-    `- **AI Engine Presence**: Perplexity (\`${formatVal(p[1].data.ai_answer_engines?.perplexity)}\`), ChatGPT (\`${formatVal(p[1].data.ai_answer_engines?.chatgpt_search)}\`), Copilot (\`${formatVal(p[1].data.ai_answer_engines?.copilot)}\`)`,
+    `- **AI Engine Presence**: Perplexity (\`${scopedFormat(p[1].data.ai_answer_engines?.perplexity)}\`), ChatGPT (\`${scopedFormat(p[1].data.ai_answer_engines?.chatgpt_search)}\`), Copilot (\`${scopedFormat(p[1].data.ai_answer_engines?.copilot)}\`)`,
     ``,
     `## 2. Technical Search Infrastructure & Core Web Vitals`,
     `- **Evidence Link**: \`${p[2].data.evidence_ref}\``,
-    `- **Crawlability & Canonicals**: ${formatVal(p[2].data.canonical_integrity).toUpperCase()}`,
-    `- **LCP Readiness**: ${formatVal(p[2].data.core_web_vitals?.lcp_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)} render-blocking assets)`,
-    `- **CLS Readiness**: ${formatVal(p[2].data.core_web_vitals?.cls_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.unsized_images)} unsized images)`,
+    `- **Crawlability & Canonicals**: ${scopedFormat(p[2].data.canonical_integrity).toUpperCase()}`,
+    `- **LCP Readiness**: ${scopedFormat(p[2].data.core_web_vitals?.lcp_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)} render-blocking assets)`,
+    `- **CLS Readiness**: ${scopedFormat(p[2].data.core_web_vitals?.cls_status).toUpperCase()} (${formatVal(p[2].data.core_web_vitals?.unsized_images)} unsized images)`,
     ``,
     `## 3. Organic Performance & Search Intent Analysis`,
     `- **Evidence Link**: \`${p[3].data.evidence_ref}\``,
@@ -724,7 +740,7 @@ export function renderSearchReportMarkdown(report) {
     ``,
     `## 5. AEO Readiness Assessment (Answer Engine Optimization)`,
     `- **Evidence Link**: \`${p[5].data.evidence_ref}\``,
-    `- **Overall AEO Readiness Score**: **${formatVal(p[5].data.readiness_score)} / 100** (${formatVal(p[5].data.status).toUpperCase()})`,
+    `- **Overall AEO Readiness Score**: **${formatVal(p[5].data.readiness_score)} / 100** (${scopedFormat(p[5].data.status).toUpperCase()})`,
     `- **Direct Answer Density**: ${formatVal(p[5].data.direct_extract_density)}`,
     ``,
     `## 6. GEO Assessment (Generative Engine Optimization)`,
@@ -743,7 +759,7 @@ export function renderSearchReportMarkdown(report) {
     `## 8. Entity & Knowledge Graph Integrity`,
     `- **Evidence Link**: \`${p[8].data.evidence_ref}\``,
     `- **Organization Node Resolved**: ${p[8].data.organization_node_resolved ? 'YES' : 'NO'}`,
-    `- **External Corroboration**: ${formatVal(p[8].data.wikidata_corroboration).toUpperCase()}`,
+    `- **External Corroboration**: ${scopedFormat(p[8].data.wikidata_corroboration).toUpperCase()}`,
     ``,
     `## 9. Structured-Data & Schema Architecture`,
     `- **Evidence Link**: \`${p[9].data.evidence_ref}\``,
@@ -753,12 +769,12 @@ export function renderSearchReportMarkdown(report) {
     `## 10. Competitive Search Intelligence & Share of Voice`,
     `- **Evidence Link**: \`${p[10].data.evidence_ref}\``,
     `- **1st-Party Citation Share**: **${formatVal(p[10].data.first_party_citation_share_pct, '%')}** vs Competitors (${formatVal(p[10].data.top_competitor_share_pct, '%')})`,
-    `- **Primary Gap**: ${formatVal(p[10].data.primary_authority_gap)}`,
+    `- **Primary Gap**: ${scopedFormat(p[10].data.primary_authority_gap)}`,
     ``,
     `## 11. Backlink & Off-Page Authority Profile`,
     `- **Evidence Link**: \`${p[11].data.evidence_ref}\``,
     `- **Referring Domains**: ${formatVal(p[11].data.referring_domains)} (Authority Score: ${formatVal(p[11].data.authority_score)}/100)`,
-    `- **Toxic Domains**: ${formatVal(p[11].data.toxic_domain_count)} flagged (\`${formatVal(p[11].data.disavow_recommendation)}\`)`,
+    `- **Toxic Domains**: ${formatVal(p[11].data.toxic_domain_count)} flagged (\`${scopedFormat(p[11].data.disavow_recommendation)}\`)`,
     ``,
     `## 12. Search Demand & Addressable Market Opportunity`,
   ];
@@ -782,11 +798,11 @@ export function renderSearchReportMarkdown(report) {
     `- **Assisted Conversions Share**: ${formatVal(p[13].data.assisted_conversions_share_pct, '%')}`,
     ``,
     `## 14. Measurement Integrity & Analytics Instrumentation`,
-    `- **GA4 & GSC**: ${formatVal(p[14].data.ga4_instrumentation).toUpperCase()} / ${formatVal(p[14].data.gsc_property_binding).toUpperCase()}`,
+    `- **GA4 & GSC**: ${formatVal(scopedValue(p[14].data.ga4_instrumentation)).toUpperCase()} / ${formatVal(scopedValue(p[14].data.gsc_property_binding)).toUpperCase()}`,
     `- **Consent Mode Data Loss**: ${formatVal(p[14].data.consent_mode_v2_loss_pct, '%')}`,
     `- **Limitations**: ${(p[14].data.known_limitations || []).map((l) => sanitizeForMarkdown(l)).join('; ')}`,
     ``,
-    `## 15. Verified Evidence Register (Traceability Engine)`,
+    `## 15. ${evidenceRegisterTitle}`,
     `| Evidence ID | Source | Methodology | Confidence | Observation Date |`,
     `| :--- | :--- | :--- | :--- | :--- |`,
     ...report.evidence_register.map((e) => `| **${e.evidence_id}** | \`${escapeMarkdownTableCell(e.source)}\` | ${escapeMarkdownTableCell((e.methodology || '').slice(0, 50))}... | \`${e.confidence_level}\` | ${e.observation_date} |`),
@@ -806,15 +822,30 @@ export function renderSearchReportMarkdown(report) {
     ``
   );
 
-  return lines.join('\n');
+  const rendered = lines.join('\n');
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
  * Render Search Executive Report as Standalone Enterprise HTML
  */
-export function renderSearchReportHtml(report) {
+export function renderSearchReportHtml(report, evidenceContext = null) {
   const p = report.pillars;
-  return `<!DOCTYPE html>
+  const context = evidenceContext || report.generation_provenance || {};
+  const verifiedScope = hasVerifiedEvidenceScope(context);
+  const evidenceRegisterTitle = verifiedScope
+    ? 'Verified Evidence Register'
+    : 'Evidence Register (scope-limited; verified status not established)';
+  const readinessLabel = verifiedScope ? (report.overall_readiness_score >= 70 ? 'Strong observed posture' : 'Needs optimization') : 'Not established';
+  const cwvLabel = verifiedScope && p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'No flagged blockers' : 'Not established';
+  const scopedFormat = (value, suffix = '') => {
+    const rendered = formatVal(value, suffix);
+    return !verifiedScope && typeof rendered === 'string' && /\b(?:verified|clean|resolved|optimal|passed)\b|(?:verified_source|clean_profile)/i.test(rendered)
+      ? 'NOT ESTABLISHED'
+      : rendered;
+  };
+  const rendered = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -861,12 +892,12 @@ export function renderSearchReportHtml(report) {
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Composite Search Readiness</div>
         <div class="card-num">${report.overall_readiness_score} / 100</div>
-        <span class="badge ${report.overall_readiness_score >= 70 ? 'badge-success' : 'badge-warning'}">${report.overall_readiness_score >= 70 ? 'Optimal' : 'Needs Optimization'}</span>
+        <span class="badge ${verifiedScope && report.overall_readiness_score >= 70 ? 'badge-success' : 'badge-warning'}">${readinessLabel}</span>
       </div>
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">AEO Direct Extraction</div>
         <div class="card-num">${formatVal(p[5].data.readiness_score)}</div>
-        <span class="badge badge-success">${formatVal(p[5].data.status).toUpperCase()}</span>
+        <span class="badge badge-success">${scopedFormat(p[5].data.status).toUpperCase()}</span>
       </div>
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">E-E-A-T Quality Score</div>
@@ -876,11 +907,11 @@ export function renderSearchReportHtml(report) {
       <div class="card">
         <div style="font-size:12px; color:var(--muted); text-transform:uppercase;">Core Web Vitals Blockers</div>
         <div class="card-num">${formatVal(p[2].data.core_web_vitals?.render_blocking_scripts)}</div>
-        <span class="badge ${p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'badge-success' : 'badge-danger'}">${p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'Clean' : 'Action Required'}</span>
+        <span class="badge ${verifiedScope && p[2].data.core_web_vitals?.render_blocking_scripts === 0 ? 'badge-success' : 'badge-danger'}">${cwvLabel}</span>
       </div>
     </div>
 
-    <h2 class="section-title">Verified Evidence Register (${report.evidence_register.length} Observations)</h2>
+    <h2 class="section-title">${evidenceRegisterTitle} (${report.evidence_register.length} Observations)</h2>
     <table>
       <thead>
         <tr>
@@ -915,6 +946,8 @@ export function renderSearchReportHtml(report) {
   </div>
 </body>
 </html>`;
+  assertEpistemicLanguage(rendered, { ...context, package_verified: context.package_verified === true });
+  return rendered;
 }
 
 /**
@@ -922,15 +955,16 @@ export function renderSearchReportHtml(report) {
  */
 export async function exportExecutiveSearchReport(root, options = {}) {
   const report = await buildExecutiveSearchReport(root, options);
+  const evidenceContext = report.generation_provenance;
   const format = options.format || 'markdown';
   let content = '';
 
   if (format === 'html' || format === 'html-brief') {
-    content = renderSearchReportHtml(report);
+    content = renderSearchReportHtml(report, evidenceContext);
   } else if (format === 'json') {
     content = JSON.stringify(report, null, 2);
   } else {
-    content = renderSearchReportMarkdown(report);
+    content = renderSearchReportMarkdown(report, evidenceContext);
   }
 
   let outputPath = null;

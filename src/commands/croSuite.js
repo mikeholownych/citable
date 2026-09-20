@@ -9,6 +9,7 @@ import { analyzeBehavioralTelemetry } from '../analysis/behavioral.js';
 import { generateExperimentBacklog, formatBacklogMarkdown } from './croBacklog.js';
 import { buildIceMatrix, formatIceMatrixOutput } from '../analysis/iceMatrix.js';
 import { buildCroRoadmap, formatCroRoadmapMarkdown } from '../analysis/croRoadmap.js';
+import { downstreamEnvelope, completeLocalCoverage } from '../evidence/downstream.js';
 
 /**
  * Full End-to-End CRO Intelligence Suite Audit
@@ -22,6 +23,8 @@ export async function auditCroSuite(root, { target, baseUrl, refDate, input, fun
   const { findings } = runDetectors(croDetectors, ctx);
 
   const pages = indexTargets(ctx);
+  const coverage = ctx.coverage || (pages.length > 0 ? completeLocalCoverage(pages, ctx.site.baseUrl) : null);
+  const evidence = downstreamEnvelope(coverage);
 
   // 2. Above-the-fold clarity, trust, cognitive load, offer architecture per page
   const auditedPages = pages.map((page) => auditPageCro(page, ctx));
@@ -33,21 +36,29 @@ export async function auditCroSuite(root, { target, baseUrl, refDate, input, fun
   });
   const targetGroup = commercialPages.length > 0 ? commercialPages : auditedPages;
 
-  const avgAtfClarity = targetGroup.length > 0
+  const avgAtfClarity = targetGroup.length > 0 && evidence.determination_status !== 'indeterminate'
     ? Math.round(targetGroup.reduce((acc, p) => acc + p.atf_clarity.score, 0) / targetGroup.length)
-    : 0;
+    : null;
 
-  const avgTrustScore = targetGroup.length > 0
+  const avgTrustScore = targetGroup.length > 0 && evidence.determination_status !== 'indeterminate'
     ? Math.round(targetGroup.reduce((acc, p) => acc + p.trust_and_credibility.score, 0) / targetGroup.length)
-    : 0;
+    : null;
 
-  const avgConversionReadiness = targetGroup.length > 0
+  const avgConversionReadiness = targetGroup.length > 0 && evidence.determination_status !== 'indeterminate'
     ? Math.round(targetGroup.reduce((acc, p) => acc + p.conversion_readiness_score, 0) / targetGroup.length)
-    : 0;
+    : null;
 
   // 3. End-to-end Funnel and Conversion-Path Analysis
   const declaredFunnel = (ctx.registries?.funnels?.entries || []).find((f) => funnelId ? f.funnel_id === funnelId : true) || null;
   const funnelAnalysis = analyzeConversionFunnel(ctx.site.pages, declaredFunnel);
+  const qualify = (value) => evidence.determination_status === 'supported' ? value : null;
+  const qualifiedFunnel = {
+    ...funnelAnalysis,
+    funnel_health_score: qualify(funnelAnalysis.funnel_health_score),
+    determination_status: evidence.determination_status,
+    coverage_status: evidence.coverage_status,
+    limitations: evidence.limitations,
+  };
 
   // 4. Behavioral Evidence Analysis (if telemetry file provided)
   let behavioralAnalysis = null;
@@ -65,9 +76,26 @@ export async function auditCroSuite(root, { target, baseUrl, refDate, input, fun
 
   // 5. Experiment Backlog with Falsifiable Hypotheses
   const experimentBacklog = generateExperimentBacklog(findings);
+  const qualifiedExperimentBacklog = {
+    ...experimentBacklog,
+    total_experiments: qualify(experimentBacklog.total_experiments),
+    determination_status: evidence.determination_status,
+    coverage_status: evidence.coverage_status,
+    limitations: evidence.limitations,
+  };
 
   // 6. Impact / Effort / Confidence (ICE) Prioritization Matrix
   const iceMatrix = buildIceMatrix(findings, { type: 'findings' });
+  const qualifiedIceMatrix = {
+    ...iceMatrix,
+    determination_status: evidence.determination_status,
+    coverage_status: evidence.coverage_status,
+    limitations: evidence.limitations,
+    summary: {
+      ...iceMatrix.summary,
+      quick_wins_count: qualify(iceMatrix.summary.quick_wins_count),
+    },
+  };
 
   // 7. 30 / 90 / 180-Day CRO Strategic Roadmap tied to Measurable Conversion Outcomes
   const targetDomain = ctx.site.baseUrl ? new URL(ctx.site.baseUrl).hostname : 'target-site';
@@ -75,26 +103,36 @@ export async function auditCroSuite(root, { target, baseUrl, refDate, input, fun
     findings,
     targetDomain,
   });
+  const qualifiedRoadmap = {
+    ...croRoadmap,
+    determination_status: evidence.determination_status,
+    coverage_status: evidence.coverage_status,
+    limitations: evidence.limitations,
+  };
 
   const result = {
     fact_status: 'modeled_cro_evaluation',
     target: ctx.site.baseUrl || target,
     total_pages_audited: pages.length,
+    coverage_status: evidence.coverage_status,
+    determination_status: evidence.determination_status,
+    evidence_scope: evidence.evidence_scope,
+    limitations: evidence.limitations,
     summary: {
       conversion_readiness_score: avgConversionReadiness,
       atf_clarity_score: avgAtfClarity,
       trust_credibility_score: avgTrustScore,
-      funnel_health_score: funnelAnalysis.funnel_health_score,
+      funnel_health_score: qualifiedFunnel.funnel_health_score,
       total_cro_findings: findings.length,
-      planned_experiments: experimentBacklog.total_experiments,
-      quick_wins_count: iceMatrix.summary.quick_wins_count,
+      planned_experiments: qualifiedExperimentBacklog.total_experiments,
+      quick_wins_count: qualifiedIceMatrix.summary.quick_wins_count,
     },
-    funnel_analysis: funnelAnalysis,
+    funnel_analysis: qualifiedFunnel,
     pages: auditedPages,
     behavioral_telemetry: behavioralAnalysis,
-    experiment_backlog: experimentBacklog,
-    ice_matrix: iceMatrix,
-    strategic_roadmap: croRoadmap,
+    experiment_backlog: qualifiedExperimentBacklog,
+    ice_matrix: qualifiedIceMatrix,
+    strategic_roadmap: qualifiedRoadmap,
     findings: findings.map((f) => ({
       detector_id: f.detector_id,
       severity: f.classification.severity,

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { readJson, sha256, sha256File } from './io.js';
-import { verifyRunPackage, RunVerificationError } from './runPackageVerifier.js';
+import { readJson, sha256 } from './io.js';
+import { loadVerifiedRun } from './verifiedRunLoader.js';
 import { buildContext } from '../commands/context.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors, indexTargets } from '../detectors/framework.js';
@@ -161,6 +161,12 @@ export async function resolveEvidenceSource(root, options = {}) {
       integrity_hash: sha256(findingsJson),
       generation_mode: generationMode,
       run_metadata: null,
+      package_verified: false,
+      integrity_mode: 'in_memory_unsealed',
+      legacy: false,
+      coverage: null,
+      coverage_status: 'indeterminate',
+      determination_status: 'indeterminate',
     };
   }
 
@@ -177,10 +183,14 @@ export async function resolveEvidenceSource(root, options = {}) {
     }
 
     try {
-      const verification = verifyRunPackage(runPath, {
-        requireFindings: true,
-        requireCompleted: generationMode === 'CONTRACTUAL',
-        requireChecksums: true,
+      // Historical packages are explicitly opened in legacy mode until all
+      // producers persist coverage.json. The loader still verifies the sealed
+      // package and marks their coverage indeterminate; it never invents a
+      // complete corpus.
+      const verification = loadVerifiedRun(runPath, {
+        requireCompletedExecution: generationMode === 'CONTRACTUAL',
+        allowLegacy: true,
+        requireCoverage: false,
       });
 
       return {
@@ -188,16 +198,19 @@ export async function resolveEvidenceSource(root, options = {}) {
         source_identifier: runId,
         findings: verification.findings,
         findings_count: verification.findingsCount,
-        integrity_hash: sha256File(findPath),
+        integrity_hash: verification.package_hash,
         generation_mode: generationMode,
         run_metadata: verification.manifest,
         checksums_verified: verification.checksumsVerified,
+        package_verified: verification.verified === true && verification.integrity_mode === 'sealed',
+        integrity_mode: verification.integrity_mode,
+        legacy: verification.legacy === true,
+        coverage: verification.coverage,
+        coverage_status: verification.coverage_status,
+        determination_status: verification.determination_status,
       };
     } catch (err) {
-      if (err instanceof RunVerificationError) {
-        throw new FindingsInvalidError(runId, err.message);
-      }
-      throw err;
+      throw new FindingsInvalidError(runId, err.message);
     }
   }
 
@@ -225,6 +238,12 @@ export async function resolveEvidenceSource(root, options = {}) {
         generation_mode: generationMode,
         run_metadata: null,
         context: ctx,
+        package_verified: false,
+        integrity_mode: 'live_unsealed',
+        legacy: false,
+        coverage: ctx.coverage || null,
+        coverage_status: ctx.coverage?.coverage_status || 'indeterminate',
+        determination_status: ctx.coverage?.determination_status || 'indeterminate',
       };
     } catch (err) {
       throw new LiveInspectionFailedError(target, err.message);
@@ -243,12 +262,11 @@ export async function resolveEvidenceSource(root, options = {}) {
       const sorted = sortRunCandidatesChronologically(runsDir, candidateDirs);
       for (const candidateId of sorted) {
         const runPath = path.join(runsDir, candidateId);
-        const findPath = path.join(runPath, 'findings.json');
         try {
-          const verification = verifyRunPackage(runPath, {
-            requireFindings: true,
-            requireCompleted: false, // allow non-completed in discovery if valid
-            requireChecksums: false,
+          const verification = loadVerifiedRun(runPath, {
+            requireCompletedExecution: false,
+            allowLegacy: true,
+            requireCoverage: false,
           });
 
           return {
@@ -256,9 +274,16 @@ export async function resolveEvidenceSource(root, options = {}) {
             source_identifier: candidateId,
             findings: verification.findings,
             findings_count: verification.findingsCount,
-            integrity_hash: sha256File(findPath),
+            integrity_hash: verification.package_hash,
             generation_mode: generationMode,
             run_metadata: verification.manifest,
+            checksums_verified: verification.checksumsVerified,
+            package_verified: verification.verified === true && verification.integrity_mode === 'sealed',
+            integrity_mode: verification.integrity_mode,
+            legacy: verification.legacy === true,
+            coverage: verification.coverage,
+            coverage_status: verification.coverage_status,
+            determination_status: verification.determination_status,
           };
         } catch {
           // Try next candidate
@@ -278,6 +303,12 @@ export async function resolveEvidenceSource(root, options = {}) {
       integrity_hash: null,
       generation_mode: 'NON_CONTRACTUAL_SAMPLE',
       run_metadata: null,
+      package_verified: false,
+      integrity_mode: 'sample_unverified',
+      legacy: false,
+      coverage: null,
+      coverage_status: 'indeterminate',
+      determination_status: 'indeterminate',
     };
   }
 

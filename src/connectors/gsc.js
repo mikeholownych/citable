@@ -1,4 +1,5 @@
 import { providerRequest } from './http.js';
+import { collectionResult, errorMessage, paginationBoundary } from './collectionResult.js';
 
 const BASE = 'https://www.googleapis.com/webmasters/v3';
 const METRICS = {
@@ -25,17 +26,51 @@ export const gscConnector = {
     if (!dimensions.includes('date')) dimensions.unshift('date');
     const rows = [];
     let startRow = 0;
+    const items = [];
+    const errors = [];
+    const maxPages = paginationBoundary(context);
+    let pagesRequested = 0;
+    let pagesRetrieved = 0;
+    let continuationState = null;
+    let providerTotal = null;
+    let connectorError = null;
     do {
-      const result = await providerRequest(`${BASE}/sites/${encodeURIComponent(connection.property_id)}/searchAnalytics/query`, {
-        ...context, method: 'POST', body: { startDate, endDate, dimensions, rowLimit: 25000, startRow, dataState: 'final' },
-      });
-      for (const row of result.rows || []) {
+      pagesRequested += 1;
+      let result;
+      try {
+        result = await providerRequest(`${BASE}/sites/${encodeURIComponent(connection.property_id)}/searchAnalytics/query`, {
+          ...context, method: 'POST', body: { startDate, endDate, dimensions, rowLimit: 25000, startRow, dataState: 'final' },
+        });
+      } catch (error) {
+        connectorError ||= error;
+        errors.push(`start row ${startRow}: ${errorMessage(error)}`);
+        continuationState = { start_row: startRow };
+        break;
+      }
+      pagesRetrieved += 1;
+      const pageRows = result.rows || [];
+      items.push(...pageRows);
+      if (Number.isInteger(result.rowCount) && result.rowCount >= 0) providerTotal = result.rowCount;
+      for (const row of pageRows) {
         const values = Object.fromEntries(dimensions.map((name, index) => [name === 'page' ? 'url' : name, row.keys[index]]));
         for (const metric of metrics) rows.push({ metric, value: row[metric.external_name], dimensions: values, observed_at: `${values.date}T00:00:00.000Z` });
       }
-      if ((result.rows || []).length < 25000) break;
+      if (pageRows.length < 25000) break;
       startRow += 25000;
+      if (pagesRequested >= maxPages) {
+        continuationState = { start_row: startRow };
+        break;
+      }
     } while (true);
-    return { rows, cursor: endDate, limitations: ['Search Console privacy filtering and aggregation apply.', 'Search Analytics does not guarantee every data row; the API can return top rows only.', 'Final data can still be revised by the provider.'] };
+    const collection = collectionResult({
+      items,
+      paginationState: { pages_requested: pagesRequested, pages_retrieved: pagesRetrieved, boundary: { max_pages: maxPages } },
+      providerReportedTotal: providerTotal,
+      continuationState,
+      providerCompleteness: 'unknown',
+      limitations: ['Search Console privacy filtering and aggregation apply.', 'Search Analytics does not guarantee every data row; the API can return top rows only.', 'Final data can still be revised by the provider.'],
+      errors,
+    });
+    return { rows, cursor: endDate, limitations: collection.limitations, collection, ...(connectorError ? { connectorError } : {}) };
   },
 };

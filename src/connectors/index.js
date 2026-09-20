@@ -4,6 +4,7 @@ import { wordpressConnector } from './wordpress.js';
 import { webflowConnector } from './webflow.js';
 import { indexnowConnector } from './indexnow.js';
 import { mcpConnector } from './mcp/pilot.js';
+export { collectionResult, paginationBoundary, errorMessage } from './collectionResult.js';
 
 const CONNECTORS = new Map([gscConnector, ga4Connector, wordpressConnector, webflowConnector, indexnowConnector, mcpConnector].map((connector) => [connector.provider, connector]));
 
@@ -18,4 +19,3 @@ export function listConnectors() {
 }
 
 export { McpClient, McpStdioTransport, McpHttpTransport, ALLOWED_MCP_SERVERS, isServerAllowlisted, isToolAllowlisted, assertToolAllowed, collectMcpEvidence, mcpConnector, diagnoseMcpTransports } from './mcp/index.js';
-

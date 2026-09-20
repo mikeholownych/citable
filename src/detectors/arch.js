@@ -3,6 +3,7 @@ import { defineDetector, indexTargets, pageSubject, entrySubject, sitePageFor } 
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-001', name: 'Orphan page', namespace: 'ARCH',
   description: 'An index-target page receives no internal links from any other audited page.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['site'],
@@ -24,6 +25,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-002', name: 'Dead-end page', namespace: 'ARCH',
   description: 'A page has no outbound internal links; users and crawlers cannot continue anywhere.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -43,6 +45,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-003', name: 'Excessive crawl depth', namespace: 'ARCH',
   description: 'An index-target page requires more than the configured number of clicks from the home page.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -66,6 +69,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-004', name: 'Duplicate query target', namespace: 'ARCH',
   description: 'Two or more registry pages target the same query — internal competition for one intent.',
   discipline: ['seo', 'aeo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -93,6 +97,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-005', name: 'Overlapping primary intent', namespace: 'ARCH',
   description: 'Two active registry pages declare the same primary intent and share a primary entity.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -120,6 +125,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'ARCH-006', name: 'Page without topic-hub relationship', namespace: 'ARCH',
   description: 'A non-hub content page has no internal link to any hub/category page.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site', 'registries'],

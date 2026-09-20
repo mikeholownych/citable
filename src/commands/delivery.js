@@ -6,6 +6,7 @@ import { compareSnapshots } from './compareSnapshots.js';
 import { buildAlertPayload, dispatchAlertWebhook, filterAlerts } from '../monitoring/alertDelivery.js';
 import { loadRegistries } from '../registries/index.js';
 import { readJson, sha256, writeJson, nowIso } from '../shared/io.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 
 const PKG = readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json'));
 
@@ -114,12 +115,11 @@ function annotationLevel(severity) {
 export function projectGithub(root, { runId } = {}) {
   if (!runId) throw new Error('projection requires a source run id');
   const runDir = path.join(root, '.citable', 'runs', runId);
-  const findingsFile = path.join(runDir, 'findings.json');
-  const manifestFile = path.join(runDir, 'manifest.json');
-  if (!fs.existsSync(findingsFile) || !fs.existsSync(manifestFile)) throw new Error(`run ${runId} is missing findings or manifest evidence`);
-  const findingsBytes = fs.readFileSync(findingsFile);
-  const manifestBytes = fs.readFileSync(manifestFile);
-  const annotations = JSON.parse(findingsBytes).map((finding) => ({
+  const loaded = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const findingsHash = loaded.artifactHashes?.['findings.json'];
+  const manifestHash = loaded.artifactHashes?.['manifest.json'];
+  if (!findingsHash || !manifestHash) throw new Error(`run ${runId} has no loader-verified findings or manifest hash`);
+  const annotations = loaded.findings.map((finding) => ({
     level: annotationLevel(finding.classification.severity),
     title: `${finding.detector_id}: ${finding.classification.severity}`,
     message: finding.observation.summary,
@@ -127,7 +127,7 @@ export function projectGithub(root, { runId } = {}) {
     line: finding.subject.source_location ? Number(String(finding.subject.source_location).match(/\d+/)?.[0]) || null : null,
     finding_id: finding.finding_id,
   }));
-  const projection = { source_run_id: runId, source_manifest_hash: sha256(manifestBytes), source_findings_hash: sha256(findingsBytes), generated_at: nowIso(), projection: 'github-check-annotations', authoritative: false, annotations };
+  const projection = { source_run_id: runId, source_manifest_hash: manifestHash, source_findings_hash: findingsHash, generated_at: nowIso(), projection: 'github-check-annotations', authoritative: false, annotations };
   const dir = path.join(root, '.citable', 'projections', 'github', runId);
   writeJson(path.join(dir, 'annotations.json'), projection);
   return { ...projection, dir };

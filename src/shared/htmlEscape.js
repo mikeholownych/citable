@@ -26,7 +26,7 @@ export function escapeHtmlAttr(str) {
   return escapeHtml(str);
 }
 
-const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'ftp:']);
 
 export function sanitizeUrl(urlStr, fallback = '#') {
   if (!urlStr || typeof urlStr !== 'string') return fallback;
@@ -38,11 +38,15 @@ export function sanitizeUrl(urlStr, fallback = '#') {
   try {
     const parsed = new URL(trimmed);
     if (SAFE_PROTOCOLS.has(parsed.protocol)) {
-      return escapeHtmlAttr(trimmed);
+      // Additional substring sanitization: ensure no CRLF injection via encoded newlines
+      const normalized = parsed.href.replace(/\r\n|\r/g, '\n');
+      return escapeHtmlAttr(normalized);
     }
-    return fallback;
+    // Unsafe protocol: return fully sanitized fallback
+    return escapeHtmlAttr(fallback);
   } catch {
-    return fallback;
+    // Invalid URL: return sanitized fallback
+    return escapeHtmlAttr(fallback);
   }
 }
 

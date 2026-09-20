@@ -1,0 +1,41 @@
+{
+  "$id": "citable://schemas/summary.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Run summary",
+  "type": "object",
+  "required": ["coverage", "posture"],
+  "properties": {
+    "coverage": {
+      "type": ["object", "null"],
+      "required": ["status", "populations", "stop_reason"],
+      "properties": {
+        "status": { "enum": ["complete", "truncated", "indeterminate", "not_applicable"] },
+        "populations": { "$ref": "citable://schemas/audit-coverage.schema.json#/properties/populations" },
+        "stop_reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "posture": {
+      "type": "object",
+      "required": ["retrieval_eligibility", "source_extraction_and_support", "observed_citation_behavior"],
+      "properties": {
+        "retrieval_eligibility": { "$ref": "#/definitions/posture" },
+        "source_extraction_and_support": { "$ref": "#/definitions/posture" },
+        "observed_citation_behavior": { "$ref": "#/definitions/posture" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "posture": {
+      "type": "object",
+      "required": ["result"],
+      "properties": {
+        "result": { "type": "string" },
+        "coverage_status": { "enum": ["complete", "truncated", "indeterminate", "not_applicable"] }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { providerRequest } from './http.js';
 import { sha256, nowIso } from '../shared/io.js';
+import { collectionResult, errorMessage, paginationBoundary } from './collectionResult.js';
 
 const METRICS = {
   published_posts: { unit: 'count', value_type: 'integer' },
@@ -23,6 +24,53 @@ function computeCmsPayloadHash(payload) {
     schema_data: payload.schema_data || null,
   };
   return sha256(JSON.stringify(canonical));
+}
+
+async function collectWordPressEndpoint(base, endpoint, context) {
+  const maxPages = paginationBoundary(context);
+  const items = [];
+  const limitations = [];
+  const errors = [];
+  let providerTotal = null;
+  let totalPages = null;
+  let page = 1;
+  let pagesRequested = 0;
+  let pagesRetrieved = 0;
+  let continuationState = null;
+  let providerCompleteness = 'declared';
+  let connectorError = null;
+
+  while (page <= maxPages) {
+    pagesRequested += 1;
+    const suffix = page === 1 ? '?per_page=100&status=publish' : `?per_page=100&status=publish&page=${page}`;
+    try {
+      const response = await providerRequest(`${base}/wp-json/wp/v2/${endpoint}${suffix}`, { ...context, rawResponse: true });
+      const pageItems = await response.json();
+      if (!Array.isArray(pageItems)) throw new Error(`WordPress ${endpoint} page ${page} did not return an array`);
+      pagesRetrieved += 1;
+      items.push(...pageItems.map((item) => ({ ...item, _collection_endpoint: endpoint })));
+      const headerTotal = Number(response.headers.get('x-wp-total'));
+      const headerPages = Number(response.headers.get('x-wp-totalpages'));
+      if (Number.isInteger(headerTotal) && headerTotal >= 0) providerTotal = headerTotal;
+      if (Number.isInteger(headerPages) && headerPages >= 1) totalPages = headerPages;
+      if (!totalPages) providerCompleteness = 'unknown';
+      if (pageItems.length === 0 || (totalPages && page >= totalPages)) break;
+      if (!totalPages && pageItems.length >= 100) {
+        continuationState = { endpoint, page: page + 1 };
+        limitations.push('WordPress did not report total pages for a full page of results.');
+        break;
+      }
+      page += 1;
+    } catch (error) {
+      connectorError ||= error;
+      errors.push(`${endpoint} page ${page}: ${errorMessage(error)}`);
+      continuationState = { endpoint, page };
+      break;
+    }
+  }
+  if (!continuationState && totalPages && page < totalPages) continuationState = { endpoint, page };
+  if (continuationState && page > maxPages) limitations.push(`WordPress ${endpoint} collection reached the ${maxPages}-page boundary.`);
+  return { items, providerTotal, providerCompleteness, connectorError, pagesRequested, pagesRetrieved, continuationState, limitations, errors };
 }
 
 export const wordpressConnector = {
@@ -78,35 +126,71 @@ export const wordpressConnector = {
     const rows = [];
     const metricNames = new Set(metrics.map((m) => m.external_name));
 
+    const collections = [];
+    const collectionErrors = [];
+    const collectionLimitations = [];
+    let pagesRequested = 0;
+    let pagesRetrieved = 0;
+    let continuationState = null;
+    let providerTotal = 0;
+    let providerTotalKnown = true;
+    let connectorError = null;
+
     if (metricNames.has('published_posts')) {
-      const posts = await providerRequest(`${base}/wp-json/wp/v2/posts?per_page=100&status=publish`, context);
+      const postsResult = await collectWordPressEndpoint(base, 'posts', context);
+      collections.push(...postsResult.items);
+      collectionErrors.push(...postsResult.errors);
+      collectionLimitations.push(...postsResult.limitations);
+      pagesRequested += postsResult.pagesRequested;
+      pagesRetrieved += postsResult.pagesRetrieved;
+      continuationState ||= postsResult.continuationState;
+      connectorError ||= postsResult.connectorError;
+      if (postsResult.providerCompleteness === 'unknown') providerTotalKnown = false;
+      if (postsResult.providerTotal === null) providerTotalKnown = false; else providerTotal += postsResult.providerTotal;
       const postMetric = metrics.find((m) => m.external_name === 'published_posts');
       rows.push({
         metric: postMetric,
-        value: Array.isArray(posts) ? posts.length : 0,
+        value: postsResult.items.length,
         dimensions: { date: endDate },
         observed_at: `${endDate}T00:00:00.000Z`,
       });
     }
 
     if (metricNames.has('published_pages')) {
-      const pages = await providerRequest(`${base}/wp-json/wp/v2/pages?per_page=100&status=publish`, context);
+      const pagesResult = await collectWordPressEndpoint(base, 'pages', context);
+      collections.push(...pagesResult.items);
+      collectionErrors.push(...pagesResult.errors);
+      collectionLimitations.push(...pagesResult.limitations);
+      pagesRequested += pagesResult.pagesRequested;
+      pagesRetrieved += pagesResult.pagesRetrieved;
+      continuationState ||= pagesResult.continuationState;
+      connectorError ||= pagesResult.connectorError;
+      if (pagesResult.providerCompleteness === 'unknown') providerTotalKnown = false;
+      if (pagesResult.providerTotal === null) providerTotalKnown = false; else providerTotal += pagesResult.providerTotal;
       const pageMetric = metrics.find((m) => m.external_name === 'published_pages');
       rows.push({
         metric: pageMetric,
-        value: Array.isArray(pages) ? pages.length : 0,
+        value: pagesResult.items.length,
         dimensions: { date: endDate },
         observed_at: `${endDate}T00:00:00.000Z`,
       });
     }
 
+    const collection = collectionResult({
+      items: collections,
+      paginationState: { pages_requested: pagesRequested, pages_retrieved: pagesRetrieved, boundary: { max_pages: paginationBoundary(context) } },
+      providerReportedTotal: providerTotalKnown ? providerTotal : null,
+      continuationState,
+      providerCompleteness: providerTotalKnown ? 'declared' : 'unknown',
+      limitations: [...collectionLimitations, 'WordPress REST API collection is bounded to accessible posts and pages.', 'Custom post types outside standard posts and pages require dedicated endpoint parameters.'],
+      errors: collectionErrors,
+    });
     return {
       rows,
       cursor: endDate,
-      limitations: [
-        'WordPress REST API collection is bounded to accessible posts and pages.',
-        'Custom post types outside standard posts and pages require dedicated endpoint parameters.',
-      ],
+      limitations: collection.limitations,
+      collection,
+      ...(connectorError ? { connectorError } : {}),
     };
   },
 

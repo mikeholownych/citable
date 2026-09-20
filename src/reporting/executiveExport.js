@@ -3,6 +3,9 @@ import path from "node:path";
 import { readJson } from "../shared/io.js";
 import { exportExecutiveSearchReport, buildExecutiveSearchReport, renderSearchReportMarkdown, renderSearchReportHtml } from "./executiveSearchReport.js";
 import { exportExecutiveCroReport, buildExecutiveCroReport, renderCroReportMarkdown, renderCroReportHtml } from "./executiveCroReport.js";
+import { downstreamEnvelope } from '../evidence/downstream.js';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
+import { assertEpistemicLanguage, evidenceScopeStatement } from '../shared/epistemicLanguage.js';
 
 export {
   exportExecutiveSearchReport,
@@ -78,7 +81,7 @@ export async function exportExecutiveReport(root, runId, {
   }
 
   const runsDir = path.join(root, ".citable", "runs");
-  let targetRun = runId;
+  let targetRun = runId && fs.existsSync(path.join(root, '.citable', 'runs', runId)) ? runId : null;
 
   if (!targetRun && fs.existsSync(runsDir)) {
     const runs = fs.readdirSync(runsDir).filter((d) => !d.startsWith("."));
@@ -86,23 +89,41 @@ export async function exportExecutiveReport(root, runId, {
   }
 
   let summary = {
-    counts: { critical: 0, high: 2, medium: 4, low: 1 },
+    counts: { critical: 0, high: 0, medium: 0, low: 0 },
     posture: { retrieval: "eligible", support: "suitable", citation: "observed" },
+    coverage_status: 'indeterminate',
+    determination_status: 'indeterminate',
   };
   let findings = [];
+  let coverage = null;
+  let packageVerified = false;
 
   if (targetRun) {
-    const sumPath = path.join(runsDir, targetRun, "summary.json");
-    if (fs.existsSync(sumPath)) {
-      try { summary = readJson(sumPath); } catch {}
-    }
-    const findPath = path.join(runsDir, targetRun, "findings.json");
-    if (fs.existsSync(findPath)) {
-      try { findings = readJson(findPath); } catch {}
-    }
+    const loaded = loadVerifiedRun(path.join(runsDir, targetRun), { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+    summary = loaded.summary || summary;
+    findings = loaded.findings;
+    coverage = loaded.coverage;
+    packageVerified = loaded.verified === true && loaded.integrity_mode === 'sealed';
+    summary.coverage_status = loaded.coverage_status;
+    summary.determination_status = loaded.determination_status;
   }
 
+  const evidence = downstreamEnvelope(coverage);
+  summary.coverage_status = evidence.coverage_status;
+  summary.determination_status = evidence.determination_status;
+  summary.coverage = {
+    ...evidence.evidence_scope,
+    limitations: evidence.limitations,
+  };
+
   let content = "";
+  const evidenceNotice = `Evidence determination: ${summary.determination_status} (coverage: ${summary.coverage_status}; evaluated ${summary.coverage.evaluated ?? 0} of ${summary.coverage.eligible ?? 'unknown'} eligible). ${summary.coverage.limitations.join('; ') || evidenceScopeStatement({
+    coverage_status: summary.coverage_status,
+    determination_status: summary.determination_status,
+    evaluated: summary.coverage.evaluated,
+    eligible: summary.coverage.eligible,
+    package_verified: packageVerified,
+  })}`;
 
   if (format === "html-brief") {
     content = `<!DOCTYPE html>
@@ -136,6 +157,7 @@ export async function exportExecutiveReport(root, runId, {
   <div class="disclosure">
     <strong>Regulatory & Governance Notice:</strong> Citable measures observable retrieval suitability, source extraction fidelity, and external AI citation outcomes. Citable does not guarantee search crawling, indexing, ranking, citation, recommendation, or conversion.
   </div>
+  <p class="disclosure"><strong>${evidenceNotice}</strong></p>
 
   <div class="kpi-grid">
     <div class="kpi-card"><div>Critical Risks</div><div class="kpi-val ${(summary.counts?.critical || 0) > 0 ? "crit" : "healthy"}">${summary.counts?.critical || 0}</div></div>
@@ -150,10 +172,7 @@ export async function exportExecutiveReport(root, runId, {
       <tr><th>Detector</th><th>Severity</th><th>Summary</th><th>Required Remediation</th></tr>
     </thead>
     <tbody>
-      ${(findings.length > 0 ? findings : [
-        { detector_id: "CRO-015", severity: "low", summary: "Mobile touch target below 44px on primary CTA", remediation: "Increase button min-height to 48px" },
-        { detector_id: "GEO-008", severity: "high", summary: "Attribution distortion in AI search citation", remediation: "Corroborate claims directly on landing page" },
-      ]).map((f) => `
+      ${(findings.length > 0 ? findings : [{ detector_id: "—", severity: "informational", summary: evidenceNotice, remediation: "Collect sufficient evidence before drawing a site-wide determination" }]).map((f) => `
         <tr>
           <td><code>${f.detector_id}</code></td>
           <td><span class="badge badge-${f.severity}">${f.severity.toUpperCase()}</span></td>
@@ -174,11 +193,13 @@ export async function exportExecutiveReport(root, runId, {
 - **High Severity Findings**: ${summary.counts?.high || 0}
 - **Medium Severity Findings**: ${summary.counts?.medium || 0}
 
+> **${evidenceNotice}** Findings remain limited to the evaluated evidence scope.
+
 > Citable does not guarantee crawling, indexing, ranking, citation, or conversion.
 
 <!-- slide -->
 ## Prioritized Action Items
-${findings.slice(0, 5).map((f) => `- **[${f.detector_id}]** (${f.severity}): ${f.summary}`).join("\n") || "- No blocking findings detected."}
+${findings.slice(0, 5).map((f) => `- **[${f.detector_id}]** (${f.severity}): ${f.summary}`).join("\n") || `- No determination established from the available evidence (${summary.determination_status || 'indeterminate'}).`}
 `;
   } else if (format === "slides") {
     const fsa = findings.reduce((acc, f) => {
@@ -263,7 +284,7 @@ ${findings.slice(0, 5).map((f) => `- **[${f.detector_id}]** (${f.severity}): ${f
     <h2>Prioritized Remediations</h2>
     <p>Every finding maps directly to a production-ready, accessible Nebula Component:</p>
     <div style="background:#1e293b; border-radius:0.75rem; padding:1.5rem; border:1px solid #334155;">
-      ${findings.slice(0, 4).map((f) => `<div style="padding:0.5rem 0; border-bottom:1px solid #334155; font-size:1.1rem;"><strong>[${f.detector_id || "CRO"}]</strong>: ${f.summary || "Conversion action friction"}</div>`).join("") || "<p>All conversion pathways verified clean.</p>"}
+      ${findings.slice(0, 4).map((f) => `<div style="padding:0.5rem 0; border-bottom:1px solid #334155; font-size:1.1rem;"><strong>[${f.detector_id || "CRO"}]</strong>: ${f.summary || "Conversion action friction"}</div>`).join("") || `<p>No determination established from the available evidence (${summary.determination_status || 'indeterminate'}).</p>`}
     </div>
     <div style="margin-top:1.5rem; font-family:monospace; background:#0f172a; padding:1rem; border-radius:0.5rem; border:1px solid #334155; color:#38bdf8;">
       $ npx @nebulacomponents/citable remediate --finding CRO-007 --write
@@ -300,6 +321,14 @@ ${findings.slice(0, 5).map((f) => `- **[${f.detector_id}]** (${f.severity}): ${f
     fs.writeFileSync(path.resolve(root, output), content, "utf8");
   }
 
+  const languageContext = {
+    coverage_status: summary.coverage_status,
+    determination_status: summary.determination_status,
+    evaluated: summary.coverage.evaluated,
+    eligible: summary.coverage.eligible,
+    package_verified: packageVerified,
+  };
+  assertEpistemicLanguage(content, languageContext);
   return {
     format,
     client_name: clientName,

@@ -1,6 +1,7 @@
 import { sha256 } from '../shared/io.js';
 import { fileURLToPath } from 'node:url';
 import { readJson } from '../shared/io.js';
+import { evaluateRequirement, isCoverageRequirement, requirementForDetector } from '../evidence/determination.js';
 
 const TOOL_VERSION = readJson(new URL('../../package.json', import.meta.url)).version;
 
@@ -22,6 +23,9 @@ export function defineDetector(def) {
   }
   if (!NAMESPACES.includes(def.namespace)) throw new Error(`detector ${def.id}: unknown namespace ${def.namespace}`);
   if (!def.id.startsWith(def.namespace + '-')) throw new Error(`detector id ${def.id} must be prefixed with namespace`);
+  if (!isCoverageRequirement(def.coverage_requirement)) {
+    throw new Error(`detector ${def.id ?? '?'} must explicitly declare a valid coverage_requirement`);
+  }
   return {
     version: 1,
     confidence_model: def.deterministic ? 'binary condition; confirmed when observed' : 'heuristic; confidence reported per finding',
@@ -65,7 +69,17 @@ export function runDetectors(detectors, ctx) {
     detectorsRun.push(d.id);
     for (const hit of hits) {
       const idSeed = `${d.id}|${hit.subject?.identifier ?? ''}|${hit.summary}`;
+      const coverageRequirement = requirementForDetector(d, hit);
+      const scope = ctx.coverage
+        ? evaluateRequirement(coverageRequirement, ctx.coverage, hit.subject)
+        : null;
+      const resourceIds = scope?.resource_id ? [scope.resource_id] : [];
+      const scopeSatisfied = scope?.status === 'supported' || scope?.status === 'qualified';
+      const determinationNote = scope && !scopeSatisfied
+        ? `determination not established: ${scope.reason || 'coverage requirement unsatisfied'}`
+        : null;
       findings.push({
+        ...(ctx.coverage ? { schema_version: 2 } : {}),
         finding_id: `F-${sha256(idSeed).slice(0, 12)}`,
         detector_id: d.id,
         detector_name: d.name,
@@ -78,11 +92,12 @@ export function runDetectors(detectors, ctx) {
           evidence: hit.evidence,
           captured_value: hit.captured ?? null,
           expected_value: hit.expected ?? null,
+          ...(scope ? { determination_status: scope.status, ...(determinationNote ? { determination_reason: determinationNote } : {}) } : {}),
         },
         classification: {
           finding_type: hit.finding_type ?? d.finding_type,
           severity: hit.severity ?? d.severity,
-          confidence: hit.confidence ?? d.confidence,
+          confidence: scope && !scopeSatisfied ? 'unknown' : (hit.confidence ?? d.confidence),
           deterministic: d.deterministic,
           impact: { ...d.impact, ...(hit.impact || {}) },
         },
@@ -90,7 +105,10 @@ export function runDetectors(detectors, ctx) {
           applicable_requirement: d.applicable_requirement,
           explanation: d.description,
           assumptions: hit.assumptions ?? [],
-          limitations: d.deterministic ? [] : ['heuristic detection; verify manually before acting'],
+          limitations: [
+            ...(d.deterministic ? [] : ['heuristic detection; verify manually before acting']),
+            ...(determinationNote ? [determinationNote] : []),
+          ],
         },
         remediation: {
           preferred: d.remediation,
@@ -118,6 +136,14 @@ export function runDetectors(detectors, ctx) {
             : 'heuristic judgment; human semantic review required before acting',
           revalidation_required: d.deterministic ? 'on_next_audit' : 'human_review_before_action',
         },
+        ...(ctx.coverage ? {
+          evidence_scope: {
+            requirement: coverageRequirement,
+            satisfaction: scope.status,
+            resource_ids: resourceIds,
+            coverage_ref: 'coverage.json',
+          },
+        } : {}),
         status: { state: 'open', first_seen: ts, last_seen: ts, resolved_at: null },
       });
     }

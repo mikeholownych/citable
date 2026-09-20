@@ -10,6 +10,7 @@ import { defineDetector } from './framework.js';
  * HREFLANG-001: hreflang link present and valid
  */
 export const HREFLANG_001 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'HREFLANG-001',
   name: 'hreflang link valid',
   namespace: 'HREFLANG',
@@ -79,6 +80,7 @@ export const HREFLANG_001 = defineDetector({
  * HREFLANG-002: Self-referencing hreflang exists
  */
 export const HREFLANG_002 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'HREFLANG-002',
   name: 'hreflang self-reference',
   namespace: 'HREFLANG',
@@ -121,6 +123,7 @@ export const HREFLANG_002 = defineDetector({
  * HREFLANG-003: x-default present for international pages
  */
 export const HREFLANG_003 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'HREFLANG-003',
   name: 'hreflang x-default',
   namespace: 'HREFLANG',

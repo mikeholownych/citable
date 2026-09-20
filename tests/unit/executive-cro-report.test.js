@@ -63,8 +63,8 @@ test('buildExecutiveCroReport constructs all 25 enterprise pillars with observat
   assert.ok(md.includes('Executive Decision Summary (Observation vs Hypothesis vs Causation)'));
   assert.ok(md.includes('Observed Conversion Failures (Empirical Facts)'));
   assert.ok(md.includes('Evidence-Supported Hypotheses (Proposed Explanations)'));
-  assert.ok(md.includes('Causal Findings (Verified Under Controlled Experiments)'));
-  assert.ok(md.includes('Verified Conversion Evidence Register'));
+  assert.ok(md.includes('Causal Findings (Causal Evidence Not Established)'));
+  assert.ok(md.includes('Conversion Evidence Register (scope-limited; verified status not established)'));
   assert.ok(md.includes('EVD-CRO-'));
 
   // HTML rendering

@@ -6,6 +6,7 @@ import { verifyCrawlerIp } from '../crawler/ipRanges.js';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-001', name: 'robots.txt contradicts crawler policy decision', namespace: 'CRAWL',
   description: 'The deployed robots.txt outcome for a crawler differs from the decision recorded in the crawler policy registry.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site', 'registries'],
@@ -34,6 +35,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-002', name: 'Training-purpose access not decided separately', namespace: 'CRAWL',
   description: 'A vendor has an allow decision for search discovery, but no separate recorded decision for its model-training crawler.',
   discipline: ['geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -68,6 +70,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'exhaustive_requested_scope',
   id: 'CRAWL-003', name: 'robots.txt missing', namespace: 'CRAWL',
   description: 'No robots.txt was found; crawler access is uncontrolled and sitemap discovery is weakened.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -86,6 +89,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-004', name: 'robots.txt parse problems', namespace: 'CRAWL',
   description: 'robots.txt contains unparseable or misplaced directives.',
   discipline: ['seo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -104,6 +108,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-005', name: 'Crawler policy review overdue', namespace: 'CRAWL',
   description: 'A crawler policy decision has passed its next review date.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -123,6 +128,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-006', name: 'Undecided crawler with observed governance relevance', namespace: 'CRAWL',
   description: 'A crawler policy entry remains "undecided" — access is currently whatever robots.txt happens to say, not a governed decision.',
   discipline: ['geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -142,6 +148,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'CRAWL-007', name: 'Spoofed crawler identity in access logs', namespace: 'CRAWL',
   description: 'An observed crawler log row claims an authoritative bot user-agent (Googlebot, Bingbot, GPTBot, ClaudeBot, etc.) but its source IP is outside published provider ranges or reverse-DNS verification failed.',
   discipline: ['seo', 'aeo', 'geo'], severity: 'high', deterministic: true, requires: ['site'],

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { readJson, nowIso } from '../shared/io.js';
 import { remediateCommand } from './remediate.js';
 
@@ -76,7 +77,7 @@ export async function exportImplementationKit(root, options = {}) {
   if (!runId || !fs.existsSync(path.join(runDir, 'findings.json'))) {
     throw new Error(`source run not found: .citable/runs/${runId || '(none)'}`);
   }
-  const findings = readJson(path.join(runDir, 'findings.json'));
+  const findings = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings;
   const matches = findings.filter((f) =>
     (f.detector_id || '').toUpperCase() === String(finding || '').toUpperCase()
     && (!subject || (f.subject?.identifier || f.subject?.url) === subject));

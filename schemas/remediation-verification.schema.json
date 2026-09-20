@@ -12,7 +12,7 @@
   "properties": {
     "verification_id": { "type": "string", "pattern": "^VR-[0-9]{14,20}-[a-z0-9]{2,8}$" },
     "timestamp": { "type": "string" },
-    "status": { "type": "string", "enum": ["verified", "not_resolved", "blocked", "patch_refused"] },
+    "status": { "type": "string", "enum": ["verified", "not_resolved", "not_reobserved", "not_comparable", "indeterminate", "blocked", "patch_refused"] },
     "tool_version": { "type": "string" },
     "repository_commit": { "type": ["string", "null"] },
     "source_run_id": { "type": ["string", "null"], "minLength": 1 },
@@ -30,6 +30,7 @@
       "required": ["resolved"],
       "properties": {
         "resolved": { "type": "boolean" },
+        "comparison_state": { "type": "string", "enum": ["persisted", "resolved", "new", "changed", "not_comparable", "not_reobserved", "indeterminate"] },
         "before_finding_ids": { "type": "array", "items": { "type": "string" } },
         "after_finding_ids": { "type": "array", "items": { "type": "string" } },
         "new_regressions": {
@@ -49,6 +50,16 @@
           "type": "string",
           "description": "States the exact resolution criterion used; detector absence is not an outcome guarantee."
         }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "required": ["state", "reason", "coverage_status"],
+      "properties": {
+        "state": { "type": "string", "enum": ["resolved", "not_reobserved", "not_comparable", "indeterminate"] },
+        "reason": { "type": "string" },
+        "coverage_status": { "type": "string" },
+        "resource": { "type": ["string", "null"] }
       }
     },
     "patch": {

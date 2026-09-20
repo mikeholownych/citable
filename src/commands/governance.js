@@ -1,8 +1,8 @@
-import fs from 'node:fs';
 import path from 'node:path';
+import { loadVerifiedRun } from '../shared/verifiedRunLoader.js';
 import { createRun } from '../evidence/run.js';
 import { loadRegistries, checkReferentialIntegrity } from '../registries/index.js';
-import { readJson, sha256, parseRefDate } from '../shared/io.js';
+import { sha256, parseRefDate } from '../shared/io.js';
 
 function recordHash(value) {
   return sha256(JSON.stringify(value));
@@ -79,8 +79,8 @@ export function validateGovernance(root, { refDate } = {}) {
   const evidence = new Map(registries.evidence.entries.map((item) => [item.evidence_id, item]));
   const activeByFinding = new Map();
   for (const exception of registries.exceptions.entries) {
-    const file = path.join(root, '.citable', 'runs', exception.source_run_id, 'findings.json');
-    const findings = new Map(fs.existsSync(file) ? readJson(file).map((item) => [item.finding_id, item]) : []);
+    const runDir = path.join(root, '.citable', 'runs', exception.source_run_id);
+    const findings = new Map(loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false }).findings.map((item) => [item.finding_id, item]));
     const exceptionIssues = exceptionProblems(exception, policies.get(exception.policy_id), reviewers, findings, evidence, reference);
     problems.push(...exceptionIssues.map((problem) => `exceptions/${exception.exception_id}: ${problem}`));
     if (exceptionIssues.length === 0) {
@@ -98,10 +98,9 @@ export function validateGovernance(root, { refDate } = {}) {
 
 export function evaluateDispositions(root, { runId, refDate } = {}) {
   if (!runId) throw new Error('source run id is required');
-  const findingsFile = path.join(root, '.citable', 'runs', runId, 'findings.json');
-  if (!fs.existsSync(findingsFile)) throw new Error(`source findings not found for run ${runId}`);
-  const sourceBytes = fs.readFileSync(findingsFile);
-  const sourceFindings = JSON.parse(sourceBytes);
+  const runDir = path.join(root, '.citable', 'runs', runId);
+  const sourceRun = loadVerifiedRun(runDir, { requireCompletedExecution: false, allowLegacy: true, requireCoverage: false });
+  const sourceFindings = sourceRun.findings;
   const findings = new Map(sourceFindings.map((item) => [item.finding_id, item]));
   const { registries, problems } = loadRegistries(root);
   const integrity = checkReferentialIntegrity(registries);
@@ -130,8 +129,8 @@ export function evaluateDispositions(root, { runId, refDate } = {}) {
       problems: matches.flatMap((item) => item.problems),
     };
   });
-  const run = createRun(root, { command: 'governance evaluate', argv: [runId], target: { kind: 'registries', location: findingsFile } });
-  run.addInput('source-findings', sourceBytes);
+  const run = createRun(root, { command: 'governance evaluate', argv: [runId], target: { kind: 'registries', location: path.join(runDir, 'findings.json') } });
+  run.manifest.input_hashes['source-findings'] = sourceRun.artifactHashes['findings.json'];
   run.addInput('exceptions', registries.exceptions);
   run.addInput('review-policies', registries.review_policies);
   run.writeArtifact('dispositions.json', dispositions);

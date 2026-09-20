@@ -3,6 +3,7 @@ import { defineDetector, indexTargets, pageSubject } from './framework.js';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-001', name: 'Broken internal link', namespace: 'LINK',
   description: 'An internal link targets a URL that is missing from the audited output or returns 4xx/5xx.',
   discipline: ['seo', 'aeo'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -38,6 +39,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-002', name: 'Internal link to redirect', namespace: 'LINK',
   description: 'An internal link targets a URL that redirects instead of the final destination.',
   discipline: ['seo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -64,6 +66,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-003', name: 'Generic anchor text', namespace: 'LINK',
   description: 'Internal links use non-descriptive anchors ("click here", "read more", "learn more").',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -89,6 +92,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-004', name: 'Sitewide repeated exact-match anchor', namespace: 'LINK',
   description: 'The same exact anchor text points at the same URL from a large share of pages — a pattern of mechanical link insertion.',
   discipline: ['seo'], severity: 'low', deterministic: false, requires: ['site'],
@@ -119,6 +123,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-005', name: 'Internal redirect hop chain or circular redirect loop', namespace: 'LINK',
   description: 'An internal link targets a URL that initiates a multi-hop redirect chain (>=2 hops) or a circular redirect loop, dissipating link equity and wasting crawler budget.',
   discipline: ['seo', 'tech'], severity: 'medium', deterministic: true, requires: ['site'],
@@ -186,6 +191,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'LINK-006', name: 'Excessive naked URL or uninformative internal anchor text ratio', namespace: 'LINK',
   description: 'Over 25% of internal links on a page use naked URLs or uninformative anchors, diluting semantic topic graph signals for search engines and generative models.',
   discipline: ['seo', 'aeo'], severity: 'low', deterministic: true, requires: ['site'],
@@ -229,4 +235,3 @@ D.push(defineDetector({
 }));
 
 export default D;
-

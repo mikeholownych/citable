@@ -6,6 +6,7 @@ import { isPastDate } from '../shared/io.js';
 const D = [];
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-001', name: 'Evidence past validity date', namespace: 'EVD',
   description: 'An evidence entry has passed valid_until but its verification_status is not stale/revoked.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -25,6 +26,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-002', name: 'Benchmark/test evidence missing methodology', namespace: 'EVD',
   description: 'Benchmark, test-result, or dataset evidence records no methodology or measurement period.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -45,6 +47,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-003', name: 'Claim references dangling or unverified evidence', namespace: 'EVD',
   description: 'A claim references an evidence id that does not exist or has verification_status unverified.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -78,6 +81,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-004', name: 'Secondary evidence where primary is required', namespace: 'EVD',
   description: 'A performance or security claim is supported only by secondary evidence (e.g., third-party articles).',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -103,6 +107,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-005', name: 'Customer evidence lacks attribution', namespace: 'EVD',
   description: 'Customer-reference or case-study evidence has no attribution recorded.',
   discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -122,6 +127,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-006', name: 'Evidence integrity hash absent', namespace: 'EVD',
   description: 'Primary evidence (test results, benchmarks, datasets, certifications) has no integrity hash, so later tampering or drift cannot be detected.',
   discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],
@@ -141,6 +147,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-007', name: 'Evidence marked inaccessible still supporting claims', namespace: 'EVD',
   description: 'Evidence with access_status inaccessible (or verification_status inaccessible) is still listed as supporting active claims.',
   discipline: ['aeo', 'geo'], severity: 'medium', deterministic: true, requires: ['registries'],
@@ -164,6 +171,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-008', name: 'Dangling media reference in claim evidence', namespace: 'EVD',
   description: 'Claim evidence references a media asset (image, chart, diagram, or video) whose referenced source location or file is missing, unresolved, or unreachable.',
   discipline: ['aeo', 'geo'], severity: 'high', deterministic: true, requires: ['registries'],
@@ -227,6 +235,7 @@ D.push(defineDetector({
 }));
 
 D.push(defineDetector({
+  coverage_requirement: 'evaluated_subset',
   id: 'EVD-009', name: 'Unanchored PDF claim citation', namespace: 'EVD',
   description: 'Evidence backed by a PDF document lacks a specific page, fragment, or section anchor (#page=, section, or page number in methodology/test_conditions), leaving cited claims unanchored and unfalsifiable.',
   discipline: ['aeo', 'geo'], severity: 'low', deterministic: true, requires: ['registries'],

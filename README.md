@@ -34,6 +34,10 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
 - **Separate state reporting** for retrieval eligibility, source extraction and
   support suitability, and observed citation behavior. These are never merged
   into an "AI visibility score."
+- **Scope-qualified reporting**: empty, legacy, unverified, incomplete, and
+  indeterminate evidence cannot be rendered as a clean, complete, verified, or
+  site-wide conclusion. Reports name the evaluated population and preserve
+  limitations; absence of findings is not evidence of absence.
 - **Fail-closed governance**: claims can't become verified without evidence,
   expired evidence invalidates claims, schema is never fabricated, missing
   facts return `blocked` with `required_input`.
@@ -168,7 +172,7 @@ npx @nebulacomponents/citable help
 cd your-site/
 citable init                  # creates .citable/ (non-destructive)
 citable plan-audit --target ./dist --base-url https://example.com # read-only profile/capability plan
-citable audit --target ./dist --base-url https://example.com
+citable audit --target ./dist --base-url https://example.com --max-pages 500 --time-budget-seconds 1800
 citable action-plan <run-id> # ordered actions, blockers, review gates, verification
 citable observe passages --target ./dist --base-url https://example.com
 citable observe index --input search-console-export.json
@@ -224,6 +228,13 @@ citable audit edge worker.js --format cloudflare-worker
 citable test visual
 citable corpus benchmark
 ```
+
+URL audits are explicitly bounded. The default budget is 500 pages and 1,800
+seconds; `--max-pages` accepts 1–10,000 and `--time-budget-seconds` accepts
+1–86,400. Every run records requested, discovered, attempted, retrieved,
+evaluated, failed, indeterminate, excluded, and unvisited populations in
+`coverage.json`. A completed process can still have incomplete coverage, and
+reports never widen subset evidence into a site-wide claim.
 
 ## Repository map
 
