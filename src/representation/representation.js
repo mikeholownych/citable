@@ -24,7 +24,9 @@ function hostOf(value) {
 
 function normalizeUrls(value) {
   if (!Array.isArray(value)) throw new TypeError('provider citations must be an array');
-  return [...new Set(value.map((item) => typeof item === 'string' ? item : item?.url).filter((item) => typeof item === 'string'))].filter((item) => Boolean(hostOf(item)));
+  const urls = value.map((item) => typeof item === 'string' ? item : item?.url);
+  if (urls.some((item) => typeof item !== 'string' || !hostOf(item))) throw new TypeError('provider citation URL is malformed');
+  return [...new Set(urls)];
 }
 
 const SENSITIVE_KEY = /(^|[-_])(authorization|cookie|set-cookie|access[-_]?token|refresh[-_]?token|api[-_]?key|password|secret)($|[-_])/i;

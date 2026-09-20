@@ -152,6 +152,9 @@ test('ER-4 failures and parser errors never become no-mention or no-citation obs
   assert.ok(result.observations.every((item) => item.data.representation.brand_mentioned === null && item.data.representation.domain_cited === null));
   assert.ok(result.observations.some((item) => ['malformed', 'parser_failed'].includes(item.data.response.status)));
   assert.ok(result.observations.some((item) => item.data.response.status === 'refused'));
+  const malformedCitation = normalizeRepresentationResponse({ provider: 'fixture-ai', product: 'chat', surface: 'api', prompt: set.included_prompts[0], promptSet: set, response: { answer_text: 'Example', citations: [{ url: 'not-a-url' }] }, rawResponse: 'bad-citation', evidenceOrigin: 'RECORDED_FIXTURE' });
+  assert.equal(malformedCitation.data.response.status, 'parser_failed');
+  assert.equal(malformedCitation.data.representation.domain_cited, null);
 });
 
 test('ER-4 HTTP adapter is executable, HTTPS-only, and redacts credentials from evidence', async () => {
