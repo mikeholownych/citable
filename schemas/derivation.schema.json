@@ -1,0 +1,18 @@
+{
+  "$id": "citable://schemas/derivation.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Evidence derivation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["derivation_id", "derivation_version", "operation", "input_observation_references", "result", "implementation", "derivation_hash"],
+  "properties": {
+    "derivation_id": { "type": "string", "minLength": 1 },
+    "derivation_version": { "type": "integer", "minimum": 1 },
+    "operation": { "type": "string", "minLength": 1 },
+    "input_observation_references": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "predicate": { "type": "object", "additionalProperties": false, "required": ["path", "operator", "value"], "properties": { "path": { "type": "string" }, "operator": { "type": "string", "enum": ["equals"] }, "value": {} } },
+    "result": { "type": "object" },
+    "implementation": { "type": "object", "additionalProperties": false, "required": ["id", "version"], "properties": { "id": { "type": "string" }, "version": { "type": "string" } } },
+    "derivation_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
