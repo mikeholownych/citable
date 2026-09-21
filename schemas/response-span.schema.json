@@ -1,0 +1,16 @@
+{
+  "$id": "citable://schemas/response-span.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Immutable provider response span",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["span_id", "execution_reference", "start", "end", "text", "text_hash"],
+  "properties": {
+    "span_id": { "type": "string", "minLength": 1 },
+    "execution_reference": { "type": "string", "minLength": 1 },
+    "start": { "type": "integer", "minimum": 0 },
+    "end": { "type": "integer", "minimum": 0 },
+    "text": { "type": "string" },
+    "text_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

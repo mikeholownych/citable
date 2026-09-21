@@ -1,0 +1,36 @@
+{
+  "$id": "citable://schemas/competitor-representation.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Competitor or peer representation observation data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["execution_reference", "provider", "prompt_reference", "prompt_set_reference", "span", "entity", "representation", "citation_reference", "proposition_reference"],
+  "properties": {
+    "execution_reference": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "prompt_reference": { "type": "string", "minLength": 1 },
+    "prompt_set_reference": { "type": "string", "minLength": 1 },
+    "span": { "$ref": "citable://schemas/response-span.schema.json" },
+    "entity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "observed_name", "domain", "resolution_status", "resolution_method"],
+      "properties": {
+        "entity_id": { "type": ["string", "null"] },
+        "observed_name": { "type": "string", "minLength": 1 },
+        "domain": { "type": ["string", "null"] },
+        "resolution_status": { "type": "string", "enum": ["RESOLVED", "AMBIGUOUS", "UNRESOLVED", "NOT_OBSERVED"] },
+        "resolution_method": { "type": "string", "minLength": 1 }
+      }
+    },
+    "representation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "observed_text"],
+      "properties": {
+        "type": { "type": "string", "enum": ["MENTION", "COMPARISON", "ALTERNATIVE", "RECOMMENDATION", "CITED_SOURCE", "CATEGORY_PEER"] },
+        "observed_text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "citation_reference": { "type": ["string", "null"] },
+    "proposition_reference": { "type": ["string", "null"] }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "prompt": "What is Nebula Components (https://nebulacomponents.com/)? Free evidence-backed landing page audit tool",
+  "prompt_set_reference": "NEBULA-LIVE-2026-09@1",
+  "evidence_origin": "RECORDED_FIXTURE",
+  "limitations": [
+    "Recorded provider observations supplied for implementation challenge coverage; this fixture is not current external ground truth.",
+    "Provider model, account, locale, and retrieval metadata are preserved only where supplied."
+  ],
+  "executions": [
+    { "execution_id": "LIVE-PERPLEXITY-1", "provider": "Perplexity", "status": "succeeded", "answer": "Nebula's mobile viewport begins 210px below the fold and the Repair Sprint is delivered within 48 hours.", "citations": [{ "raw_marker": "[1]", "displayed_domain": "nebulacomponents.com", "displayed_url": "https://nebulacomponents.com/audit" }], "observations": ["mobile viewport", "210px below mobile fold", "48-hour delivery"] },
+    { "execution_id": "LIVE-CHATGPT-1", "provider": "ChatGPT", "status": "succeeded", "answer": "Nebula presents a mobile CTA.", "citations": [{ "raw_marker": "[1]", "displayed_url": "https://nebulacomponents.com/audit?utm_source=chatgpt.com" }], "observations": ["mobile CTA"] },
+    { "execution_id": "LIVE-DUCKDUCKGO-1", "provider": "DuckDuckGo", "status": "succeeded", "answer": "The benchmark was withdrawn and there is no client outcome yet. <citation src=\"4\"></citation>", "citations": [{ "raw_marker": "<citation src=\"4\"></citation>" }], "observations": ["withdrawn benchmarks", "no client outcome yet"] },
+    { "execution_id": "LIVE-GOOGLE-AIMODE-1", "provider": "Google Search AI Mode", "status": "succeeded", "answer": "Nebula offers delivery within 48 hours.", "citations": [{ "raw_marker": "[1]", "displayed_domain": "nebulacomponents.com" }, { "raw_marker": "[2]", "displayed_domain": "capterra.com" }], "observations": ["48-hour delivery"] },
+    { "execution_id": "LIVE-COPILOT-1", "provider": "Microsoft Copilot", "status": "succeeded", "answer": "Nebula has 181 detectors and delivers a fix within 48 hours.", "citations": [{ "raw_marker": "[1]", "displayed_domain": "nebulacomponents.com" }], "observations": ["181 detectors", "48-hour delivery"] },
+    { "execution_id": "LIVE-CLAUDE-A", "provider": "Claude", "status": "safety_interstitial", "answer": null, "citations": [], "observations": [] },
+    { "execution_id": "LIVE-CLAUDE-B", "provider": "Claude", "status": "succeeded", "answer": "The benchmark was withdrawn; no client outcome has been established. Nebula has 181 detectors and does not claim conversion lift, so treat the audit as a diagnostic checklist.", "citations": [{ "raw_marker": "[1]", "displayed_domain": "nebulacomponents.com" }], "observations": ["181 detectors", "withdrawn benchmarks", "no client outcome yet", "provider interpretation"] }
+  ]
+}
