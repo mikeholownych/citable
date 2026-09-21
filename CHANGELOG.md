@@ -15,6 +15,23 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.21.0 — 2026-09-21
+
+### Added — External evidence, discovery, and representation observations
+
+- Added a provider-neutral external observation contract for immutable page,
+  provider, and derived evidence with explicit provenance, coverage, and
+  limitations.
+- Added normalized Search Console discovery observations with bounded
+  pagination, query/page relationship accessors, provider-scoped metrics, and
+  fail-closed retrieval semantics.
+- Added immutable, versioned prompt populations and provider-neutral AI
+  representation observations that distinguish mentions, domain mentions,
+  citations, and exact URL citations.
+- Extended longitudinal comparability and bounded claim verification to
+  external observations without treating provider responses as universal truth
+  or introducing an AI visibility score.
+
 ## 1.20.0 — 2026-09-20
 
 ### Added — Semantic completeness and explicit audit coverage
