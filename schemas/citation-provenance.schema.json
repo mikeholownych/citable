@@ -1,0 +1,59 @@
+{
+  "$id": "citable://schemas/citation-provenance.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Provider citation provenance observation data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["execution_reference", "response_reference", "provider", "span", "citation", "source", "retrieval", "proposition", "support"],
+  "properties": {
+    "execution_reference": { "type": "string", "minLength": 1 },
+    "response_reference": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "span": { "$ref": "citable://schemas/response-span.schema.json" },
+    "citation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["citation_id", "ordinal", "raw_marker", "placement", "displayed_title", "displayed_domain", "displayed_url"],
+      "properties": {
+        "citation_id": { "type": "string", "minLength": 1 },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "raw_marker": { "type": ["string", "null"] },
+        "placement": { "type": "string", "enum": ["inline", "footnote", "card", "source_list", "unknown"] },
+        "displayed_title": { "type": ["string", "null"] },
+        "displayed_domain": { "type": ["string", "null"] },
+        "displayed_url": { "type": ["string", "null"] }
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity_status", "resolved_url", "redirect_chain", "canonical_url"],
+      "properties": {
+        "identity_status": { "type": "string", "enum": ["IDENTIFIED", "NOT_IDENTIFIED", "AMBIGUOUS"] },
+        "resolved_url": { "type": ["string", "null"], "format": "uri" },
+        "redirect_chain": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "canonical_url": { "type": ["string", "null"], "format": "uri" }
+      }
+    },
+    "retrieval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "observation_reference"],
+      "properties": {
+        "status": { "type": "string", "enum": ["NOT_ATTEMPTED", "ATTEMPTED", "SUCCEEDED", "FAILED", "INDETERMINATE"] },
+        "observation_reference": { "type": ["string", "null"] }
+      }
+    },
+    "proposition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["proposition_id", "text"],
+      "properties": { "proposition_id": { "type": "string", "minLength": 1 }, "text": { "type": "string", "minLength": 1 } }
+    },
+    "support": {
+      "type": "object", "additionalProperties": false,
+      "required": ["relevance_status", "support_status", "evidence_references"],
+      "properties": {
+        "relevance_status": { "type": "string", "enum": ["NOT_ASSESSED", "RELEVANT", "IRRELEVANT", "INDETERMINATE"] },
+        "support_status": { "type": "string", "enum": ["NOT_ASSESSED", "SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "INDETERMINATE", "NOT_OBSERVED"] },
+        "evidence_references": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

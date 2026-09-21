@@ -317,8 +317,8 @@ items[14]{id,module,title,size,blocked_by,timing,done_when}:
   ER-2,domains/discovery,"Query-page relationship evidence",M,ER-1,EVIDENCE_TRIGGER,"the corpus answers which pages were reported for a query, which queries for a page, and comparable interval changes without deciding value, opportunity, targeting, or striking distance"
   ER-3,domains/representation,"Versioned prompt populations",M,"ER-0,B-030",PRESERVE_OPTION,"prompt_set_id/version, generation method/version/input, sampling, included/excluded prompts and reasons, intended population, and comparability metadata are immutable lineage; v1 and v2 are not comparable without an explicit contract"
   ER-4,domains/representation,"Provider-neutral AI representation observations",L,ER-3,EVIDENCE_TRIGGER,"ChatGPT, Gemini, Perplexity, Google AI, and future adapters record provider/product/surface/model, prompt and execution identity, configuration, response hash, mention/citation state, cited URLs, competitors, retrieval/observation status, limitations, and legally permitted raw evidence"
-  ER-5,core/lineage,"AI citation provenance graph",L,"ER-0,ER-3,ER-4",EVIDENCE_TRIGGER,"PROMPT → EXECUTION → RESPONSE → CITATION|MENTION → DOMAIN → URL → PAGE_OBSERVATION → CONDITION|CLAIM|EVIDENCE is queryable with timestamps, versions, and non-causal observational comparisons"
-  ER-6,domains/representation,"Competitor representation observations",M,ER-4,EVIDENCE_TRIGGER,"competitor identity, domain, cited URL, prompt, provider, execution, and mention/citation state support explicit denominators and populations; no canonical AI-visibility score is emitted"
+  ER-5,core/lineage,"AI citation provenance graph",L,"ER-0,ER-3,ER-4",IMPLEMENT_NOW,"immutable response spans link provider citations to displayed/resolved sources, retrieval evidence, proposition support, and prevalence derivations without treating representation as fact"
+  ER-6,domains/representation,"Competitor representation observations",M,ER-4,IMPLEMENT_NOW,"ambiguous-or-resolved entity observations retain exact response spans, representation type, prompt/execution lineage, citation/proposition relationships, and bounded comparisons; no canonical AI-visibility score is emitted"
   ER-7,core/evidence,"Research datasets as immutable evidence objects",L,"ER-0,B-030,B-032",PRESERVE_OPTION,"dataset id/version, question, declared population, sample, inclusion/exclusion, source retrieval times, observations, normalization/derivation versions, limitations, and coverage are sealed; historical versions are never rewritten"
   ER-8,core/lineage,"Claim-to-evidence lineage",M,"ER-7,B-020,B-032",PRESERVE_OPTION,"a claim binds to a derivation, dataset/population, atomic observations, and sources; complete-for-declared-population is distinct from unsupported generalization beyond that population"
   ER-9,core/conditions,"claim.verify() bounded verifier",L,"ER-7,ER-8,B-010,B-013,B-020",EVIDENCE_TRIGGER,"a future verifier returns SUPPORTED, PARTIALLY_SUPPORTED, UNSUPPORTED, CONTRADICTED, INDETERMINATE, or NOT_OBSERVED only after validating both proposition support and scope/generalization support"
@@ -388,11 +388,15 @@ ER-1  IMPLEMENTED
 ER-2  IMPLEMENTED
 ER-3  IMPLEMENTED
 ER-4  IMPLEMENTED
-ER-5, ER-6, ER-10, ER-12, ER-13 BACKLOGGED
+ER-5  IMPLEMENTED
+ER-6  IMPLEMENTED
+ER-10, ER-12, ER-13 BACKLOGGED
 ```
 
-ER-5, ER-6, ER-10, ER-12, and ER-13 remain `EVIDENCE_TRIGGER` or `DEFER`
-according to their dependency and consumer gates.
+ER-10, ER-12, and ER-13 remain `EVIDENCE_TRIGGER` or `DEFER` according to
+their dependency and consumer gates. ER-5 and ER-6 are implemented in the
+isolated Wave 9 development source but remain unreleased until a separate
+release authorization.
 
 “Implemented” here means available in the isolated Citable development source
 after tests and review; it does not mean released, adopted by Nebula, or

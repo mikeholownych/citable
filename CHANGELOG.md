@@ -15,6 +15,31 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.22.0 — 2026-09-21
+
+### Added — Citation provenance and competitor representation evidence
+
+- Added immutable response-span and citation-provenance observations that
+  preserve raw provider citation markers, displayed and resolved source
+  identities, retrieval state, and proposition-level evidence lineage.
+- Added source-retrieval observations that distinguish citation presence,
+  source identity, retrieval, relevance, and proposition support rather than
+  treating citations as proof.
+- Extended bounded claim verification and longitudinal comparability to
+  citation-backed provider representations, including multi-proposition
+  responses and non-evaluable executions.
+- Added provider-neutral competitor and peer representation observations with
+  explicit entity ambiguity, representation type, prompt/provider/execution
+  lineage, and citation relationships.
+- Added deterministic adversarial coverage for citation ambiguity, partial and
+  contradictory support, tracking URLs, failed retrieval, execution
+  interstitials, entity ambiguity, tampered lineage, and bounded prevalence.
+
+These capabilities preserve evidence boundaries; they do not provide live
+provider collection, universal competitor intelligence, AI visibility scoring,
+autonomous content generation or publishing, strategic recommendations,
+backlink capabilities, a public agent API, or Nebula runtime integration.
+
 ## 1.21.0 — 2026-09-21
 
 ### Added — External evidence, discovery, and representation observations
