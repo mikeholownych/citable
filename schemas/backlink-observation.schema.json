@@ -1,0 +1,139 @@
+{
+  "$id": "citable://schemas/backlink-observation.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Passive backlink observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "logical_link_id",
+    "observation_status",
+    "acquisition_provenance",
+    "observed_at",
+    "source",
+    "target",
+    "retrieval",
+    "lineage",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "observation_id": { "type": "string", "pattern": "^BL-OBS-[a-f0-9]{16,64}$" },
+    "logical_link_id": { "type": "string", "pattern": "^BL-LINK-[a-f0-9]{16,64}$" },
+    "observation_status": { "type": "string", "enum": ["OBSERVED", "NOT_OBSERVED", "UNKNOWN"] },
+    "acquisition_provenance": { "$ref": "citable://schemas/artifact-provenance.schema.json" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "first_observed_at": { "type": ["string", "null"], "format": "date-time" },
+    "last_observed_at": { "type": ["string", "null"], "format": "date-time" },
+    "source": { "$ref": "#/definitions/source" },
+    "target": { "$ref": "#/definitions/target" },
+    "link": { "$ref": "#/definitions/link" },
+    "provider": { "$ref": "#/definitions/provider" },
+    "retrieval": { "$ref": "#/definitions/retrieval" },
+    "coverage": { "$ref": "#/definitions/coverage" },
+    "lineage": { "$ref": "#/definitions/lineage" },
+    "determination": { "$ref": "#/definitions/determination" },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  },
+  "definitions": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_url", "normalized_url", "domain", "referring_domain"],
+      "properties": {
+        "raw_url": { "type": ["string", "null"] },
+        "normalized_url": { "type": ["string", "null"], "format": "uri" },
+        "effective_url": { "type": ["string", "null"], "format": "uri" },
+        "canonical_url": { "type": ["string", "null"], "format": "uri" },
+        "redirect_chain": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "domain": { "type": ["string", "null"] },
+        "referring_domain": { "type": ["string", "null"] }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_url", "normalized_url", "identity"],
+      "properties": {
+        "raw_url": { "type": ["string", "null"] },
+        "resolved_url": { "type": ["string", "null"], "format": "uri" },
+        "normalized_url": { "type": ["string", "null"], "format": "uri" },
+        "identity": { "type": ["string", "null"] },
+        "redirect_chain": { "type": "array", "items": { "type": "string", "format": "uri" } }
+      }
+    },
+    "link": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "raw_href": { "type": ["string", "null"] },
+        "anchor_text": { "type": ["string", "null"] },
+        "rel": { "type": ["string", "null"] },
+        "rel_tokens": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "nofollow": { "type": ["boolean", "null"] },
+        "sponsored": { "type": ["boolean", "null"] },
+        "ugc": { "type": ["boolean", "null"] },
+        "surrounding_text": { "type": ["string", "null"] },
+        "locator": { "type": ["string", "null"] }
+      }
+    },
+    "provider": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "record_id": { "type": ["string", "null"] },
+        "reported_at": { "type": ["string", "null"], "format": "date-time" },
+        "is_exhaustive_census": { "type": ["boolean", "null"] },
+        "fields": { "type": "object" }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "method", "extraction_version", "retrieval_version"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SUCCEEDED", "FAILED", "UNAVAILABLE", "TIMEOUT", "BLOCKED", "MALFORMED", "NOT_ATTEMPTED"]
+        },
+        "method": { "type": "string", "minLength": 1 },
+        "http_status": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 },
+        "artifact_id": { "type": ["string", "null"] },
+        "artifact_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "extraction_version": { "type": "string", "minLength": 1 },
+        "retrieval_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "coverage": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["COMPLETE", "PARTIAL", "FAILED", "UNKNOWN"] },
+        "bounded_scope": { "type": "boolean" },
+        "unscanned_reason": { "type": ["string", "null"] }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_identity", "evidence_identity"],
+      "properties": {
+        "source_identity": { "type": "string", "minLength": 1 },
+        "evidence_identity": { "type": "string", "minLength": 1 },
+        "predecessor_observation_ids": { "type": "array", "items": { "type": "string" } },
+        "supersedes_observation_id": { "type": ["string", "null"] }
+      }
+    },
+    "determination": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "type": "string", "enum": ["CURRENT", "HISTORICAL", "UNKNOWN", "CONTRADICTED", "NOT_APPLICABLE"] },
+        "version": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

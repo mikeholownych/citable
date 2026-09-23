@@ -1,0 +1,91 @@
+{
+  "$id": "citable://schemas/artifact-provenance.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Artifact acquisition and provenance record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "artifact_digest",
+    "acquisition_authority",
+    "transport",
+    "derived_facts",
+    "lineage",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "artifact_id": { "type": "string", "pattern": "^ART-[a-f0-9]{16,64}$" },
+    "artifact_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "acquisition_authority": {
+      "type": "string",
+      "enum": [
+        "SYNTHETIC",
+        "EXTERNAL_RETRIEVAL",
+        "DIRECT_RETRIEVAL",
+        "PROVIDER_SUPPLIED",
+        "UNKNOWN_PROVENANCE"
+      ]
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mechanism"],
+      "properties": {
+        "mechanism": {
+          "type": "string",
+          "enum": [
+            "file_input",
+            "direct_network",
+            "provider_api",
+            "stream",
+            "inline",
+            "synthetic_fixture",
+            "unknown"
+          ]
+        },
+        "source_location": { "type": ["string", "null"] },
+        "received_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "declared_retrieval": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "declarer": { "type": ["string", "null"] },
+        "retrieval_actor": { "type": ["string", "null"] },
+        "source_url": { "type": ["string", "null"], "format": "uri" },
+        "retrieved_at": { "type": ["string", "null"], "format": "date-time" },
+        "http_status": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 },
+        "headers": { "type": ["object", "null"] },
+        "declared_digest": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "derived_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest", "byte_length", "derived_at"],
+      "properties": {
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "byte_length": { "type": "integer", "minimum": 0 },
+        "derived_at": { "type": "string", "format": "date-time" },
+        "content_type": { "type": ["string", "null"] }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_identity"],
+      "properties": {
+        "source_identity": { "type": "string", "minLength": 1 },
+        "predecessor_artifact_id": { "type": ["string", "null"] },
+        "provenance_version": { "type": ["string", "integer", "null"] }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -827,13 +827,22 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
       case 'observe': {
         const mode = args._[0];
         const r = await observe(root, mode, args);
-        const claimDiffLine = r.summary.citation_metrics?.claim_diff
+        if (mode === 'backlinks') {
+          if (r.comparison_id) {
+            out(args, `observe backlinks comparison: ${r.comparison_id} [status:${r.status} transition:${r.transition}]`, r);
+          } else {
+            out(args, `observe backlinks: ${r.observation_id} [status:${r.observation_status} referring_domain:${r.source?.referring_domain}]`, r);
+          }
+          break;
+        }
+        const claimDiffLine = r.summary?.citation_metrics?.claim_diff
           ? `\nClaim diff: ${Object.entries(r.summary.citation_metrics.claim_diff).map(([k, v]) => `${k}:${v}`).join(' ')}` : '';
-        const stanceLine = r.summary.stance_metrics
+        const stanceLine = r.summary?.stance_metrics
           ? `\nStance summary: favorable:${r.summary.stance_metrics.favorable} neutral:${r.summary.stance_metrics.neutral} unfavorable:${r.summary.stance_metrics.unfavorable} mixed:${r.summary.stance_metrics.mixed} review_required:${r.summary.stance_metrics.review_required}` : '';
-        out(args, `observe ${mode}: ${r.summary.total} observation(s) [${Object.entries(r.summary.by_state).map(([k, v]) => `${k}:${v}`).join(' ')}]${claimDiffLine}${stanceLine}\nEvidence package: ${r.dir}\nStatus: ${r.manifest.status}`, r);
+        out(args, `observe ${mode}: ${r.summary?.total || 0} observation(s) [${Object.entries(r.summary?.by_state || {}).map(([k, v]) => `${k}:${v}`).join(' ')}]${claimDiffLine}${stanceLine}\nEvidence package: ${r.dir}\nStatus: ${r.manifest?.status || 'completed'}`, r);
         break;
       }
+
       case 'apply': {
         const r = applyRemediation(root, args);
         out(args, `apply: ${r.operations.length} operation(s) ${r.write ? 'applied' : 'proposed (dry run)'}\nEvidence package: ${r.dir}\nSource audit: ${r.source_run_id}`, r);
