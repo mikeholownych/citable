@@ -4,12 +4,12 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.22.0)
+## Current State (v1.23.0)
 
 | Metric | Value |
 |--------|-------|
 | Detectors | 181 across 19 namespaces |
-| Tests | 874 pass across 29 test suites |
+| Tests | 893 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
 | Distribution | 130 packaged files per provider; 4 managed Claude profiles |

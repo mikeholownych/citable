@@ -15,6 +15,28 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.23.0 — 2026-09-23
+
+### Added — Passive backlink evidence and external artifact provenance
+
+- Added an immutable external artifact provenance contract that decouples file transport
+  from acquisition authority, binds raw content cryptographically via SHA-256 byte digests,
+  and strictly separates declared retrieval metadata from derived facts.
+- Added passive, deterministic HTML backlink observation (`citable observe backlinks`)
+  reporting link presence, normalized source and target URLs, link relation tokens,
+  anchor text, placement, surrounding text, and embedded artifact provenance without
+  scoring, judgments, or off-page authority audits.
+- Enforced strict fail-closed epistemic boundaries: retrieval failures, parser failures,
+  partial coverage, and non-exhaustive provider omissions map strictly to UNKNOWN and
+  never NOT_OBSERVED.
+- Added non-causal longitudinal backlink comparison across compatible predecessor
+  observations, tracking transition states while preserving the immutability of
+  historical records.
+
+These capabilities preserve evidence boundaries; they do not provide active backlink
+auditing, toxic link analysis, disavow recommendations, live network crawling,
+autonomous outreach, ranking guarantees, or Nebula runtime integration.
+
 ## 1.22.0 — 2026-09-21
 
 ### Added — Citation provenance and competitor representation evidence
