@@ -249,3 +249,12 @@ export function compareResearchDatasets(left, right) {
   return compareItems(left, right, `${left.dataset_id}@${left.dataset_version}`, `${right.dataset_id}@${right.dataset_version}`,
     ['dataset_version', 'normalization', 'population']);
 }
+
+export {
+  createArtifactProvenance,
+  verifyArtifactProvenance,
+  classifyAcquisitionAuthority,
+  ACQUISITION_AUTHORITIES,
+  TRANSPORT_MECHANISMS,
+} from './artifactProvenance.js';
+
