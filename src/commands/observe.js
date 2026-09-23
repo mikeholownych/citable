@@ -14,6 +14,7 @@ import { verifyManifestIntegrity } from '../release/governance.js';
 import { observeBrowserPlan } from '../observations/browserJourney.js';
 import { observeStance } from '../observations/stance.js';
 import { observeAttribution } from '../observations/attribution.js';
+import { extractBacklinkFromHtml, normalizeProviderBacklink, compareBacklinkObservations } from '../observations/backlinks.js';
 
 const originOf = (value) => { try { return new URL(value).origin; } catch { return null; } };
 const words = (text) => String(text || '').trim().split(/\s+/).filter(Boolean);
@@ -748,6 +749,61 @@ async function observeRepresentation(root, options) {
   return observationRun(root, 'observe representation', surface.url, observations, { rawInputs: { release_manifest: input.raw }, incomplete, artifacts });
 }
 
+async function observeBacklinksCommand(root, options) {
+  if (!options.input) throw new Error('observe backlinks requires --input <file>');
+  const inputPath = path.resolve(root, options.input);
+  if (!fs.existsSync(inputPath)) throw new Error(`input file not found: ${options.input}`);
+  const rawContent = fs.readFileSync(inputPath, 'utf8');
+
+  let observation;
+  if (options.input.endsWith('.json')) {
+    let parsed;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch (e) {
+      throw new Error(`failed to parse JSON input: ${e.message}`);
+    }
+
+    if (parsed.schema_version === 1 && parsed.observation_id?.startsWith('BL-OBS-')) {
+      observation = parsed;
+    } else if (parsed.html) {
+      observation = extractBacklinkFromHtml({
+        html: parsed.html,
+        sourceUrl: options.source || parsed.source_url,
+        targetUrl: options.target || parsed.target_url,
+        rawContent,
+        retrieval: parsed.retrieval,
+        coverage: parsed.coverage,
+        artifactProvenance: parsed.artifact_provenance,
+      });
+    } else {
+      observation = normalizeProviderBacklink({
+        providerRecord: parsed,
+        sourceUrl: options.source || parsed.source_url,
+        targetUrl: options.target || parsed.target_url,
+        artifactProvenance: parsed.artifact_provenance,
+      });
+    }
+  } else {
+    if (!options.target) throw new Error('observe backlinks with HTML input requires --target <url>');
+    observation = extractBacklinkFromHtml({
+      html: rawContent,
+      sourceUrl: options.source || 'https://observed-page.test',
+      targetUrl: options.target,
+      rawContent,
+    });
+  }
+
+  if (options.compareWith) {
+    const comparePath = path.resolve(root, options.compareWith);
+    if (!fs.existsSync(comparePath)) throw new Error(`compare file not found: ${options.compareWith}`);
+    const prevObservation = JSON.parse(fs.readFileSync(comparePath, 'utf8'));
+    return compareBacklinkObservations(prevObservation, observation);
+  }
+
+  return observation;
+}
+
 export async function observe(root, mode, options = {}) {
   switch (mode) {
     case 'render': return observeRender(root, options);
@@ -765,9 +821,10 @@ export async function observe(root, mode, options = {}) {
     case 'representation': return observeRepresentation(root, options);
     case 'stance': return observeStance(root, options);
     case 'attribution': return observeAttribution(root, options);
-    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, representation, stance, or attribution');
+    case 'backlinks': return observeBacklinksCommand(root, options);
+    default: throw new Error('observe mode must be render, index, citations, logs, bing, passages, consensus, performance, corroboration, probes, network, media, representation, stance, attribution, or backlinks');
   }
 }
 
-export { observeAttribution };
+export { observeAttribution, observeBacklinksCommand };
 

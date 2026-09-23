@@ -12,7 +12,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Tests | 874 pass across 29 test suites |
 | Registries | 29 schema-validated |
 | Providers | 12 agent hosts |
-| Distribution | 127 packaged files per provider; 4 managed Claude profiles |
+| Distribution | 130 packaged files per provider; 4 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and

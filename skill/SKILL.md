@@ -110,7 +110,8 @@ citable schema --target <dir|url>
 citable validate [registries|claims|evidence|schema|links]
 citable compare-snapshots [runA runB]
 citable action-plan [run-id]          # ordered actions, blockers, semantic gates, verification
-citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance/stance evidence
+citable observe <mode> [options]      # render/index/citation/log/probe/passage/consensus/performance/stance/backlink evidence
+citable observe backlinks --input <file> [--target <url>] [--compare-with <file>] # Passive backlink observation & non-causal temporal comparison
 citable observe stance --input <citations|prompts.json> [--entity <id>]
 citable observe attribution --input <citations|prompts.json> [--entity <id>]
 citable observe bing --dataset <search_performance|ai_performance> --input <csv|json>

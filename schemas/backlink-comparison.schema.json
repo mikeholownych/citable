@@ -1,0 +1,50 @@
+{
+  "$id": "citable://schemas/backlink-comparison.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Passive backlink temporal comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "comparison_id",
+    "left_reference",
+    "right_reference",
+    "status",
+    "transition",
+    "link_match",
+    "dimensions",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "comparison_id": { "type": "string", "pattern": "^CMP-[a-f0-9]{16,64}$" },
+    "left_reference": { "type": "string", "minLength": 1 },
+    "right_reference": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["COMPARABLE", "PARTIALLY_COMPARABLE", "NOT_COMPARABLE", "INDETERMINATE"]
+    },
+    "transition": {
+      "type": "string",
+      "enum": ["UNCHANGED", "CHANGED", "NO_LONGER_OBSERVED", "NEWLY_OBSERVED", "INDETERMINATE"]
+    },
+    "link_match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_match", "target_match", "anchor_match", "rel_match"],
+      "properties": {
+        "source_match": { "type": "boolean" },
+        "target_match": { "type": "boolean" },
+        "anchor_match": { "type": ["boolean", "null"] },
+        "rel_match": { "type": ["boolean", "null"] }
+      }
+    },
+    "dimensions": {
+      "type": "object"
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
