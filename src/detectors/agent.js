@@ -14,6 +14,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { defineDetector } from './framework.js';
+import {
+  validateMcpServerCard,
+  validateA2aCard,
+  validateWebMcp,
+  validateArd,
+  classifyOperation,
+  checkOperationSafetyGuards,
+  classifyForm,
+  evaluateConfirmationBoundary,
+  scanPromptInjectionSurfaces,
+} from '../agent/index.js';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -618,6 +629,301 @@ export const AGENT_011 = defineDetector({
   },
 });
 
+// ---------------------------------------------------------------------------
+// AGENT-012: MCP Server Card and Tool Semantics Validation (B-060)
+// ---------------------------------------------------------------------------
+
+export const AGENT_012 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
+  id: 'AGENT-012',
+  name: 'MCP server card semantics or capability invalid',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness'],
+  severity: 'high',
+  deterministic: true,
+  description:
+    'An MCP Server Card exists but has invalid schema, malformed tool definitions (missing name, description, ' +
+    'or valid inputSchema), or advertises tools/endpoints that cannot be resolved on the site (DECLARED_CAPABILITY_INVALID).',
+  applicable_requirement:
+    'AI Readiness §49 MCP Discovery, §50 MCP Capability Validation, §51 Tool Semantics, §86 Protocol Claims Versus Reality',
+  remediation:
+    'Ensure /.well-known/mcp contains valid JSON with a server descriptor, valid tool names and descriptions, ' +
+    'conforming inputSchema objects, and reachable transport endpoints.',
+  verification: 'Fetch /.well-known/mcp and test that all declared tools have conforming input schemas and resolvable endpoints.',
+  check(ctx) {
+    let raw = null;
+    let identifier = '/.well-known/mcp';
+
+    if (ctx.site?.meta?.mcpCard) {
+      raw = ctx.site.meta.mcpCard;
+    } else if (ctx.site?.wellKnown?.mcp) {
+      raw = ctx.site.wellKnown.mcp;
+    } else {
+      const page = ctx.site?.pages?.find(
+        (p) => p.path === '/.well-known/mcp' || p.url?.endsWith('/.well-known/mcp')
+      );
+      if (page) {
+        raw = page.rawHtml || page.text;
+        identifier = page.url || '/.well-known/mcp';
+      } else if (ctx.site?.location) {
+        const localPath = path.join(ctx.site.location, '.well-known', 'mcp');
+        if (fs.existsSync(localPath)) {
+          raw = fs.readFileSync(localPath, 'utf8');
+        }
+      }
+    }
+
+    if (!raw) return []; // Missing card is handled by AGENT-004 at low severity
+
+    const result = validateMcpServerCard(raw, ctx);
+    if (!result.valid) {
+      return [{
+        subject: { type: 'file', identifier },
+        summary: `MCP Server Card declared capability invalid (DECLARED_CAPABILITY_INVALID): ${result.errors.slice(0, 2).join('; ')}`,
+        evidence: result.errors,
+        captured: `DECLARED_CAPABILITY_INVALID: ${result.errors.length} defect(s)`,
+        expected: 'Valid MCP card with conforming tool inputSchemas, descriptions, and invocable endpoints',
+      }];
+    }
+
+    return [];
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AGENT-013: Protocol Validation for A2A, WebMCP, and ARD (B-061)
+// ---------------------------------------------------------------------------
+
+export const AGENT_013 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
+  id: 'AGENT-013',
+  name: 'Agent protocol capability declared but invalid or absent',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness'],
+  severity: 'high',
+  deterministic: true,
+  description:
+    'An agent protocol capability (Google A2A agent card, WebMCP browser tools, or ARD resource discovery) ' +
+    'is declared by the site, but its schema is malformed or its declared endpoints/tools are absent (DECLARED_CAPABILITY_INVALID).',
+  applicable_requirement:
+    'AI Readiness §55 A2A Validation, §56 WebMCP, §57 ARD, §86 Protocol Claims Versus Reality',
+  remediation:
+    'Ensure all declared A2A endpoints, WebMCP browser tool handlers, and ARD resource URLs correspond to active, resolvable resources.',
+  verification: 'Validate declared agent protocol schemas and test that declared endpoints resolve to active resources.',
+  check(ctx) {
+    const findings = [];
+
+    // 1. A2A Check
+    let a2aRaw = ctx.site?.meta?.a2aCard || ctx.site?.wellKnown?.agent || null;
+    let a2aIdentifier = '/.well-known/agent.json';
+    if (!a2aRaw) {
+      const page = ctx.site?.pages?.find(
+        (p) => p.path === '/.well-known/agent.json' || p.url?.endsWith('/.well-known/agent.json')
+      );
+      if (page) {
+        a2aRaw = page.rawHtml || page.text;
+        a2aIdentifier = page.url || '/.well-known/agent.json';
+      } else if (ctx.site?.location) {
+        const localPath = path.join(ctx.site.location, '.well-known', 'agent.json');
+        if (fs.existsSync(localPath)) {
+          a2aRaw = fs.readFileSync(localPath, 'utf8');
+        }
+      }
+    }
+
+    if (a2aRaw) {
+      const a2aResult = validateA2aCard(a2aRaw, ctx);
+      if (a2aResult.declared && !a2aResult.valid) {
+        findings.push({
+          subject: { type: 'file', identifier: a2aIdentifier },
+          summary: `A2A capability declared but invalid or absent (DECLARED_CAPABILITY_INVALID): ${a2aResult.errors.slice(0, 2).join('; ')}`,
+          evidence: a2aResult.errors,
+          captured: `DECLARED_CAPABILITY_INVALID: ${a2aResult.errors.length} defect(s)`,
+          expected: 'Valid A2A descriptor with active and resolvable endpoint URLs',
+        });
+      }
+    }
+
+    // 2. WebMCP Check
+    const webMcpResult = validateWebMcp(ctx.site?.pages || [], ctx);
+    if (webMcpResult.declared && !webMcpResult.valid) {
+      findings.push({
+        subject: { type: 'page', identifier: siteUrl(ctx) },
+        summary: `WebMCP browser tools declared but invalid or absent (DECLARED_CAPABILITY_INVALID): ${webMcpResult.errors.slice(0, 2).join('; ')}`,
+        evidence: webMcpResult.errors,
+        captured: `DECLARED_CAPABILITY_INVALID: ${webMcpResult.errors.length} WebMCP defect(s)`,
+        expected: 'Valid WebMCP tool declarations with valid descriptions and schemas',
+      });
+    }
+
+    // 3. ARD Check
+    const ardResult = validateArd(ctx);
+    if (ardResult.declared && !ardResult.valid) {
+      findings.push({
+        subject: { type: 'file', identifier: ardResult.source || '/.well-known/ard.json' },
+        summary: `Agentic Resource Discovery declared but invalid or absent (DECLARED_CAPABILITY_INVALID): ${ardResult.errors.slice(0, 2).join('; ')}`,
+        evidence: ardResult.errors,
+        captured: `DECLARED_CAPABILITY_INVALID: ${ardResult.errors.length} ARD defect(s)`,
+        expected: 'All declared ARD resources resolve to valid URLs on the site',
+      });
+    }
+
+    return findings;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AGENT-014: Side Effects and Destructive Actions Classification (B-062)
+// ---------------------------------------------------------------------------
+
+export const AGENT_014 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
+  id: 'AGENT-014',
+  name: 'Machine-exposed destructive operation lacks confirmation or safety controls',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness'],
+  severity: 'high',
+  deterministic: true,
+  description:
+    'A machine-exposed operation (MCP tool, WebMCP tool, or A2A skill) performs an elevated-risk or destructive action ' +
+    '(DELETE_ACCOUNT, CANCEL_SUBSCRIPTION, CANCEL_ORDER, DELETE_DATA, REVOKE_ACCESS, or financial mutation) ' +
+    'without declared confirmation boundaries, idempotency keys, or authorization guards.',
+  applicable_requirement:
+    'AI Readiness §52 Side-Effect Classification, §53 Idempotency, §70 Destructive Actions',
+  remediation:
+    'Annotate destructive tools with requires_confirmation: true, define idempotency key parameters, ' +
+    'and require explicit authorization scopes.',
+  verification: 'Inspect tool descriptors to verify confirmation requirements and idempotency guards on destructive actions.',
+  check(ctx) {
+    const findings = [];
+    const operations = [];
+
+    // Collect tools from MCP
+    const mcpTools = ctx.site?.meta?.mcpCard?.tools || ctx.site?.wellKnown?.mcp?.tools || [];
+    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : (typeof mcpTools === 'object' && mcpTools !== null ? Object.values(mcpTools) : []);
+    for (const t of mcpToolList) operations.push({ ...t, source: 'MCP' });
+
+    // Collect tools from WebMCP
+    const webMcp = validateWebMcp(ctx.site?.pages || [], ctx);
+    for (const t of webMcp.tools || []) operations.push({ ...t, source: 'WebMCP' });
+
+    // Check each operation
+    for (const op of operations) {
+      const classification = classifyOperation(op);
+      const safety = checkOperationSafetyGuards(op, classification);
+
+      if (!safety.safe) {
+        findings.push({
+          subject: { type: 'registry_entry', identifier: `${op.source}:${op.name || 'unnamed'}` },
+          summary: `${op.source} operation "${op.name}" classified as ${classification.category} (${classification.destructiveType || 'ELEVATED_RISK'}) lacks safety controls`,
+          evidence: safety.missingGuards,
+          captured: `category: ${classification.category}, risk: ${classification.riskLevel}, missing: ${safety.missingGuards.join('; ')}`,
+          expected: 'Explicit confirmation requirements, idempotency keys, and authorization guards on destructive actions',
+        });
+      }
+    }
+
+    return findings;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AGENT-015: Form Safety and Confirmation Boundary Detection (B-063)
+// ---------------------------------------------------------------------------
+
+export const AGENT_015 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
+  id: 'AGENT-015',
+  name: 'High-impact form control consequence machine-ambiguous',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness'],
+  severity: 'high',
+  deterministic: true,
+  description:
+    'A high-impact HTML form control (financial payment, checkout, account deletion, subscription cancellation, or data wipe) ' +
+    'lacks a machine-detectable confirmation boundary (preview/review step, confirmation dialog, or unambiguous consequence disclosure), ' +
+    'making automated execution unsafe for AI agents.',
+  applicable_requirement:
+    'AI Readiness §40 Form Safety, §41 Confirmation Semantics, §70 Destructive Actions',
+  remediation:
+    'Add an explicit confirmation step (review before execution), unambiguous button labels (e.g. "Review Order" instead of "Submit"), ' +
+    'or data-confirm attributes on high-impact forms.',
+  verification: 'Verify that all financial and destructive forms require multi-step confirmation or clear consequences disclosures before mutation.',
+  check(ctx) {
+    const findings = [];
+    const pages = ctx.site?.pages || [];
+
+    for (const page of pages) {
+      const forms = page.forms || [];
+      for (const form of forms) {
+        const formClass = classifyForm(form, page);
+        const evaluation = evaluateConfirmationBoundary(form, formClass, page.rawHtml || page.html || '');
+
+        if (evaluation.isMachineAmbiguous) {
+          findings.push({
+            subject: { type: 'page', identifier: page.url || siteUrl(ctx) },
+            summary: `Form on ${page.path || page.url} has machine-ambiguous ${formClass} control: ${evaluation.reasons[0]}`,
+            evidence: evaluation.reasons,
+            captured: `class: ${formClass}, submit: "${form.submitText || ''}", action: "${form.action || ''}"`,
+            expected: 'Two-step confirmation boundary, preview step, or clear consequence disclosure on high-impact forms',
+          });
+        }
+      }
+    }
+
+    return findings;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// AGENT-016: Prompt-Injection Surface Scan (B-064)
+// ---------------------------------------------------------------------------
+
+export const AGENT_016 = defineDetector({
+  coverage_requirement: 'evaluated_subset',
+  id: 'AGENT-016',
+  name: 'Agent-directed instructions detected on machine-readable surfaces',
+  namespace: 'AGENT',
+  discipline: ['agent-readiness'],
+  severity: 'medium',
+  deterministic: true,
+  description:
+    'Agent-directed instructions (prompt injection patterns) were detected on HTML, metadata, comments, ' +
+    'structured data, UGC, or tool descriptions. Presence is surfaced as an observation without asserting malicious or benign intent.',
+  applicable_requirement:
+    'AI Readiness §71 Prompt Injection Exposure, §72 Content/Instruction Separation',
+  remediation:
+    'Separate data from instructions; ensure user-generated content and third-party inputs are properly sanitized ' +
+    'and not rendered into agent instruction prompts.',
+  verification: 'Inspect surfaced matches and verify untrusted text is isolated from autonomous agent instruction pipelines.',
+  check(ctx) {
+    const findings = [];
+    const pages = ctx.site?.pages || [];
+
+    for (const page of pages) {
+      const observations = scanPromptInjectionSurfaces(page, ctx);
+      for (const obs of observations) {
+        findings.push({
+          subject: { type: 'page', identifier: page.url || siteUrl(ctx) },
+          summary: `Agent-directed instruction phrasing detected in ${obs.surface} at ${obs.location}; presence reported without asserting intent`,
+          evidence: [
+            `surface: ${obs.surface}`,
+            `location: ${obs.location}`,
+            `pattern: ${obs.pattern_name}`,
+            `matched: "${obs.matched_text}"`,
+            `snippet: "${obs.snippet}"`,
+            `intent: ${obs.intent} (${obs.note})`,
+          ],
+          captured: `pattern: ${obs.pattern_name}, intent: unasserted`,
+          expected: 'No agent-directed instruction overrides embedded in machine-readable content surfaces',
+        });
+      }
+    }
+
+    return findings;
+  },
+});
+
 export const AGENT_DETECTORS = [
   AGENT_001,
   AGENT_002,
@@ -630,4 +936,9 @@ export const AGENT_DETECTORS = [
   AGENT_009,
   AGENT_010,
   AGENT_011,
+  AGENT_012,
+  AGENT_013,
+  AGENT_014,
+  AGENT_015,
+  AGENT_016,
 ];

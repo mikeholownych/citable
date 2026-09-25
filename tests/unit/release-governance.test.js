@@ -16,6 +16,8 @@ import {
   verifyRepositoryBinding,
 } from '../../src/release/governance.js';
 
+import { ALL_DETECTORS } from '../../src/detectors/index.js';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMMIT = 'a'.repeat(40);
 
@@ -48,7 +50,7 @@ test('canonical release manifest is deterministic for fixed inputs and binds gen
   const second = generateReleaseManifest(root, { commit: COMMIT, generatedAt: '2026-07-19T09:00:00Z' });
   assert.deepEqual(first, second);
   assert.equal(first.manifest.commit, COMMIT);
-  assert.equal(first.manifest.facts.detectors, 181);
+  assert.equal(first.manifest.facts.detectors, ALL_DETECTORS.length);
   assert.equal(first.manifest.facts.distribution_files_per_provider, packagedSkillFileCount());
   assert.ok(first.manifest.projections.some((item) => item.projection_id === 'llms-txt'));
   assert.match(first.generated['release/llms.txt'], /Release commit: a{40}/);

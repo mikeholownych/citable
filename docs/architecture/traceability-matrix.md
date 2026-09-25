@@ -185,6 +185,11 @@ purpose separation, the more conservative purpose-per-crawler model was chosen
 | AGENT-009 | auth.md not present | AGENT | low | isitagentready.com Protocol Discovery; Auth.md convention |
 | AGENT-010 | Agentic commerce protocols not declared | AGENT | low | isitagentready.com Commerce; x402/MPP/UCP/ACP protocols |
 | AGENT-011 | llms.txt structure or link integrity broken | AGENT | medium | llmstxt.org specification; GEO §3 discoverability; agent-readiness §content-accessibility |
+| AGENT-012 | MCP server card semantics or capability invalid | AGENT | high | AI Readiness §49 MCP Discovery, §50 MCP Capability Validation, §51 Tool Semantics, §86 Protocol Claims Versus Reality |
+| AGENT-013 | Agent protocol capability declared but invalid or absent | AGENT | high | AI Readiness §55 A2A Validation, §56 WebMCP, §57 ARD, §86 Protocol Claims Versus Reality |
+| AGENT-014 | Machine-exposed destructive operation lacks confirmation or safety controls | AGENT | high | AI Readiness §52 Side-Effect Classification, §53 Idempotency, §70 Destructive Actions |
+| AGENT-015 | High-impact form control consequence machine-ambiguous | AGENT | high | AI Readiness §40 Form Safety, §41 Confirmation Semantics, §70 Destructive Actions |
+| AGENT-016 | Agent-directed instructions detected on machine-readable surfaces | AGENT | medium | AI Readiness §71 Prompt Injection Exposure, §72 Content/Instruction Separation |
 | ANS-001 | Generic preamble before answer | ANS | medium | AEO §4 direct answer block in first 50–100 words; GEO §5 avoid "in today's rapidly evolving..." openings; anti-pattern: generic AI introductions |
 | ANS-002 | Question heading without direct answer | ANS | medium | AEO §4 answer extractability; anti-pattern: question headings created only for formatting |
 | ANS-003 | Circular definition | ANS | medium | AEO §4 explicit definitions; anti-pattern: circular definitions |

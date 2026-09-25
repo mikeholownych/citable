@@ -1,0 +1,20 @@
+[
+  {
+    "name": "delete_user_account",
+    "description": "Permanently delete user account and wipe associated resources",
+    "method": "DELETE",
+    "path": "/api/users/delete-account"
+  },
+  {
+    "name": "cancel_active_subscription",
+    "description": "Cancel recurring customer subscription immediately",
+    "method": "POST",
+    "path": "/api/billing/cancel-subscription"
+  },
+  {
+    "name": "purchase_enterprise_license",
+    "description": "Execute financial checkout without authorization requirement",
+    "method": "POST",
+    "path": "/api/checkout/purchase"
+  }
+]

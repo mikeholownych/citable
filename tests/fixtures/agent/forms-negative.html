@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Forms Negative Test</title>
+</head>
+<body>
+  <!-- Standard read-only search form -->
+  <form action="/search" method="GET">
+    <input type="search" name="q" placeholder="Search catalog...">
+    <button type="submit">Search</button>
+  </form>
+
+  <!-- Financial checkout form with multi-step review wizard and unambiguous button -->
+  <div class="checkout-wizard">
+    <div class="step-indicator">Step 2 of 3: Review Order</div>
+    <form action="/checkout/review" method="POST">
+      <input type="text" name="cardNumber" placeholder="Card Number">
+      <button type="submit">Review Order</button>
+    </form>
+  </div>
+
+  <!-- Destructive form with explicit confirmation dialog and warning -->
+  <div class="danger-zone">
+    <p class="warning">Warning: This action cannot be undone and will permanently delete your account.</p>
+    <form action="/account/delete" method="POST" data-confirm="Are you sure you want to permanently delete your account?">
+      <input type="hidden" name="action" value="delete_account">
+      <button type="submit">Permanently Delete Account</button>
+    </form>
+  </div>
+</body>
+</html>

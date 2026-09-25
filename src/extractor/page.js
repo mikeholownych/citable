@@ -232,12 +232,24 @@ export function extractPage({ url, html, responseBody = null, status = 200, head
       inputs.push({ name, id, type, required, autocomplete, inputmode, placeholder, hasLabel });
     }
 
+    let submitText = '';
+    const submitBtn = form.querySelector('button[type=submit], input[type=submit]') ||
+      form.querySelector('button:not([type=button]):not([type=reset])');
+    if (submitBtn) {
+      submitText = (submitBtn.tagName.toLowerCase() === 'input' ? submitBtn.getAttribute('value') : submitBtn.text) || '';
+      submitText = submitText.replace(/\s+/g, ' ').trim();
+    }
+
     forms.push({
       action,
       method,
+      id: form.getAttribute('id') || null,
+      name: form.getAttribute('name') || null,
       inputs,
       fieldCount: nonHiddenCount,
       hasSubmit,
+      submitText,
+      outerHtml: form.outerHTML,
     });
   }
 

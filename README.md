@@ -21,7 +21,7 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   objectives, interventions, optional connections, reviewers, review policies,
   governed exceptions, semantic review items, sampling plans, and audit schedules — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **181 detectors** across 19 namespaces (AGENT, ANS, ARCH, CLAIM, CRAWL,
+- **186 detectors** across 19 namespaces (AGENT, ANS, ARCH, CLAIM, CRAWL,
   CRO, CWV, ENTITY, EVD, EXT, GEO, HREFLANG, LIFE, LINK, MEAS, PAGE, RECO,
   SCHEMA, TECH), each with remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured

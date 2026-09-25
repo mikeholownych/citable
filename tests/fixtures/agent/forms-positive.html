@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Forms Positive Test</title>
+</head>
+<body>
+  <!-- Destructive form with ambiguous submit button and no confirmation boundary -->
+  <form action="/account/delete" method="POST">
+    <input type="hidden" name="action" value="delete_account">
+    <button type="submit">Submit</button>
+  </form>
+
+  <!-- Financial form with ambiguous button label and no review/preview step -->
+  <form action="/billing/charge" method="POST">
+    <input type="text" name="cardNumber" placeholder="Card Number">
+    <input type="text" name="expDate" placeholder="MM/YY">
+    <input type="text" name="cvv" placeholder="CVV">
+    <button type="submit">Go</button>
+  </form>
+</body>
+</html>

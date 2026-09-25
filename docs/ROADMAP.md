@@ -8,8 +8,8 @@ guarantee retrieval, ranking, citation, or model prioritization.
 
 | Metric | Value |
 |--------|-------|
-| Detectors | 181 across 19 namespaces |
-| Tests | 901 pass across 29 test suites |
+| Detectors | 186 across 19 namespaces |
+| Tests | 923 pass across 34 test suites |
 | Registries | 29 schema-validated |
 | Schemas | 86 schema definitions |
 | Providers | 12 agent hosts |
