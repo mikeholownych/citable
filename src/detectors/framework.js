@@ -2,6 +2,7 @@ import { sha256 } from '../shared/io.js';
 import { fileURLToPath } from 'node:url';
 import { readJson } from '../shared/io.js';
 import { evaluateRequirement, isCoverageRequirement, requirementForDetector } from '../evidence/determination.js';
+import { evaluateDeterminations } from '../conditions/determinationEngine.js';
 
 const TOOL_VERSION = readJson(new URL('../../package.json', import.meta.url)).version;
 
@@ -47,108 +48,9 @@ function evidenceSourceFor(detector, ctx) {
   return 'configuration';
 }
 
-/** Run detectors over a context; returns { findings, detectorsRun, detectorsSkipped, errors }. */
+/** Run detectors over a context; returns { findings, determinations, detectorsRun, detectorsSkipped, errors, siteProfile }. */
 export function runDetectors(detectors, ctx) {
-  const findings = [];
-  const detectorsRun = [];
-  const detectorsSkipped = [];
-  const errors = [];
-  const ts = ctx.timestamp ?? new Date().toISOString();
-  for (const d of detectors) {
-    if (d.requires && !d.requires.every((r) => ctx[r])) {
-      detectorsSkipped.push({ detector_id: d.id, reason: `missing context: ${d.requires.filter((r) => !ctx[r]).join(', ')}` });
-      continue;
-    }
-    let hits;
-    try {
-      hits = d.check(ctx) || [];
-    } catch (err) {
-      errors.push(`${d.id}: detector error: ${err.message}`);
-      continue;
-    }
-    detectorsRun.push(d.id);
-    for (const hit of hits) {
-      const idSeed = `${d.id}|${hit.subject?.identifier ?? ''}|${hit.summary}`;
-      const coverageRequirement = requirementForDetector(d, hit);
-      const scope = ctx.coverage
-        ? evaluateRequirement(coverageRequirement, ctx.coverage, hit.subject)
-        : null;
-      const resourceIds = scope?.resource_id ? [scope.resource_id] : [];
-      const scopeSatisfied = scope?.status === 'supported' || scope?.status === 'qualified';
-      const determinationNote = scope && !scopeSatisfied
-        ? `determination not established: ${scope.reason || 'coverage requirement unsatisfied'}`
-        : null;
-      findings.push({
-        ...(ctx.coverage ? { schema_version: 2 } : {}),
-        finding_id: `F-${sha256(idSeed).slice(0, 12)}`,
-        detector_id: d.id,
-        detector_name: d.name,
-        run_id: ctx.runId ?? 'adhoc',
-        timestamp: ts,
-        discipline: d.discipline,
-        subject: hit.subject,
-        observation: {
-          summary: hit.summary,
-          evidence: hit.evidence,
-          captured_value: hit.captured ?? null,
-          expected_value: hit.expected ?? null,
-          ...(scope ? { determination_status: scope.status, ...(determinationNote ? { determination_reason: determinationNote } : {}) } : {}),
-        },
-        classification: {
-          finding_type: hit.finding_type ?? d.finding_type,
-          severity: hit.severity ?? d.severity,
-          confidence: scope && !scopeSatisfied ? 'unknown' : (hit.confidence ?? d.confidence),
-          deterministic: d.deterministic,
-          impact: { ...d.impact, ...(hit.impact || {}) },
-        },
-        reasoning: {
-          applicable_requirement: d.applicable_requirement,
-          explanation: d.description,
-          assumptions: hit.assumptions ?? [],
-          limitations: [
-            ...(d.deterministic ? [] : ['heuristic detection; verify manually before acting']),
-            ...(determinationNote ? [determinationNote] : []),
-          ],
-        },
-        remediation: {
-          preferred: d.remediation,
-          alternatives: d.remediation_alternatives ?? [],
-          unsafe_shortcuts: d.unsafe_shortcuts ?? [],
-          owner: hit.owner ?? null,
-          review_required: d.review_required ?? !d.deterministic,
-        },
-        verification: {
-          method: d.verification,
-          expected_result: 'detector no longer reports this subject',
-          detector_to_rerun: d.id,
-        },
-        provenance: {
-          detector_version: d.version ?? 1,
-          tool_version: TOOL_VERSION,
-          source_url: hit.subject?.url ?? hit.subject?.identifier ?? null,
-          source_file: hit.subject?.source_file ?? null,
-          evidence_selector: hit.subject?.rendered_selector ?? hit.subject?.source_location ?? null,
-          evidence_source: evidenceSourceFor(d, ctx),
-          viewport: ctx.viewport ?? null,
-          viewport_note: ctx.viewport ? null : 'viewport not captured for this collection method; static source/built-output check',
-          methodology: d.deterministic
-            ? 'deterministic condition check over captured evidence'
-            : 'heuristic judgment; human semantic review required before acting',
-          revalidation_required: d.deterministic ? 'on_next_audit' : 'human_review_before_action',
-        },
-        ...(ctx.coverage ? {
-          evidence_scope: {
-            requirement: coverageRequirement,
-            satisfaction: scope.status,
-            resource_ids: resourceIds,
-            coverage_ref: 'coverage.json',
-          },
-        } : {}),
-        status: { state: 'open', first_seen: ts, last_seen: ts, resolved_at: null },
-      });
-    }
-  }
-  return { findings, detectorsRun, detectorsSkipped, errors };
+  return evaluateDeterminations(detectors, ctx);
 }
 
 /* ---------- shared helpers for detector implementations ---------- */
