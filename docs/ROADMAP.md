@@ -9,11 +9,11 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 186 across 19 namespaces |
-| Tests | 949 pass across 34 test suites |
+| Tests | 954 pass across 34 test suites |
 | Registries | 29 schema-validated |
-| Schemas | 90 schema definitions |
+| Schemas | 91 schema definitions |
 | Providers | 12 agent hosts |
-| Distribution | 134 packaged files per provider; 4 managed Claude profiles |
+| Distribution | 135 packaged files per provider; 4 managed Claude profiles |
 | Release automation | npm trusted publishing with provenance; Linux, macOS, and Windows package gates |
 
 The current release separates retrieval eligibility, source extraction and

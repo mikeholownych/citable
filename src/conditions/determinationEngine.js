@@ -1,5 +1,6 @@
 import { calculateUnknownRateDrift } from "../lineage/unknownArtifacts.js";
 import { extractObservationLineage } from "../lineage/lineage.js";
+import { isDomainEnabled } from "../domains/registry.js";
 import { sha256, readJson } from "../shared/io.js";
 import { DETERMINATION_STATUS } from "./constants.js";
 import { resolveSiteProfile, isConditionApplicable } from "./siteProfile.js";
@@ -122,6 +123,37 @@ export function evaluateDeterminations(detectors, ctx) {
     : { type: "registry", identifier: "registries" };
 
   for (const d of detectors) {
+    // 0. Domain module gating (B-042: disabled domains produce NOT_TESTED, not absence)
+    const domainCheck = isDomainEnabled(d.namespace, { ...ctx, siteProfile });
+    if (!domainCheck.enabled) {
+      const reason = domainCheck.reason || `domain module ${d.namespace} is disabled by configuration`;
+      detectorsSkipped.push({ detector_id: d.id, reason });
+      const seed = `${d.id}|${defaultSubject.identifier}|domain_disabled`;
+      determinations.push({
+        schema_version: 1,
+        determination_id: `DET-${sha256(seed).slice(0, 12)}`,
+        condition_id: d.id,
+        condition_version: d.version ?? 1,
+        detector_id: d.id,
+        detector_name: d.name,
+        run_id: ctx.runId ?? "adhoc",
+        timestamp: ts,
+        subject: defaultSubject,
+        status: DETERMINATION_STATUS.NOT_TESTED,
+        reason,
+        finding_id: null,
+        discipline: d.discipline,
+        severity: d.severity,
+        collector_failure: null,
+        site_profile: siteProfile,
+        applicable: false,
+        unknown_artifacts: null,
+        unknown_rate_drift: null,
+        lineage: null,
+      });
+      continue;
+    }
+
     // 1. Missing context prerequisites -> NOT_TESTED
     if (d.requires && !d.requires.every((r) => ctx[r])) {
       const reason = `missing context: ${d.requires.filter((r) => !ctx[r]).join(", ")}`;

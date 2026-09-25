@@ -15,6 +15,18 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Domain module contract and namespace migration (Wave 4: B-040, B-041, B-042)
+
+- Added domain module schema and registry interface (`defineDomainModule`, `domainRegistry`)
+  allowing domains to register conditions, observation kinds, collectors, and report
+  projections through a single contract without modifying core files (`B-040`).
+- Migrated all 19 namespaces (`AGENT`, `ANS`, `ARCH`, `CLAIM`, `CRAWL`, `CRO`, `CWV`,
+  `ENTITY`, `EVD`, `EXT`, `GEO`, `HREFLANG`, `LIFE`, `LINK`, `MEAS`, `PAGE`, `RECO`,
+  `SCHEMA`, `TECH`) into domain modules (`B-041`).
+- Added per-module gating supporting domain disablement (`disabled_domains`) and profile
+  gating: disabled domains produce `NOT_TESTED` determinations without affecting determinations
+  in other domains (`B-042`).
+
 ## 1.23.0 — 2026-09-23
 
 ### Added — Passive backlink evidence and external artifact provenance
