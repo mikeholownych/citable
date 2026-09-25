@@ -200,6 +200,13 @@ export function deriveRepresentationPrevalence(observations, { predicatePath = '
       population_scope: 'successful_representation_executions_in_supplied_observations',
     },
     implementation: { id: 'citable-representation-prevalence', version: '1.0.0' },
+    lineage: {
+      collector_ids: [...new Set(observations.map((item) => item.collector?.id || item.collector_id).filter(Boolean))].sort(),
+      collector_versions: [...new Set(observations.map((item) => item.collector?.version || item.collector_version).filter(Boolean))].sort(),
+      parser_versions: [...new Set(observations.map((item) => item.parser?.version || item.parser_version).filter(Boolean))].sort(),
+      configuration_versions: [...new Set(observations.map((item) => item.configuration?.version || item.configuration_version).filter(Boolean))].sort(),
+      observation_references: observations.map((item) => item.observation_id),
+    },
   });
 }
 

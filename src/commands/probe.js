@@ -2,6 +2,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { loadRegistries } from "../registries/index.js";
 import { sha256 } from "../shared/io.js";
+import { envelope } from "../observations/common.js";
 
 /**
  * Executes or simulates an automated AI search engine probe, returning
@@ -42,23 +43,15 @@ export async function probeEngine(root, promptIdOrText, {
 
   const canonicalContent = JSON.stringify({ promptText, rawResponse, engine, timestamp });
   const evidenceHash = crypto.createHash("sha256").update(canonicalContent).digest("hex");
-  const randomSuffix = crypto.randomBytes(4).toString("hex");
-  const observationId = `OBS-PROBE-${engine.toUpperCase()}-${randomSuffix}`;
-
-  const observation = {
-    observation_id: observationId,
-    kind: "citation",
-    state: "observed",
-    collected_at: timestamp,
-    collection_method: mock ? "synthetic_fetch" : "live_api",
+  const observation = envelope("citation", dataPayload, {
+    method: mock ? "synthetic_fetch" : "live_api",
     confidence: "high",
     source: `AI search probe: ${engine}`,
-    evidence_hash: evidenceHash,
-    data: dataPayload,
+    raw: canonicalContent,
     limitations: [
       "AI engine response reflects single point-in-time sampling; responses across geographical regions may vary.",
     ],
-  };
+  });
 
   if (output && !dryRun) {
     const outPath = path.resolve(root, output);

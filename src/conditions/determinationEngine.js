@@ -1,3 +1,5 @@
+import { calculateUnknownRateDrift } from "../lineage/unknownArtifacts.js";
+import { extractObservationLineage } from "../lineage/lineage.js";
 import { sha256, readJson } from "../shared/io.js";
 import { DETERMINATION_STATUS } from "./constants.js";
 import { resolveSiteProfile, isConditionApplicable } from "./siteProfile.js";
@@ -228,6 +230,23 @@ export function evaluateDeterminations(detectors, ctx) {
 
     // Evaluate determinations for each subject
     for (const subj of evaluatedSubjects) {
+      const pageForSubj = pages.find((p) => (p.url && p.url === subj.url) || (p.sourceFile && p.sourceFile === subj.source_file));
+      const subjUnknownArtifacts = pageForSubj?.unknown_artifacts || ctx.unknown_artifacts || null;
+      let unknownRateDrift = null;
+      if (ctx.baselineDeterminations && Array.isArray(ctx.baselineDeterminations)) {
+        const baseDet = ctx.baselineDeterminations.find((b) => b.condition_id === d.id && b.subject?.identifier === subj.identifier);
+        if (baseDet) {
+          unknownRateDrift = calculateUnknownRateDrift(subjUnknownArtifacts, baseDet.unknown_artifacts).unknown_rate_drift;
+        }
+      }
+      let obsLineage = null;
+      if (ctx.observations && ctx.observations.length) {
+        try {
+          obsLineage = extractObservationLineage(ctx.observations);
+        } catch {
+          obsLineage = null;
+        }
+      }
       const subjHits = hitsBySubject.get(subj.identifier) || [];
       const collectorFailure = detectCollectorFailure(subj, ctx);
 
@@ -254,6 +273,9 @@ export function evaluateDeterminations(detectors, ctx) {
           collector_failure: collectorFailure,
           site_profile: siteProfile,
           applicable: true,
+          unknown_artifacts: subjUnknownArtifacts,
+          unknown_rate_drift: unknownRateDrift,
+          lineage: obsLineage,
         });
         continue;
       }
@@ -285,6 +307,9 @@ export function evaluateDeterminations(detectors, ctx) {
             collector_failure: null,
             site_profile: siteProfile,
             applicable: true,
+            unknown_artifacts: subjUnknownArtifacts,
+            unknown_rate_drift: unknownRateDrift,
+            lineage: obsLineage,
           };
           determinations.push(det);
 
@@ -325,6 +350,9 @@ export function evaluateDeterminations(detectors, ctx) {
           collector_failure: null,
           site_profile: siteProfile,
           applicable: true,
+          unknown_artifacts: subjUnknownArtifacts,
+          unknown_rate_drift: unknownRateDrift,
+          lineage: obsLineage,
         });
       }
     }

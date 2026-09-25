@@ -1,0 +1,130 @@
+{
+  "$id": "citable://schemas/replayed-derivation.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Replayed derivation from historical evidence",
+  "description": "Represents the re-derivation of findings or determinations from historical evidence under new parser or condition versions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "derivation_id",
+    "status",
+    "historical_run_id",
+    "historical_run_timestamp",
+    "replayed_at",
+    "target_condition_versions",
+    "target_parser_version",
+    "original_determinations",
+    "replayed_determinations",
+    "transitions",
+    "historical_preserved",
+    "derivation_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "derivation_id": {
+      "$ref": "citable://schemas/common.defs.json#/definitions/id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "NEW_DERIVATION_FROM_HISTORICAL_EVIDENCE"
+      ]
+    },
+    "historical_run_id": {
+      "type": "string"
+    },
+    "historical_run_timestamp": {
+      "type": "string"
+    },
+    "replayed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target_condition_versions": {
+      "type": "object"
+    },
+    "target_parser_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "original_determinations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "replayed_determinations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "unknown_artifacts": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "unknown_rate_drift": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "lineage": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "collector_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "collector_versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parser_versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configuration_versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "historical_preserved": {
+      "type": "boolean"
+    },
+    "historical_checksums_match": {
+      "type": "boolean"
+    },
+    "derivation_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

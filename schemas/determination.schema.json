@@ -137,6 +137,24 @@
         "object",
         "null"
       ]
+    },
+    "unknown_artifacts": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "unknown_rate_drift": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "lineage": {
+      "type": [
+        "object",
+        "null"
+      ]
     }
   },
   "additionalProperties": false

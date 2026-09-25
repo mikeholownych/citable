@@ -4,18 +4,191 @@
   "title": "Collected observation envelope",
   "type": "object",
   "additionalProperties": false,
-  "required": ["observation_id", "kind", "state", "collected_at", "collection_method", "confidence", "source", "evidence_hash", "data"],
+  "required": [
+    "observation_id",
+    "kind",
+    "state",
+    "collected_at",
+    "collection_method",
+    "confidence",
+    "source",
+    "evidence_hash",
+    "data",
+    "collector_id",
+    "collector_version",
+    "parser_version",
+    "configuration_version",
+    "requested_at",
+    "observed_at",
+    "ingested_at",
+    "normalized_at"
+  ],
   "properties": {
-    "observation_id": { "type": "string", "minLength": 1 },
-    "kind": { "type": "string", "enum": ["render", "browser_journey", "index", "citation", "citation_review", "crawler_log", "crawler_probe", "regional_network", "bing_webmaster", "passage", "canonical_freshness", "performance", "corroboration", "metric", "media_pdf", "media_transcript", "media_image", "representation_drift", "stance", "mcp_transport", "attribution"] },
-    "state": { "type": "string", "enum": ["observed", "not_observed", "not_evidenced", "incomplete", "review_required", "failed"] },
-    "collected_at": { "type": "string", "format": "date-time" },
-    "collection_method": { "type": "string", "enum": ["live_api", "browser", "owner_import", "synthetic_fetch", "static_analysis", "human_review"] },
-    "confidence": { "type": "string", "enum": ["confirmed", "high", "medium", "low", "unknown"] },
-    "source": { "type": "string", "minLength": 1 },
-    "evidence_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "data": { "type": "object" },
-    "limitations": { "type": "array", "items": { "type": "string" } },
-    "authority": { "$ref": "citable://schemas/evidence-authority.schema.json" }
+    "observation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "render",
+        "browser_journey",
+        "index",
+        "citation",
+        "citation_review",
+        "crawler_log",
+        "crawler_probe",
+        "regional_network",
+        "bing_webmaster",
+        "passage",
+        "canonical_freshness",
+        "performance",
+        "corroboration",
+        "metric",
+        "media_pdf",
+        "media_transcript",
+        "media_image",
+        "representation_drift",
+        "stance",
+        "mcp_transport",
+        "attribution"
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "observed",
+        "not_observed",
+        "not_evidenced",
+        "incomplete",
+        "review_required",
+        "failed"
+      ]
+    },
+    "collected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "collection_method": {
+      "type": "string",
+      "enum": [
+        "live_api",
+        "browser",
+        "owner_import",
+        "synthetic_fetch",
+        "static_analysis",
+        "human_review"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "data": {
+      "type": "object"
+    },
+    "collector_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "collector_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parser_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configuration_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "normalized_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unknown_artifacts": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "dom": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "protocol": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "total_elements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_elements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unknown_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "unknown_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authority": {
+      "$ref": "citable://schemas/evidence-authority.schema.json"
+    }
   }
 }

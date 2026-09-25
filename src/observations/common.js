@@ -1,3 +1,9 @@
+import {
+  DEFAULT_COLLECTOR_VERSION,
+  DEFAULT_PARSER_VERSION,
+  DEFAULT_CONFIGURATION_VERSION,
+  extractObservationLineage,
+} from "../lineage/lineage.js";
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRun } from '../evidence/run.js';
@@ -11,16 +17,58 @@ export function readInput(input) {
   return { raw: fs.readFileSync(input, 'utf8'), value: readJson(input), file: path.resolve(input) };
 }
 
-export function envelope(kind, data, { method, source, state = 'observed', confidence = 'confirmed', limitations = [], authority, raw } = {}) {
+export function envelope(kind, data, {
+  method,
+  source,
+  state = "observed",
+  confidence = "confirmed",
+  limitations = [],
+  authority,
+  raw,
+  collector_id,
+  collector_version,
+  parser_version,
+  configuration_version,
+  requested_at,
+  observed_at,
+  ingested_at,
+  normalized_at,
+  collected_at,
+  unknown_artifacts = null,
+  unknown_rate = null,
+} = {}) {
   const evidence = raw ?? JSON.stringify(data);
+  const now = nowIso();
+  const actualObservedAt = observed_at || data?.observed_at || collected_at || now;
+  const actualIngestedAt = ingested_at || now;
+  const actualRequestedAt = requested_at || (method === "owner_import" ? actualObservedAt : actualObservedAt);
+  const actualNormalizedAt = normalized_at || actualIngestedAt;
+
   const item = {
     observation_id: `OBS-${kind.toUpperCase()}-${sha256(evidence).slice(0, 16)}`,
-    kind, state, collected_at: nowIso(), collection_method: method,
-    confidence, source, evidence_hash: sha256(evidence), data, limitations,
+    kind,
+    state,
+    collected_at: collected_at || actualObservedAt,
+    collection_method: method,
+    confidence,
+    source,
+    evidence_hash: sha256(evidence),
+    data,
+    collector_id: collector_id || `citable:collector:${method || "generic"}`,
+    collector_version: collector_version || DEFAULT_COLLECTOR_VERSION,
+    parser_version: parser_version || DEFAULT_PARSER_VERSION,
+    configuration_version: configuration_version || DEFAULT_CONFIGURATION_VERSION,
+    requested_at: actualRequestedAt,
+    observed_at: actualObservedAt,
+    ingested_at: actualIngestedAt,
+    normalized_at: actualNormalizedAt,
+    ...(unknown_artifacts ? { unknown_artifacts } : {}),
+    ...(unknown_rate != null ? { unknown_rate } : {}),
+    limitations,
     authority: evidenceAuthority(method, authority),
   };
-  const check = validateAgainst('observation.schema.json', item);
-  if (!check.valid) throw new Error(`observation violates contract: ${check.errors.join('; ')}`);
+  const check = validateAgainst("observation.schema.json", item);
+  if (!check.valid) throw new Error(`observation violates contract: ${check.errors.join("; ")}`);
   return item;
 }
 
@@ -63,8 +111,10 @@ export function summarizeObservations(items) {
     competitiveSourceMap.set(domain, current);
   }
   const stances = items.filter((item) => item.kind === 'stance');
+  const lineage = items.length ? extractObservationLineage(items) : null;
   return {
     total: items.length, by_kind: byKind, by_state: byState,
+    lineage,
     citation_metrics: citations.length ? {
       runs: citations.length,
       citation_presence_rate: citations.filter((x) => x.data.property_cited).length / citations.length,
@@ -74,6 +124,7 @@ export function summarizeObservations(items) {
       provider_results: providers,
       competitive_domains: [...new Set(reviews.filter((x) => !x.data.first_party).map((x) => { try { return new URL(x.data.canonical_url).hostname; } catch { return null; } }).filter(Boolean))].sort(),
       competitive_sources: [...competitiveSourceMap.values()].sort((a, b) => a.domain.localeCompare(b.domain)),
+      lineage: extractObservationLineage(citations),
     } : null,
     stance_metrics: stances.length ? {
       total: stances.length,
@@ -83,6 +134,7 @@ export function summarizeObservations(items) {
       mixed: stances.filter((x) => x.data.stance === 'mixed').length,
       ambiguous: stances.filter((x) => x.data.stance === 'ambiguous').length,
       review_required: stances.filter((x) => x.state === 'review_required').length,
+      lineage: extractObservationLineage(stances),
     } : null,
   };
 }

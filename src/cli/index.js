@@ -60,6 +60,7 @@ import { evaluateDispositions, validateGovernance } from '../commands/governance
 import { listExceptions, renewException, invalidateException } from '../commands/exceptions.js';
 import { evaluateReviews, initializeSamplingPlan, prioritizeReviews, queueReviews, selectSample } from '../commands/reviews.js';
 import { selfUpgradeCommand, selfUpgradeExitCode } from '../commands/selfUpgrade.js';
+import { replayCommand } from '../commands/replay.js';
 // Executive reporting suite
 import { kpiCommand } from '../commands/kpi.js';
 import { varianceCommand } from '../commands/variance.js';
@@ -120,6 +121,7 @@ Commands
   schema                    Validate deployed JSON-LD and propose registry-derived schema
   validate [mode]           registries (default) | claims | evidence | schema | links
   compare-snapshots [a b]   Regression diff between two audit runs
+  replay <run-id>           Replay historical run under new parser or condition version
   action-plan [run]         Turn audit findings into ordered remediation work
   observe <mode>            Collect render, index, citation, log, Bing, passage,
                             consensus, performance, corroboration, crawler or regional probes,
@@ -807,6 +809,16 @@ ${r.recommendations.map((rec) => `    - ${rec}`).join('\n')}`;
         const r = compareSnapshots(root, { runA: args._[0], runB: args._[1] });
         out(args, `compare ${r.runA} → ${r.runB}\n  new: ${r.summary.new_findings} (critical/high: ${r.summary.regression_critical_or_high})\n  resolved: ${r.summary.resolved_findings}\n  persisting: ${r.summary.persisting_findings}`, r);
         if (r.summary.regression_critical_or_high > 0) process.exitCode = 1;
+        break;
+      }
+      case 'replay': {
+        const runId = args._[0];
+        const r = replayCommand(root, runId, {
+          conditionVersion: args['condition-version'] || args.conditionVersion,
+          parserVersion: args['parser-version'] || args.parserVersion,
+          write: args.write !== false,
+        });
+        out(args, `replay ${r.historical_run_id} → ${r.derivation.derivation_id}\n  status: ${r.derivation.status}\n  historical preserved: ${r.historical_preserved}\n  transitions: ${r.derivation.transitions.length}`, r);
         break;
       }
       case 'action-plan': {

@@ -1,5 +1,6 @@
 import { parse } from 'node-html-parser';
 import { createEvidenceHashes, hashPageArtifact } from '../evidence/hashes.js';
+import { retainUnknownArtifacts } from '../lineage/unknownArtifacts.js';
 
 /**
  * Extract a PageModel from raw HTML plus transport metadata.
@@ -335,7 +336,13 @@ export function extractPage({ url, html, responseBody = null, status = 200, head
     navLinksCount,
     domNodeCount,
     maxDomDepth,
+    unknown_artifacts: retainUnknownArtifacts({
+      domRoot: root,
+      jsonLd,
+      protocolPayloads: [{ headers }],
+    }),
   };
+  page.unknown_rate = page.unknown_artifacts.unknown_rate;
 
   // Keep representation identity explicit. These hashes deliberately do not
   // share a generic `contentHash`: raw response bytes, extracted text,
