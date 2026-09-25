@@ -55,6 +55,7 @@
     "validate:schemas": "node scripts/validate-schemas.js",
     "traceability:generate": "node scripts/generate-traceability.js",
     "traceability:check": "node scripts/generate-traceability.js --check",
+    "conditions:check": "node scripts/validate-conditions.js",
     "release:prepare": "node scripts/release-process.js prepare",
     "release:validate": "node scripts/release-process.js validate",
     "release:manifest": "node scripts/release-governance.js manifest",

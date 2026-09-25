@@ -49,7 +49,15 @@
         "resolution_definition": {
           "type": "string",
           "description": "States the exact resolution criterion used; detector absence is not an outcome guarantee."
-        }
+        },
+        "revalidation_verdict": {
+          "type": ["string", "null"],
+          "enum": ["fail_to_pass", "new_condition_evaluation", null]
+        },
+        "condition_id": { "type": ["string", "null"] },
+        "condition_version": { "type": ["integer", "null"] },
+        "source_condition_version": { "type": ["integer", "null"] },
+        "recheck_condition_version": { "type": ["integer", "null"] }
       }
     },
     "comparison": {

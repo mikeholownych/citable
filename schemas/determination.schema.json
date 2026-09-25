@@ -26,6 +26,13 @@
     "condition_id": {
       "$ref": "citable://schemas/common.defs.json#/definitions/id"
     },
+    "condition_version": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
     "detector_id": {
       "$ref": "citable://schemas/common.defs.json#/definitions/id"
     },

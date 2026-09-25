@@ -15,15 +15,6 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
-### Added — Determination Layer and Transition Semantics (Wave 1: B-010 through B-014)
-
-- Added `schemas/determination.schema.json` contract and determination evaluation engine (`src/conditions/`).
-- Every condition evaluated per subject yields a discrete determination (`PASS | FAIL | WARNING | INDETERMINATE | NOT_APPLICABLE | NOT_TESTED | ERROR`). Findings become a projected view of `FAIL` and `WARNING` determinations rather than the primary record.
-- Added site profile and condition applicability resolution (`src/conditions/siteProfile.js`). Content-only properties record e-commerce conditions as `NOT_APPLICABLE`, ensuring non-applicable conditions never contribute to failure counts or denominators.
-- Added determination transition classification to `compare-snapshots` (`src/commands/compareSnapshots.js`), distinguishing `NEW_FAILURE`, `REGRESSION`, `RESOLVED`, `UNCHANGED_FAILURE`, `NEWLY_APPLICABLE`, and `NO_LONGER_APPLICABLE`. New findings on un-evaluated subjects are strictly classified as `NEW_FAILURE`, never false regressions.
-- Added applicability-scoped scoring (`src/conditions/scoring.js`) with exposed inputs, formula, weights, `score_version`, and `applicability_denominator`. Run profiles with differing applicable counts refuse comparison on a shared denominator.
-- Enforced collector failure isolation (`src/conditions/collectorFailure.js`): `DNS_FAILED`, `TIMEOUT`, `BLOCKED`, `CAPTCHA`, `RATE_LIMITED`, and `PARSER_FAILED` resolve strictly to `ERROR` or `NOT_TESTED`, never condition `FAIL`.
-
 ## 1.23.0 — 2026-09-23
 
 ### Added — Passive backlink evidence and external artifact provenance

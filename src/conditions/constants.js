@@ -43,3 +43,36 @@ export const SITE_PROFILES = Object.freeze({
   LOCAL: "local",
   API_DOCS: "api-docs",
 });
+
+export const NORMATIVE_SOURCE_CLASSES = Object.freeze({
+  STANDARD: "STANDARD",
+  RFC: "RFC",
+  SPECIFICATION: "SPECIFICATION",
+  VENDOR_REQUIREMENT: "VENDOR_REQUIREMENT",
+  VENDOR_GUIDANCE: "VENDOR_GUIDANCE",
+  COMMUNITY_CONVENTION: "COMMUNITY_CONVENTION",
+  RESEARCH: "RESEARCH",
+  HEURISTIC: "HEURISTIC",
+  INTERNAL_RULE: "INTERNAL_RULE",
+});
+
+export const SOURCE_MATURITY = Object.freeze({
+  PROPOSED: "PROPOSED",
+  DRAFT: "DRAFT",
+  CANDIDATE: "CANDIDATE",
+  STABLE: "STABLE",
+  MATURE: "MATURE",
+  DEPRECATED: "DEPRECATED",
+});
+
+export const EVALUATION_METHODS = Object.freeze({
+  DETERMINISTIC: "deterministic",
+  HEURISTIC: "heuristic",
+  HYBRID: "hybrid",
+});
+
+export const REVALIDATION_VERDICTS = Object.freeze({
+  FAIL_TO_PASS: "fail_to_pass",
+  NEW_CONDITION_EVALUATION: "new_condition_evaluation",
+});
+

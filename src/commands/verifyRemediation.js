@@ -128,6 +128,14 @@ export async function verifyRemediation(root, options = {}) {
   result.verdict.before_finding_ids = matches.map((f) => f.finding_id);
   result.subject = { type: matches[0].subject?.type || 'unknown', identifier: subject || matches[0].subject?.identifier || matches[0].subject?.url || 'unknown' };
 
+  const determinationsPath = path.join(runDir, 'determinations.json');
+  const sourceDeterminations = fs.existsSync(determinationsPath) ? readJson(determinationsPath) : [];
+  const sourceDet = Array.isArray(sourceDeterminations)
+    ? sourceDeterminations.find((d) => (d.condition_id === result.detector_id || d.detector_id === result.detector_id) && sameResourceIdentity(d.subject, matches[0].subject))
+    : null;
+  const sourceConditionId = sourceDet?.condition_id || result.detector_id;
+  const sourceConditionVersion = sourceDet?.condition_version || matches[0].provenance?.detector_version || 1;
+
   // Optional gated patch application (production-safe pipeline from remediate.js)
   if (target && apply) {
     const targetPath = path.resolve(root, target);
@@ -229,28 +237,49 @@ export async function verifyRemediation(root, options = {}) {
   };
   result.verdict.comparison_state = comparability.comparable ? reobservation.state : 'not_comparable';
 
+  const recheckConditionId = detectorDefinition?.id || result.detector_id;
+  const recheckConditionVersion = detectorDefinition?.version ?? 1;
+  const sameConditionVersion = sourceConditionId === recheckConditionId && sourceConditionVersion === recheckConditionVersion;
+
+  result.verdict.condition_id = sourceConditionId;
+  result.verdict.source_condition_version = sourceConditionVersion;
+  result.verdict.recheck_condition_version = recheckConditionVersion;
+  result.verdict.condition_version = sameConditionVersion ? sourceConditionVersion : recheckConditionVersion;
+
   const errorsDuringRecheck = result.provenance.recheck_errors.length > 0;
   if (errorsDuringRecheck) {
     result.status = 'indeterminate';
     result.verdict.resolved = false;
     result.verdict.comparison_state = 'indeterminate';
+    result.verdict.revalidation_verdict = null;
     result.limitations.push('Detector or collection errors occurred during the re-check; resolution cannot be established from a failed observation.');
+  } else if (!sameConditionVersion) {
+    // B-022: Condition version changed -> report new condition evaluation, NOT FAIL -> PASS!
+    result.status = 'not_comparable';
+    result.verdict.resolved = false;
+    result.verdict.comparison_state = 'not_comparable';
+    result.verdict.revalidation_verdict = 'new_condition_evaluation';
+    result.limitations.push(`Condition version changed from v${sourceConditionVersion} to v${recheckConditionVersion}; reports a new condition evaluation, not a FAIL → PASS resolution.`);
   } else if (!comparability.comparable) {
     result.status = 'not_comparable';
     result.verdict.resolved = false;
+    result.verdict.revalidation_verdict = null;
     result.limitations.push('The source and re-check evaluator/tool/method/configuration envelopes are not comparable; resolution is not established.');
   } else if (afterMatches.length === 0) {
     if (reobservation.state === 'resolved') {
       result.status = 'verified';
       result.verdict.resolved = true;
+      result.verdict.revalidation_verdict = 'fail_to_pass';
     } else {
       result.status = reobservation.state === 'indeterminate' ? 'indeterminate' : 'not_reobserved';
       result.verdict.resolved = false;
+      result.verdict.revalidation_verdict = null;
       result.limitations.push(`The source subject was not sufficiently reobserved: ${reobservation.reason}.`);
     }
   } else {
     result.status = 'not_resolved';
     result.verdict.resolved = false;
+    result.verdict.revalidation_verdict = 'fail_to_pass';
   }
 
   return finalizeResult(result, root);

@@ -1,0 +1,33 @@
+{
+  "$id": "citable://schemas/condition-registry.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Condition registry",
+  "description": "Committed condition registry tracking condition definitions and semantic fingerprints.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "total_conditions",
+    "conditions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "total_conditions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "$ref": "citable://schemas/condition.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

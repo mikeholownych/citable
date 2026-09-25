@@ -242,7 +242,7 @@ reports never widen subset evidence into a site-wide claim.
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | 87 JSON Schemas: 29 registries plus findings, determinations, runs, observations, release governance, remediation verification, the CLI output envelope, config, and prompt results |
+| `schemas/` | 89 JSON Schemas: 29 registries plus findings, determinations, conditions, runs, observations, release governance, remediation verification, the CLI output envelope, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures; labeled golden benchmark corpus |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |
