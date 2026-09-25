@@ -15,6 +15,25 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — SERP intelligence domain and collection authorization (Wave 5: B-050 through B-056)
+
+- Added canonical SERP observation context envelope (`createSerpContext`, `areSerpContextsComparable`)
+  strictly enforcing query, engine, surface, location granularity, language, and device comparability,
+  preventing silent cross-device and cross-location comparisons (`B-050`).
+- Added provider adapter interface (`BaseSerpAdapter`) and concrete adapters (`DataForSeoSerpAdapter`,
+  `BrightDataSerpAdapter`) normalizing vendor payloads into canonical `serp-observation.schema.json` (`B-051`).
+- Added normalized SERP element model retaining unrecognized features as `UNKNOWN_FEATURE` with raw evidence,
+  prohibiting silent mapping to `ORGANIC` (`B-052`).
+- Added first-class AI Overview and AI Mode models (`extractAiOverviewModel`, `classifyDomainAiRelationship`),
+  separately measuring `CITED`, `MENTIONED_ONLY`, `LINKED_NOT_CITED`, and `NEITHER`, and prohibiting treatment of
+  AI citation positions as organic rank (`B-053`).
+- Added SERP change detection (`detectSerpChanges`) with comparability and collection validity guards, ensuring
+  failed collections never read as ranking losses or exits (`B-054`).
+- Added collection scheduler budget manager (`SerpBudgetManager`) in `core/authorize`, failing closed on
+  per-project, per-provider, and per-query limits, and bounding adaptive scheduling multipliers (`B-055`).
+- Added cross-provider validation sampling (`measureProviderDisagreement`) measuring Spearman rank correlation,
+  top-10 Jaccard similarity, feature agreement, and divergence evidence (`B-056`).
+
 ### Added — Domain module contract and namespace migration (Wave 4: B-040, B-041, B-042)
 
 - Added domain module schema and registry interface (`defineDomainModule`, `domainRegistry`)
