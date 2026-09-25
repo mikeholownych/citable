@@ -18,6 +18,7 @@ export const HREFLANG_001 = defineDetector({
   severity: 'high',
   deterministic: true,
   description: 'Page has valid hreflang link elements',
+  applicable_requirement: 'SEO §8 International/hreflang; valid ISO language-country codes and absolute URLs',
   remediation: 'Use valid ISO 639-1 language codes and absolute URLs for hreflang targets',
   verification: 'Check each hreflang link element for valid language code and absolute URL',
   check: (ctx) => {
@@ -88,6 +89,7 @@ export const HREFLANG_002 = defineDetector({
   severity: 'medium',
   deterministic: true,
   description: 'Page references itself in hreflang',
+  applicable_requirement: 'SEO §8 International/hreflang; self-referencing hreflang annotations',
   remediation: 'Add a self-referencing hreflang link pointing to the current URL',
   verification: 'Check if any hreflang link href matches the current page URL',
   check: (ctx) => {
@@ -132,6 +134,7 @@ export const HREFLANG_003 = defineDetector({
   deterministic: true,
   determinismNote: 'False positive possible if x-default is intentionally omitted',
   description: 'Pages with multiple hreflang include x-default',
+  applicable_requirement: 'SEO §8 International/hreflang; x-default fallback for international pages',
   remediation: 'Add x-default hreflang for users outside targeted locales',
   verification: 'Check for presence of hreflang="x-default" when multiple hreflang exist',
   check: (ctx) => {

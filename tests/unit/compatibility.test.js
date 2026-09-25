@@ -28,8 +28,9 @@ test('compatibility reports node engine, optional adapters, and never guesses br
   assert.equal(r.engines, '>=24.0.0');
 
   const nodeCheck = r.checks.find((c) => c.check_id === 'NODE-ENGINE');
-  assert.ok(nodeCheck);
-  assert.equal(nodeCheck.passed, Number.parseInt(process.versions.node, 10) >= 24 || nodeCheck.passed === (Number.parseInt(process.versions.node.split('.')[0], 10) >= 24));
+  const expectedPassed = Number.parseInt(process.versions.node.split('.')[0], 10) >= 24;
+  assert.equal(nodeCheck.passed, expectedPassed);
+  assert.equal(nodeCheck.severity, expectedPassed ? 'pass' : 'blocker');
 
   for (const name of ['playwright', 'lighthouse', 'chrome-launcher', 'tesseract.js']) {
     assert.ok(r.adapters[name], `${name} must be reported`);

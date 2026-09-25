@@ -409,6 +409,18 @@
             "string",
             "null"
           ]
+        },
+        "occurrence_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "persistence": {
+          "type": "string",
+          "enum": [
+            "TRANSIENT",
+            "RECURRENT",
+            "PERSISTENT"
+          ]
         }
       }
     }

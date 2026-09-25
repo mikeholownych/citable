@@ -53,6 +53,8 @@
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.js'",
     "build:dist": "node scripts/build-dist.js",
     "validate:schemas": "node scripts/validate-schemas.js",
+    "traceability:generate": "node scripts/generate-traceability.js",
+    "traceability:check": "node scripts/generate-traceability.js --check",
     "release:prepare": "node scripts/release-process.js prepare",
     "release:validate": "node scripts/release-process.js validate",
     "release:manifest": "node scripts/release-governance.js manifest",

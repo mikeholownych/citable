@@ -11,6 +11,7 @@ import { extractModified } from '../detectors/lifeMeas.js';
 import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
 import { pageArtifactRecord } from '../evidence/hashes.js';
+import { reconcileFindingIdentities } from '../evidence/findingIdentity.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
 export async function audit(root, {
@@ -95,6 +96,9 @@ export async function audit(root, {
       throw error;
     }
   }
+
+  // Reconcile finding identities across runs to preserve first_seen and compute persistence
+  reconcileFindingIdentities(root, findings, { runId: run.runId, timestamp: run.manifest.timestamp });
 
   // Validate every finding against the data contract; a contract breach fails the run.
   const invalid = [];

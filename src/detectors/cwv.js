@@ -28,6 +28,7 @@ export const CWV_001 = defineDetector({
   deterministic: true,
   determinismNote: 'Checks infrastructure only; cannot measure actual LCP',
   description: 'Page has potential LCP blockers (render-blocking resources, unoptimized images)',
+  applicable_requirement: 'SEO §2 Core Web Vitals thresholds; LCP potential blockers and render-blocking resources',
   remediation: 'Eliminate render-blocking resources, preload LCP image, use srcset for responsive images',
   verification: 'Manual Lighthouse run or Search Console CWV report',
   check: (ctx) => {
@@ -86,6 +87,7 @@ export const CWV_002 = defineDetector({
   severity: 'low',
   deterministic: true,
   description: 'Page uses preconnect for critical third-party origins',
+  applicable_requirement: 'SEO §2 Core Web Vitals thresholds; preconnect hints for critical third-party origins',
   remediation: 'Add <link rel="preconnect"> for fonts, analytics, CDN origins',
   verification: 'Check network waterfall for connection timing',
   check: (ctx) => {
@@ -121,6 +123,7 @@ export const CWV_003 = defineDetector({
   severity: 'medium',
   deterministic: true,
   description: 'Hero/LCP candidate images use modern formats and responsive sizing',
+  applicable_requirement: 'SEO §2 Core Web Vitals thresholds; hero image optimization and responsive sizing',
   remediation: 'Use WebP/AVIF with fallback, implement srcset for responsive images',
   verification: 'Check Network panel for image format and size',
   check: (ctx) => {
@@ -177,6 +180,7 @@ export const CWV_004 = defineDetector({
   deterministic: true,
   requires: ['site'],
   description: 'Page DOM tree exceeds 1,500 nodes or maximum nesting depth exceeds 32 levels, causing mobile crawler execution delays and Interaction to Next Paint (INP) degradation.',
+  applicable_requirement: 'SEO §2 Core Web Vitals thresholds; excessive DOM size and depth thresholds',
   remediation: 'Simplify DOM structure, paginate or virtualize repeated elements, and reduce deep nesting of wrapper containers.',
   verification: 'Re-audit page to verify total DOM node count is <= 1,500 and maximum depth is <= 32.',
   check: (ctx) => {
