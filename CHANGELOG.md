@@ -15,6 +15,24 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Website effectiveness domains (Wave 7: B-070 through B-075)
+
+- Added canonical event registry and semantic event validation (`CanonicalEventRegistry`), strictly enforcing
+  that events fire only on declared business triggers and prohibiting page load from satisfying named conversion
+  events (`B-070`).
+- Added duplicate and double-fire detection (`detectEventDuplicates`), distinguishing duplicate purchases by transaction ID,
+  rapid double fires, SPA route re-fires, and tag-manager concurrency from working implementations (`B-071`).
+- Added attribution continuity validation (`validateAttributionContinuity`), tracing UTMs, referrer, and click IDs across
+  acquisition, session navigation, subdomain transitions, and checkout returns, and localizing loss points (`B-072`).
+- Added consent state differential observation (`observeConsentStateDifferential`), comparing network activity across
+  states (before consent, after reject, after accept, after withdrawal) with strict epistemic separation prohibiting
+  technical observations from being reported as legal compliance (`B-073`).
+- Added commerce fact consistency validation (`validateCommerceConsistency`), comparing price, currency, availability,
+  and variant across visible page, structured data, API, cart, and checkout, producing high-severity findings for
+  cross-representation contradictions (`B-074`).
+- Added third-party dependency graph modeling (`buildThirdPartyDependencyGraph`), inventorying external scripts with purpose,
+  blocking state, performance cost, failure effect, and privacy effect (`B-075`).
+
 ### Added — Agent readiness maturity and grounded journeys (Wave 6B: B-065, B-066, B-067)
 
 - Added grounded task-oriented agent journey execution and evaluation (`executeGroundedJourney`),

@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/webeffect-commerce-consistency.schema.json",
+  "title": "WebEffectCommerceConsistency",
+  "description": "Validation report comparing commerce facts (price, currency, availability, variant) across representations (B-074).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "product_id",
+    "is_consistent",
+    "representations",
+    "contradictions",
+    "evaluated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "evaluation_id": {
+      "type": "string",
+      "pattern": "^cmm_eval_[a-f0-9]{8,32}$"
+    },
+    "product_id": {
+      "type": "string"
+    },
+    "is_consistent": {
+      "type": "boolean"
+    },
+    "representations": {
+      "type": "object",
+      "required": ["visible_page", "structured_data"],
+      "additionalProperties": false,
+      "properties": {
+        "visible_page": { "$ref": "#/definitions/CommerceRepresentation" },
+        "structured_data": { "$ref": "#/definitions/CommerceRepresentation" },
+        "api_response": {
+          "anyOf": [
+            { "$ref": "#/definitions/CommerceRepresentation" },
+            { "type": "null" }
+          ]
+        },
+        "cart": {
+          "anyOf": [
+            { "$ref": "#/definitions/CommerceRepresentation" },
+            { "type": "null" }
+          ]
+        },
+        "checkout": {
+          "anyOf": [
+            { "$ref": "#/definitions/CommerceRepresentation" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dimension",
+          "severity",
+          "representation_a",
+          "representation_b",
+          "value_a",
+          "value_b",
+          "summary"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": ["price", "currency", "availability", "variant"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["HIGH", "CRITICAL", "MEDIUM"]
+          },
+          "representation_a": { "type": "string" },
+          "representation_b": { "type": "string" },
+          "value_a": {},
+          "value_b": {},
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "definitions": {
+    "CommerceRepresentation": {
+      "type": "object",
+      "required": ["price", "currency", "availability"],
+      "additionalProperties": false,
+      "properties": {
+        "price": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "availability": {
+          "type": "string",
+          "enum": ["InStock", "OutOfStock", "PreOrder", "Discontinued", "Unknown"]
+        },
+        "variant": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
