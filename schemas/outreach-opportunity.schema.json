@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/outreach-opportunity.schema.json",
+  "title": "OutreachOpportunity",
+  "description": "Backlink opportunity preserving immutable raw observation and derived hypothesis separately (B-080, B-081).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "opportunity_id",
+    "strategy",
+    "raw_observation",
+    "derived_hypothesis",
+    "qualification",
+    "asset_evaluation",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "opportunity_id": {
+      "type": "string",
+      "pattern": "^opp_[a-f0-9]{8,32}$"
+    },
+    "strategy": {
+      "type": "string",
+      "enum": [
+        "RESOURCE_PAGE",
+        "BROKEN_LINK",
+        "UNLINKED_MENTION",
+        "COMPETITOR_LINK_GAP",
+        "EDITORIAL_REFERENCE",
+        "PARTNERSHIP"
+      ]
+    },
+    "raw_observation": {
+      "type": "object",
+      "description": "B-080: Immutable raw observation. The derived hypothesis never overwrites this record.",
+      "required": [
+        "source_url",
+        "target_domain",
+        "collector",
+        "observed_at",
+        "raw_evidence_snippet"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_url": { "type": "string" },
+        "target_domain": { "type": "string" },
+        "collector": { "type": "string" },
+        "collector_version": { "type": "string" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "raw_evidence_snippet": { "type": "string" },
+        "raw_checksum": { "type": "string" }
+      }
+    },
+    "derived_hypothesis": {
+      "type": "object",
+      "required": ["opportunity_type", "rationale", "suggested_asset_type"],
+      "additionalProperties": false,
+      "properties": {
+        "opportunity_type": { "type": "string" },
+        "rationale": { "type": "string" },
+        "suggested_asset_type": { "type": "string" },
+        "derived_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "qualification": {
+      "type": "object",
+      "description": "B-081: Domain and page qualification are evaluated separately.",
+      "required": [
+        "domain_qualification",
+        "page_qualification",
+        "third_party_metrics"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "domain_qualification": {
+          "type": "object",
+          "required": ["domain", "status", "editorial_legitimacy"],
+          "additionalProperties": false,
+          "properties": {
+            "domain": { "type": "string" },
+            "status": { "type": "string", "enum": ["QUALIFIED", "DISQUALIFIED", "NEEDS_REVIEW"] },
+            "editorial_legitimacy": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "QUESTIONABLE"] },
+            "disqualification_reason": { "type": ["string", "null"] }
+          }
+        },
+        "page_qualification": {
+          "type": "object",
+          "required": ["page_url", "status", "outbound_link_count", "contextual_relevance"],
+          "additionalProperties": false,
+          "properties": {
+            "page_url": { "type": "string" },
+            "status": { "type": "string", "enum": ["QUALIFIED", "DISQUALIFIED", "NEEDS_REVIEW"] },
+            "outbound_link_count": { "type": "integer", "minimum": 0 },
+            "contextual_relevance": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW", "IRRELEVANT"] },
+            "disqualification_reason": { "type": ["string", "null"] }
+          }
+        },
+        "third_party_metrics": {
+          "type": "array",
+          "description": "Third-party authority metrics are non-canonical, retaining provider, metric, value, and retrieval timestamp.",
+          "items": {
+            "type": "object",
+            "required": ["provider", "metric_name", "value", "retrieved_at"],
+            "additionalProperties": false,
+            "properties": {
+              "provider": { "type": "string" },
+              "metric_name": { "type": "string" },
+              "value": { "type": "number" },
+              "retrieved_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "asset_evaluation": {
+      "type": "object",
+      "description": "B-082: Evaluates linkable assets; concludes NO_LINKABLE_ASSET when no authentic match exists.",
+      "required": ["has_linkable_asset", "matched_asset_id", "asset_gap"],
+      "additionalProperties": false,
+      "properties": {
+        "has_linkable_asset": { "type": "boolean" },
+        "matched_asset_id": { "type": ["string", "null"] },
+        "asset_gap": { "type": "boolean" },
+        "gap_description": { "type": ["string", "null"] }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/outreach-campaign-state.schema.json",
+  "title": "OutreachCampaignState",
+  "description": "Campaign deliverability health, circuit breaker, suppression, and multi-level kill switch states (B-084, B-087).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "deliverability_health",
+    "circuit_breaker",
+    "kill_switches",
+    "suppression_summary",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "campaign_id": {
+      "type": "string",
+      "pattern": "^cmp_out_[a-f0-9]{8,32}$"
+    },
+    "deliverability_health": {
+      "type": "object",
+      "required": [
+        "spf_valid",
+        "dkim_valid",
+        "dmarc_aligned",
+        "bounce_rate",
+        "spam_complaint_rate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spf_valid": { "type": "boolean" },
+        "dkim_valid": { "type": "boolean" },
+        "dmarc_aligned": { "type": "boolean" },
+        "bounce_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "spam_complaint_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "circuit_breaker": {
+      "type": "object",
+      "description": "B-087: Threshold breach trips circuit breaker, halting the campaign until explicit human reauthorization.",
+      "required": ["state", "tripped_reason", "reauthorized_by"],
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["HEALTHY", "TRIPPED_HALTED", "EXPLICITLY_REAUTHORIZED"]
+        },
+        "tripped_reason": { "type": ["string", "null"] },
+        "tripped_at": { "type": ["string", "null"], "format": "date-time" },
+        "reauthorized_by": { "type": ["string", "null"] },
+        "reauthorized_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "kill_switches": {
+      "type": "object",
+      "description": "B-087: Kill switches exist across 6 explicit hierarchy levels.",
+      "required": [
+        "organization_halted",
+        "sender_halted",
+        "campaign_halted",
+        "strategy_halted",
+        "agent_halted",
+        "domain_halted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "organization_halted": { "type": "boolean" },
+        "sender_halted": { "type": "boolean" },
+        "campaign_halted": { "type": "boolean" },
+        "strategy_halted": { "type": "boolean" },
+        "agent_halted": { "type": "boolean" },
+        "domain_halted": { "type": "boolean" }
+      }
+    },
+    "suppression_summary": {
+      "type": "object",
+      "required": ["total_suppressed_contacts", "frequency_cap_contacts"],
+      "additionalProperties": false,
+      "properties": {
+        "total_suppressed_contacts": { "type": "integer", "minimum": 0 },
+        "frequency_cap_contacts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/outreach-message.schema.json",
+  "title": "OutreachMessageDraft",
+  "description": "Outreach message draft retaining full provenance and verification of non-fabrication (B-085).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_id",
+    "opportunity_id",
+    "recipient_email",
+    "subject",
+    "body_text",
+    "provenance",
+    "fabrication_verification",
+    "authorization_status",
+    "drafted_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^msg_drf_[a-f0-9]{8,32}$"
+    },
+    "opportunity_id": {
+      "type": "string"
+    },
+    "recipient_email": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "body_text": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "strategy",
+        "template_id",
+        "model_id",
+        "prompt_version",
+        "evidence_ids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": { "type": "string" },
+        "template_id": { "type": "string" },
+        "model_id": { "type": "string" },
+        "prompt_version": { "type": "string" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "fabrication_verification": {
+      "type": "object",
+      "description": "B-085: Fabricated familiarity, unverified statistics, and false relationships are rejected before review.",
+      "required": [
+        "passed",
+        "fabricated_familiarity_detected",
+        "unverified_statistics_detected",
+        "fabricated_relationship_detected"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "passed": { "type": "boolean" },
+        "fabricated_familiarity_detected": { "type": "boolean" },
+        "unverified_statistics_detected": { "type": "boolean" },
+        "fabricated_relationship_detected": { "type": "boolean" },
+        "rejection_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "authorization_status": {
+      "type": "string",
+      "enum": ["DRAFT_UNAUTHORIZED", "PENDING_APPROVAL", "AUTHORIZED", "REJECTED"]
+    },
+    "drafted_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

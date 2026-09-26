@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/outreach-link-lifecycle.schema.json",
+  "title": "OutreachLinkLifecycle",
+  "description": "Independent link verification, lifecycle state tracking, and strategy economics (B-088, B-089).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "link_id",
+    "opportunity_id",
+    "strategy",
+    "source_url",
+    "target_url",
+    "independent_verification",
+    "current_state",
+    "lifecycle_history",
+    "economics",
+    "last_verified_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "link_id": {
+      "type": "string",
+      "pattern": "^lnk_lfc_[a-f0-9]{8,32}$"
+    },
+    "opportunity_id": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "target_url": {
+      "type": "string"
+    },
+    "independent_verification": {
+      "type": "object",
+      "description": "B-088: Publisher confirmation alone is NEVER verification; direct crawl observation is required.",
+      "required": [
+        "verification_method",
+        "publisher_claim_ignored_as_proof",
+        "observed_html_element",
+        "rel_attributes",
+        "verified_anchor_text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "verification_method": {
+          "type": "string",
+          "enum": ["DIRECT_CRAWL_OBSERVATION", "CONTROLLED_HTML_PARSER"]
+        },
+        "publisher_claim_ignored_as_proof": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "observed_html_element": { "type": "string" },
+        "rel_attributes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "verified_anchor_text": { "type": "string" }
+      }
+    },
+    "current_state": {
+      "type": "string",
+      "enum": [
+        "ACTIVE_FOLLOW",
+        "ACTIVE_NOFOLLOW",
+        "ACTIVE_UGC",
+        "ACTIVE_SPONSORED",
+        "MODIFIED",
+        "LOST"
+      ]
+    },
+    "lifecycle_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "state", "observation_details"],
+        "additionalProperties": false,
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "state": { "type": "string" },
+          "observation_details": { "type": "string" }
+        }
+      }
+    },
+    "economics": {
+      "type": "object",
+      "description": "B-089: Strategy performance and acquisition economics; ranking causation is never asserted.",
+      "required": [
+        "total_acquisition_cost_minor_units",
+        "qualified_referral_visits",
+        "ranking_causation_claimed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_acquisition_cost_minor_units": { "type": "integer", "minimum": 0 },
+        "qualified_referral_visits": { "type": "integer", "minimum": 0 },
+        "ranking_causation_claimed": {
+          "type": "boolean",
+          "enum": [false],
+          "description": "Ranking improvement is NEVER asserted as caused by an acquired link."
+        }
+      }
+    },
+    "last_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
