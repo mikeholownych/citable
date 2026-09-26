@@ -15,6 +15,19 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — External evidence, representation, and autonomous-content boundary (Wave 9: ER-10, ER-12, ER-13)
+
+- Added passive backlink and referring-domain observations (`createPassiveBacklinkObservation`, `compareBacklinkObservations`,
+  `backlinksForTarget`, `referringDomainsForTarget`), preserving source, target, link anchor/rel tokens, and retrieval state
+  while strictly rejecting acquisition, exchange, outreach, or link-quality conclusions (`ER-10`).
+- Added machine-consumable evidence interface (`EvidenceInterface`, `createEvidenceInterface`), exposing structured operations
+  for observations, evidence verification, coverage, conditions, comparisons, datasets, claims, prompt sets, and lineage
+  with explicit epistemic state (`ER-12`).
+- Added autonomous-content evidence boundary (`verifyContentEvidenceBoundary`), evaluating proposed claims against verified
+  evidence, enforcing that Citable strictly does not generate content or authorize publication without explicit downstream
+  authority, and gating publication fail-closed (`ER-13`).
+
+
 ### Added — Outreach and backlink acquisition domain (Wave 8: B-080 through B-089)
 
 - Added opportunity discovery with preserved evidence (`createOutreachOpportunity`, `updateOpportunityHypothesis`),

@@ -1,0 +1,106 @@
+{
+  "$id": "citable://schemas/autonomous-content-boundary.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Autonomous content evidence boundary verification",
+  "description": "Evidence boundary verification for autonomous content; Citable does not generate content or authorize publication without downstream authority (ER-13).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "boundary_id",
+    "candidate_document_id",
+    "citable_content_generated",
+    "publication_authorized",
+    "authority_scope",
+    "verification_summary",
+    "claim_evaluations",
+    "downstream_authorization",
+    "evaluated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "boundary_id": { "type": "string", "pattern": "^ACB-[a-f0-9]{16,64}$" },
+    "candidate_document_id": { "type": "string", "minLength": 1 },
+    "citable_content_generated": {
+      "type": "boolean",
+      "enum": [false],
+      "description": "Citable does not generate content."
+    },
+    "publication_authorized": { "type": "boolean" },
+    "authority_scope": {
+      "type": "string",
+      "enum": ["EVIDENCE_VERIFICATION_ONLY", "DOWNSTREAM_AUTHORIZED"]
+    },
+    "verification_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_claims",
+        "supported_claims",
+        "partially_supported_claims",
+        "unsupported_claims",
+        "contradicted_claims",
+        "indeterminate_claims",
+        "unobserved_claims",
+        "all_claims_supported"
+      ],
+      "properties": {
+        "total_claims": { "type": "integer", "minimum": 0 },
+        "supported_claims": { "type": "integer", "minimum": 0 },
+        "partially_supported_claims": { "type": "integer", "minimum": 0 },
+        "unsupported_claims": { "type": "integer", "minimum": 0 },
+        "contradicted_claims": { "type": "integer", "minimum": 0 },
+        "indeterminate_claims": { "type": "integer", "minimum": 0 },
+        "unobserved_claims": { "type": "integer", "minimum": 0 },
+        "all_claims_supported": { "type": "boolean" }
+      }
+    },
+    "claim_evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim_id",
+          "claim_version",
+          "overall",
+          "proposition_support",
+          "scope_support"
+        ],
+        "properties": {
+          "claim_id": { "type": "string" },
+          "claim_version": { "type": "integer" },
+          "overall": {
+            "type": "string",
+            "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "INDETERMINATE", "NOT_OBSERVED"]
+          },
+          "proposition_support": { "type": "string" },
+          "scope_support": { "type": "string" },
+          "reasons": {
+            "type": "array",
+            "items": { "type": "object" }
+          }
+        }
+      }
+    },
+    "downstream_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorized_by",
+        "authority_type",
+        "refusal_reason"
+      ],
+      "properties": {
+        "authorized_by": { "type": ["string", "null"] },
+        "authority_type": {
+          "type": ["string", "null"],
+          "enum": ["DOWNSTREAM_PUBLISHER", "HUMAN_OPERATOR", null]
+        },
+        "authorized_at": { "type": ["string", "null"], "format": "date-time" },
+        "refusal_reason": { "type": ["string", "null"] }
+      }
+    },
+    "evaluated_at": { "type": "string", "format": "date-time" }
+  }
+}
