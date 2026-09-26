@@ -28,36 +28,9 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
   authority, and gating publication fail-closed (`ER-13`).
 
 
-### Added — Outreach and backlink acquisition domain (Wave 8: B-080 through B-089)
+### Changed — Product boundary decoupling (Wave 8: B-080 through B-089)
 
-- Added opportunity discovery with preserved evidence (`createOutreachOpportunity`, `updateOpportunityHypothesis`),
-  strictly preserving immutable raw observation and derived hypothesis separately (`B-080`).
-- Added separate domain and page qualification (`qualifyDomainAndPage`), enforcing that a high-authority domain
-  with a low-quality links page is not automatically qualified, and retaining third-party authority metrics as non-canonical
-  with provider, metric, value, and retrieval timestamp (`B-081`).
-- Added asset inventory, linkability evaluation, and asset gap detection (`AssetInventory`, `evaluateLinkableAssets`),
-  concluding `NO_LINKABLE_ASSET` / `asset_gap: true` rather than fabricating outreach angles (`B-082`).
-- Added public contact resolution (`resolvePublicContact`), retaining direct crawl source evidence, refusing inferred
-  private contact data, and prohibiting billing addresses from being repurposed as editorial contacts (`B-083`).
-- Added suppression registry, deduplication, and cross-agent frequency control (`OutreachSuppressionRegistry`),
-  ensuring suppression strictly overrides campaign logic and prohibiting two agents from independently contacting
-  the same editor for the same opportunity (`B-084`).
-- Added outreach message drafting with full provenance (`draftOutreachMessage`, `verifyDraftForFabrication`),
-  retaining strategy, template, model, prompt version, and evidence IDs, and rejecting fabricated familiarity, unverified
-  statistics, or false relationships before review (`B-085`).
-- Added execution boundary and authorization guard (`authorizeOutreachExecution`), enforcing that generating a message
-  does not authorize sending it, identifying a publisher does not authorize contact, payment request does not authorize
-  purchase, and budget exhaustion fails closed (`B-086`).
-- Added sending controls, deliverability monitoring, circuit breaker, and 6-level kill switches (`OutreachDeliverabilityMonitor`),
-  monitoring SPF, DKIM, DMARC, bounce rates, and spam complaints, halting campaigns on threshold breach with explicit
-  human reauthorization requirements, and providing kill switches at organization, sender, campaign, strategy, agent,
-  and domain levels (`B-087`).
-- Added independent link verification and lifecycle management (`verifyAcquiredLink`, `updateLinkLifecycleObservation`),
-  requiring direct crawl HTML observation while explicitly ignoring publisher claims alone, preserving historical observations
-  on follow-to-nofollow transitions, and detecting modification and link loss (`B-088`).
-- Added strategy performance and acquisition economics (`calculateAcquisitionEconomics`, `aggregateStrategyPerformance`),
-  attributing costs per acquired link and per qualified referral by strategy, and strictly prohibiting assertion of ranking
-  causation from acquired links (`B-089`).
+- Decoupled autonomous outreach and backlink acquisition capabilities (`B-080` through `B-089`) into a dedicated standalone product package (`products/outreach/` / `@nebulacomponents/citable-outreach`) consuming the shared evidence substrate with its own execution-authorization model, preventing state-changing outreach from being bundled into `@nebulacomponents/citable`.
 
 
 ### Added — Website effectiveness domains (Wave 7: B-070 through B-075)
