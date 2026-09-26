@@ -29,8 +29,8 @@ export function buildDetectorMatrixTable(detectors = ALL_DETECTORS) {
   ];
 
   for (const d of sorted) {
-    const req = (d.applicable_requirement || '').replace(/\|/g, '\\|').trim();
-    const name = (d.name || '').replace(/\|/g, '\\|').trim();
+    const req = (d.applicable_requirement || '').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').trim();
+    const name = (d.name || '').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').trim();
     rows.push(`| ${d.id} | ${name} | ${d.namespace} | ${d.severity} | ${req} |`);
   }
 

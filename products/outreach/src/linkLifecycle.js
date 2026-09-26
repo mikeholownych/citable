@@ -1,38 +1,38 @@
+import { parse } from "node-html-parser";
 import { sha256 } from "./utils.js";
+
+function stripTrailingSlashes(urlStr) {
+  let s = String(urlStr || "").toLowerCase().trim();
+  while (s.endsWith("/")) {
+    s = s.slice(0, -1);
+  }
+  return s;
+}
 
 function parseLinksFromHtml(html, targetUrl) {
   if (!html || typeof html !== "string") return [];
-  const normalizedTarget = targetUrl.toLowerCase().replace(/\/+$/, "");
-
-  // Match <a> tags with href and optional rel attributes
-  const anchorRegex = /<a\s+([^>]*?)>(.*?)<\/a>/gis;
+  const normalizedTarget = stripTrailingSlashes(targetUrl);
+  const root = parse(html);
+  const anchors = root.querySelectorAll("a");
   const matches = [];
 
-  let match;
-  while ((match = anchorRegex.exec(html)) !== null) {
-    const rawTag = match[0];
-    const attributesStr = match[1];
-    const rawAnchorText = match[2].replace(/<[^>]*>/g, "").trim();
+  for (const a of anchors) {
+    const href = a.getAttribute("href");
+    if (!href) continue;
 
-    const hrefMatch = attributesStr.match(/href=["']([^"']+)["']/i);
-    if (!hrefMatch) continue;
-
-    const href = hrefMatch[1];
-    const normalizedHref = href.toLowerCase().replace(/\/+$/, "");
-
+    const normalizedHref = stripTrailingSlashes(href);
     if (normalizedHref === normalizedTarget || normalizedHref.includes(normalizedTarget)) {
-      const relMatch = attributesStr.match(/rel=["']([^"']+)["']/i);
-      const relString = relMatch ? relMatch[1] : "";
+      const relString = a.getAttribute("rel") || "";
       const relAttributes = relString
         .toLowerCase()
         .split(/\s+/)
         .filter(Boolean);
 
       matches.push({
-        rawTag,
+        rawTag: a.toString(),
         href,
         relAttributes,
-        anchorText: rawAnchorText,
+        anchorText: (a.textContent || "").trim(),
       });
     }
   }

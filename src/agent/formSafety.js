@@ -96,8 +96,13 @@ export function classifyForm(form, page = {}) {
 export function evaluateConfirmationBoundary(form, formClass, pageHtml = '') {
   const submitText = String(form.submitText || '').toLowerCase().trim();
   const formHtml = String(form.outerHtml || '').toLowerCase();
-  // Strip HTML comments so developer notes or commented code do not count as user UI
-  const htmlContext = (formHtml + ' ' + pageHtml.slice(0, 5000)).replace(/<!--[\s\S]*?-->/g, '').toLowerCase();
+  // Strip HTML comments iteratively so developer notes or commented code do not count as user UI
+  let htmlContext = (formHtml + ' ' + pageHtml.slice(0, 5000)).toLowerCase();
+  let prevContext;
+  do {
+    prevContext = htmlContext;
+    htmlContext = htmlContext.replace(/<!--[\s\S]*?-->/g, '');
+  } while (htmlContext !== prevContext && htmlContext.includes('<!--'));
 
   const isHighImpact = formClass === 'destructive' || formClass === 'financial';
   if (!isHighImpact) {

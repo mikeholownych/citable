@@ -19,9 +19,9 @@ const FABRICATED_RELATIONSHIP_PATTERNS = [
 ];
 
 const UNVERIFIED_STATISTICS_PATTERNS = [
-  /\b\d+(\.\d+)?%\s*(of\s+[a-z]+|increase|growth|boost|drop|decrease|improvement)/i,
-  /study of \d+[\d,]* (companies|sites|users|people)/i,
-  /proven to (double|triple|quadruple)\b/i,
+  /\b\d+(?:\.\d+)?%\s*(?:of\s+[a-z]+|increase|growth|boost|drop|decrease|improvement)/i,
+  /\bstudy of [\d,]+ (?:companies|sites|users|people)\b/i,
+  /\bproven to (?:double|triple|quadruple)\b/i,
 ];
 
 /**
