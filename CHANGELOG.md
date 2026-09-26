@@ -15,6 +15,8 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.24.0 — 2026-09-26
+
 ### Added — External evidence, representation, and autonomous-content boundary (Wave 9: ER-10, ER-12, ER-13)
 
 - Added passive backlink and referring-domain observations (`createPassiveBacklinkObservation`, `compareBacklinkObservations`,
