@@ -15,6 +15,18 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — Agent readiness maturity and grounded journeys (Wave 6B: B-065, B-066, B-067)
+
+- Added grounded task-oriented agent journey execution and evaluation (`executeGroundedJourney`),
+  resolving to `SUCCESS`, `PARTIAL`, `FAILED`, `INDETERMINATE`, or `BLOCKED`; every extracted answer cites
+  source URL and element, strictly distinguishing direct evidence from model inference (`B-065`).
+- Added published maturity levels 0-5 and gating engine (`evaluateReadinessLevel`), strictly enforcing
+  that `Agent Native` (Level 5) and `Agent Operable` (Level 4) are unreachable by accumulating points
+  while an unresolved CRITICAL finding exists (`B-066`).
+- Added repeatability testing for probabilistic agent determinations (`evaluateDeterminationRepeatability`),
+  reporting standardized ambiguity codes (`BUSINESS_IDENTITY_AMBIGUOUS`) and hallucination susceptibility
+  (`SUPPORTED`, `UNSUPPORTED`, `CONTRADICTED`) rather than returning arbitrary single-run answers (`B-067`).
+
 ### Added — SERP intelligence domain and collection authorization (Wave 5: B-050 through B-056)
 
 - Added canonical SERP observation context envelope (`createSerpContext`, `areSerpContextsComparable`)

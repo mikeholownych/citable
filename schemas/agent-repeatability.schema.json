@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/agent-repeatability.schema.json",
+  "title": "AgentRepeatabilityReport",
+  "description": "Repeatability testing report for probabilistic agent determinations with ambiguity identification (B-067).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "task_name",
+    "run_count",
+    "conclusions",
+    "stability",
+    "hallucination_susceptibility",
+    "evaluated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "evaluation_id": {
+      "type": "string",
+      "pattern": "^arp_[a-f0-9]{12,64}$"
+    },
+    "task_name": {
+      "type": "string"
+    },
+    "run_count": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "conclusions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["run_index", "answer"],
+        "additionalProperties": false,
+        "properties": {
+          "run_index": { "type": "integer", "minimum": 1 },
+          "answer": { "type": "string" },
+          "confidence": { "type": ["number", "null"] },
+          "raw_response": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "stability": {
+      "type": "object",
+      "required": [
+        "is_stable",
+        "agreement_ratio",
+        "consensus_answer",
+        "ambiguity_code"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "is_stable": { "type": "boolean" },
+        "agreement_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "consensus_answer": { "type": ["string", "null"] },
+        "ambiguity_code": {
+          "type": ["string", "null"],
+          "description": "Standardized ambiguity code (e.g. BUSINESS_IDENTITY_AMBIGUOUS) returned when determinations fluctuate across runs."
+        }
+      }
+    },
+    "hallucination_susceptibility": {
+      "type": "object",
+      "required": ["tested", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "tested": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": ["SUPPORTED", "UNSUPPORTED", "CONTRADICTED", "NOT_TESTED"]
+        },
+        "grounding_notes": { "type": ["string", "null"] }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
