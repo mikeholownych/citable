@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateAgainst } from "../../src/shared/schemaValidator.js";
+import { validateAgainst } from "../src/schemaValidator.js";
 
 import {
   createOutreachOpportunity,
@@ -19,9 +19,8 @@ import {
   calculateAcquisitionEconomics,
   aggregateStrategyPerformance,
   outreachDomainModule,
-} from "../../src/outreach/index.js";
-
-import { authorizeOutreachExecution } from "../../src/authorize/index.js";
+  authorizeOutreachExecution,
+} from "../src/index.js";
 
 /* -------------------------------------------------------------------------- */
 /* B-080: Opportunity Discovery with Preserved Evidence                       */

@@ -1,4 +1,4 @@
-import { sha256 } from "../shared/io.js";
+import { sha256 } from "./utils.js";
 
 const DEFAULT_BOUNCE_THRESHOLD = 0.05; // 5% bounce rate threshold
 const DEFAULT_SPAM_COMPLAINT_THRESHOLD = 0.001; // 0.1% spam complaint threshold

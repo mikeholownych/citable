@@ -1,4 +1,4 @@
-import { sha256 } from "../shared/io.js";
+import { sha256 } from "./utils.js";
 
 function parseLinksFromHtml(html, targetUrl) {
   if (!html || typeof html !== "string") return [];

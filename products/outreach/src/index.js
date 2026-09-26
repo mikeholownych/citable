@@ -44,3 +44,7 @@ export {
 export {
   outreachDomainModule,
 } from "./domainModule.js";
+
+export {
+  authorizeOutreachExecution,
+} from "./executionBoundary.js";

@@ -1,4 +1,4 @@
-import { sha256 } from "../shared/io.js";
+import { sha256 } from "./utils.js";
 
 export const ALLOWED_OUTREACH_STRATEGIES = [
   "RESOURCE_PAGE",

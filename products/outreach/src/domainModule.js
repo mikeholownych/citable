@@ -1,4 +1,4 @@
-import { defineDomainModule } from "../domains/interface.js";
+import { defineDomainModule } from "../../../src/domains/interface.js";
 
 /**
  * Outreach Domain Module definition (B-040, B-080..B-089).

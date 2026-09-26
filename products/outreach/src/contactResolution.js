@@ -1,4 +1,4 @@
-import { sha256 } from "../shared/io.js";
+import { sha256 } from "./utils.js";
 
 const BILLING_EMAIL_PATTERNS = [
   /^billing@/i,
