@@ -67,6 +67,7 @@ export function importMetrics(root, { input, provider }) {
       method: 'owner_import',
       source: source.file,
       raw: JSON.stringify(row),
+      observed_at: observedAt,
       limitations: metric.limitations,
     });
   });

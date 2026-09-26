@@ -390,13 +390,13 @@ ER-3  IMPLEMENTED
 ER-4  IMPLEMENTED
 ER-5  IMPLEMENTED
 ER-6  IMPLEMENTED
-ER-10, ER-12, ER-13 BACKLOGGED
+ER-10 IMPLEMENTED
+ER-12 IMPLEMENTED
+ER-13 IMPLEMENTED
 ```
 
-ER-10, ER-12, and ER-13 remain `EVIDENCE_TRIGGER` or `DEFER` according to
-their dependency and consumer gates. ER-5 and ER-6 are implemented in the
-isolated Wave 9 development source but remain unreleased until a separate
-release authorization.
+ER-0 through ER-13 are implemented in the isolated Wave 9 development source
+but remain unreleased until a separate release authorization.
 
 “Implemented” here means available in the isolated Citable development source
 after tests and review; it does not mean released, adopted by Nebula, or

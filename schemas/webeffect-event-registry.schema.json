@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/webeffect-event-registry.schema.json",
+  "title": "WebEffectEventRegistry",
+  "description": "Canonical business event definitions and semantic event validation report (B-070, B-071).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "registry_id",
+    "events",
+    "validation_summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "registry_id": {
+      "type": "string",
+      "pattern": "^evt_reg_[a-f0-9]{8,32}$"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_name",
+          "trigger_type",
+          "description",
+          "required_parameters",
+          "prohibited_triggers"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event_name": { "type": "string" },
+          "trigger_type": {
+            "type": "string",
+            "enum": [
+              "form_submit",
+              "button_click",
+              "transaction_confirm",
+              "page_load",
+              "view_content",
+              "custom_interaction"
+            ]
+          },
+          "description": { "type": "string" },
+          "required_parameters": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "prohibited_triggers": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "validation_summary": {
+      "type": "object",
+      "required": [
+        "total_observed_events",
+        "semantic_violations",
+        "duplicates_detected"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_observed_events": { "type": "integer", "minimum": 0 },
+        "semantic_violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event_name", "violation_type", "trigger_observed", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "event_name": { "type": "string" },
+              "violation_type": {
+                "type": "string",
+                "enum": [
+                  "SEMANTIC_TRIGGER_VIOLATION",
+                  "UNREGISTERED_EVENT",
+                  "MISSING_REQUIRED_PARAMETERS",
+                  "PROHIBITED_PAGE_LOAD_CONVERSION"
+                ]
+              },
+              "trigger_observed": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "duplicates_detected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event_name", "duplicate_type", "count", "details"],
+            "additionalProperties": false,
+            "properties": {
+              "event_name": { "type": "string" },
+              "duplicate_type": {
+                "type": "string",
+                "enum": [
+                  "DUPLICATE_PURCHASE",
+                  "DOUBLE_FIRE",
+                  "SPA_REFIRE",
+                  "TAG_MANAGER_DUPLICATION"
+                ]
+              },
+              "count": { "type": "integer", "minimum": 2 },
+              "transaction_id": { "type": ["string", "null"] },
+              "details": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

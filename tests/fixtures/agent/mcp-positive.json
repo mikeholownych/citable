@@ -1,0 +1,32 @@
+{
+  "name": "example-service-mcp",
+  "version": "1.0.0",
+  "transport": {
+    "type": "http",
+    "endpoint": "/api/mcp/missing-endpoint"
+  },
+  "tools": [
+    {
+      "name": "valid_search",
+      "description": "Search products by keyword",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "malformed_tool",
+      "description": "",
+      "inputSchema": "not_an_object"
+    },
+    {
+      "name": "broken_endpoint_tool",
+      "description": "Tool pointing to a non-existent endpoint",
+      "inputSchema": { "type": "object" },
+      "endpoint": "/api/tools/does-not-exist"
+    }
+  ]
+}

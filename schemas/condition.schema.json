@@ -1,0 +1,169 @@
+{
+  "$id": "citable://schemas/condition.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Condition definition",
+  "description": "First-class versioned condition contract governing detection and determination.",
+  "type": "object",
+  "required": [
+    "condition_id",
+    "condition_version",
+    "name",
+    "namespace",
+    "description",
+    "discipline",
+    "applicability_rule",
+    "observation_requirements",
+    "evaluation_method",
+    "severity_rule",
+    "normative_sources",
+    "semantic_fingerprint",
+    "introduced_at"
+  ],
+  "properties": {
+    "condition_id": {
+      "$ref": "citable://schemas/common.defs.json#/definitions/id"
+    },
+    "condition_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discipline": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "applicability_rule": {
+      "type": "object",
+      "required": ["profile_filter", "subject_type"],
+      "properties": {
+        "profile_filter": {
+          "type": "string",
+          "enum": ["all", "ecommerce", "saas", "content_only"]
+        },
+        "subject_type": {
+          "type": "string",
+          "enum": ["page", "site", "registry", "network"]
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observation_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evaluation_method": {
+      "type": "string",
+      "enum": ["deterministic", "heuristic", "hybrid"]
+    },
+    "severity_rule": {
+      "type": "object",
+      "required": ["default_severity"],
+      "properties": {
+        "default_severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "escalation_conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "normative_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_class", "maturity", "title"],
+        "properties": {
+          "source_class": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "RFC",
+              "SPECIFICATION",
+              "VENDOR_REQUIREMENT",
+              "VENDOR_GUIDANCE",
+              "COMMUNITY_CONVENTION",
+              "RESEARCH",
+              "HEURISTIC",
+              "INTERNAL_RULE"
+            ]
+          },
+          "maturity": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "DRAFT",
+              "CANDIDATE",
+              "STABLE",
+              "MATURE",
+              "DEPRECATED"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": ["string", "null"]
+          },
+          "citation": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "semantic_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "introduced_at": {
+      "type": "string"
+    },
+    "deprecated_at": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "evaluation_method": { "const": "heuristic" }
+        }
+      },
+      "then": {
+        "properties": {
+          "normative_sources": {
+            "items": {
+              "not": {
+                "properties": {
+                  "source_class": { "const": "STANDARD" }
+                },
+                "required": ["source_class"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

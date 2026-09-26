@@ -14,7 +14,7 @@
 - Media-to-claim links establish declared relationships only. Human semantic
   review remains authoritative for whether media supports a claim.
 
-Stated plainly so nobody mistakes the MVP's coverage for the full requirement
+Stated plainly so nobody mistakes automated detection coverage for the full requirement
 surface.
 
 ## Not implemented (documented gaps)
@@ -51,18 +51,26 @@ surface.
 - **Citation correctness remains human-authoritative.** Citable normalizes
   claim/passage review records and missing reviews; automated inference never
   silently becomes a confirmed support verdict.
-- **Performance collection remains bounded.** CrUX field data, owner exports,
-  or repeated local Lighthouse lab runs can be collected. Lighthouse and
-  Chrome launcher are optional peers; local results vary by host and profile.
-  CWV-001..003 remain infrastructure-readiness checks rather than proof of
-  field performance.
+- **Performance collection remains bounded.** CrUX field data via live API,
+  owner exports, or repeated local Lighthouse lab runs can be collected.
+  Lighthouse and Chrome launcher are optional peers; local results vary by host
+  and profile. CWV-001..004 remain infrastructure-readiness checks (LCP
+  blockers, preconnect hints, image optimization, DOM complexity) rather than
+  proof of field performance.
+- **International/hreflang verification is local.** HREFLANG-001..003 validate
+  declared ISO 639-1/3166-1 codes, self-references, and x-default annotations in
+  HTML and rendered DOM. However, cross-origin reciprocal link validation across
+  separate external domains, automated translation equivalence, and multi-domain CDN
+  HTTP Link header annotations require owner-provided multi-domain crawl exports or
+  Search Console international targeting data.
 - **Connector authentication is operator-managed.** Citable accepts existing
   OAuth access tokens through environment variables. It does not run an OAuth
   consent server, store refresh tokens, or guarantee uninterrupted access.
 - **No visual or media-entailment detectors.** Bounded PDF, transcript, and
-  image-context collectors preserve extraction evidence, but they do not judge
-  whether visual or media content supports a claim. Video/audio decoding and
-  sampled-media parity remain unimplemented.
+  image-context collectors preserve extraction evidence, and SCHEMA-013 validates
+  VideoObject metadata, but detectors do not judge whether visual or media
+  content semantically entails or supports a claim. Raw video/audio decoding and
+  frame-level parity remain unimplemented.
 - **Screenshots/rendered directories** are populated only for render profiles
   that complete successfully; partial failures remain explicit observations.
 - **URL-mode redirects/headers** are captured live, but static-dir mode
@@ -183,5 +191,5 @@ convict.
 None material. The SEO document's lighter crawler treatment vs AEO/GEO
 purpose-separation was resolved in favor of purpose-per-crawler (more
 conservative). GEO §13 numeric scores (EVS/CAS/RQS/NFS/CGS) are exposed as
-formulas in the posture/report templates rather than computed, because the
-MVP lacks the observation volume to compute them honestly.
+formulas in the posture/report templates rather than computed, because
+automated single-property audits lack the cross-cohort observation volume to compute them honestly.

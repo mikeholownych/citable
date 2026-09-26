@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/serp-budget.schema.json",
+  "title": "SerpCollectionBudget",
+  "description": "Collection scheduler budget configuration and authorization tracking (B-055).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "limits",
+    "usage",
+    "policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "daily_cost_limit_minor_units",
+        "daily_request_limit",
+        "per_query_daily_request_limit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "daily_cost_limit_minor_units": { "type": "integer", "minimum": 0 },
+        "daily_request_limit": { "type": "integer", "minimum": 0 },
+        "per_query_daily_request_limit": { "type": "integer", "minimum": 0 },
+        "provider_limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["daily_cost_limit_minor_units", "daily_request_limit"],
+            "additionalProperties": false,
+            "properties": {
+              "daily_cost_limit_minor_units": { "type": "integer", "minimum": 0 },
+              "daily_request_limit": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "period_start",
+        "current_cost_minor_units",
+        "current_request_count",
+        "query_request_counts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "period_start": { "type": "string", "format": "date-time" },
+        "current_cost_minor_units": { "type": "integer", "minimum": 0 },
+        "current_request_count": { "type": "integer", "minimum": 0 },
+        "query_request_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "provider_usages": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["cost_minor_units", "request_count"],
+            "additionalProperties": false,
+            "properties": {
+              "cost_minor_units": { "type": "integer", "minimum": 0 },
+              "request_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "fail_closed",
+        "max_adaptive_frequency_multiplier"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fail_closed": { "type": "boolean" },
+        "max_adaptive_frequency_multiplier": { "type": "number", "minimum": 1.0 }
+      }
+    }
+  }
+}

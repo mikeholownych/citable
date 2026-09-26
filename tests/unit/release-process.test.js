@@ -59,3 +59,21 @@ test('prepareRelease validates every contract before writing', () => {
   assert.throws(() => prepareRelease(root, '1.5.0'), /ROADMAP\.md.*heading is missing/);
   assert.equal(JSON.parse(fs.readFileSync(packageFile)).version, '1.4.0');
 });
+
+test('validateRelease fails on counter mismatch or documentation drift', () => {
+  const root = fixture();
+  prepareRelease(root, '1.5.0', '2026-07-19');
+
+  // Add invalid README with wrong namespaces
+  fs.writeFileSync(
+    path.join(root, 'README.md'),
+    '- **181 detectors** across 19 namespaces (TECH, CRAWL, ARCH, PAGE, ANS, SCHEMA, CWV, GEO, AEO, CLAIM, EVD, LIFE, AGENT, MEAS, EXP, CONF, SEC, LINK, CRO)\n',
+  );
+  assert.throws(() => validateRelease(root, '1.5.0'), /README namespace list does not match/);
+
+  // Add invalid traceability matrix drift
+  fs.mkdirSync(path.join(root, 'docs', 'architecture'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'docs', 'architecture', 'traceability-matrix.md'), '# Stale Matrix\n');
+  assert.throws(() => validateRelease(root, '1.5.0'), /traceability matrix/i);
+});
+

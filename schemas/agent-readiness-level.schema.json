@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/agent-readiness-level.schema.json",
+  "title": "AgentReadinessLevel",
+  "description": "Published maturity level evaluation with strict gating rules (B-066).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "assessment_id",
+    "site_url",
+    "assigned_level",
+    "level_name",
+    "gating_evaluation",
+    "point_accumulation_bypass_blocked",
+    "assessed_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "assessment_id": {
+      "type": "string",
+      "pattern": "^arl_[a-f0-9]{12,64}$"
+    },
+    "site_url": {
+      "type": "string"
+    },
+    "assigned_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "level_name": {
+      "type": "string",
+      "enum": [
+        "INACCESSIBLE",
+        "MACHINE_ACCESSIBLE",
+        "MACHINE_READABLE",
+        "AGENT_DISCOVERABLE",
+        "AGENT_OPERABLE",
+        "AGENT_NATIVE"
+      ]
+    },
+    "gating_evaluation": {
+      "type": "object",
+      "required": [
+        "critical_findings_present",
+        "critical_findings_count",
+        "blocking_findings",
+        "level_gates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "critical_findings_present": { "type": "boolean" },
+        "critical_findings_count": { "type": "integer", "minimum": 0 },
+        "blocking_findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["finding_id", "severity", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "finding_id": { "type": "string" },
+              "severity": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "level_gates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["level", "satisfied", "missing_prerequisites"],
+            "additionalProperties": false,
+            "properties": {
+              "level": { "type": "integer", "minimum": 0, "maximum": 5 },
+              "satisfied": { "type": "boolean" },
+              "missing_prerequisites": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "point_accumulation_bypass_blocked": {
+      "type": "boolean",
+      "description": "True confirms that higher levels cannot be unlocked by accumulating points while critical gates remain unsatisfied."
+    },
+    "assessed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

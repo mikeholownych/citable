@@ -1,0 +1,14 @@
+{
+  "name": "@nebulacomponents/citable-outreach",
+  "version": "0.1.0",
+  "description": "Autonomous outreach and backlink acquisition product consuming the Citable evidence substrate.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "validate:schemas": "node scripts/validate-schemas.js"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

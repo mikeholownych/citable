@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Protocol Capability Positive Test</title>
+  <!-- Link to missing ARD file -->
+  <link rel="agent-resources" href="/missing-ard-manifest.json">
+  <!-- WebMCP script with broken tool definitions -->
+  <script type="application/webmcp+json">
+  {
+    "tools": [
+      {
+        "name": "broken_tool",
+        "description": "",
+        "action": "/api/actions/does-not-exist"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <h1>Agent Protocol Test Page</h1>
+</body>
+</html>

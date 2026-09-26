@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/outreach-authorization.schema.json",
+  "title": "OutreachExecutionAuthorization",
+  "description": "Strict execution boundary separating recommendation from authorization and authorization from execution (B-086).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "action_type",
+    "target_resource_id",
+    "status",
+    "boundary_checks",
+    "budget_enforcement",
+    "evaluated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^auth_bnd_[a-f0-9]{8,32}$"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "SEND_OUTREACH_MESSAGE",
+        "CONTACT_PUBLISHER",
+        "EXECUTE_PAID_PLACEMENT",
+        "DISPATCH_CAMPAIGN"
+      ]
+    },
+    "target_resource_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "AUTHORIZED",
+        "REFUSED_NOT_AUTHORIZED",
+        "REFUSED_BUDGET_EXHAUSTED",
+        "REFUSED_SUPPRESSED",
+        "REFUSED_CIRCUIT_BREAKER_ACTIVE"
+      ]
+    },
+    "boundary_checks": {
+      "type": "object",
+      "description": "B-086: Recommendation does not authorize action; authorization is explicitly checked.",
+      "required": [
+        "explicit_human_approval",
+        "suppression_check_passed",
+        "circuit_breaker_clear"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "explicit_human_approval": { "type": "boolean" },
+        "approver_identity": { "type": ["string", "null"] },
+        "suppression_check_passed": { "type": "boolean" },
+        "circuit_breaker_clear": { "type": "boolean" }
+      }
+    },
+    "budget_enforcement": {
+      "type": "object",
+      "required": ["budget_available", "authorized_minor_units"],
+      "additionalProperties": false,
+      "properties": {
+        "budget_available": { "type": "boolean" },
+        "authorized_minor_units": { "type": "integer", "minimum": 0 },
+        "remaining_project_budget_minor_units": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "refusal_reason": {
+      "type": ["string", "null"]
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

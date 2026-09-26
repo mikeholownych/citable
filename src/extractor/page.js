@@ -1,5 +1,6 @@
 import { parse } from 'node-html-parser';
 import { createEvidenceHashes, hashPageArtifact } from '../evidence/hashes.js';
+import { retainUnknownArtifacts } from '../lineage/unknownArtifacts.js';
 
 /**
  * Extract a PageModel from raw HTML plus transport metadata.
@@ -232,12 +233,24 @@ export function extractPage({ url, html, responseBody = null, status = 200, head
       inputs.push({ name, id, type, required, autocomplete, inputmode, placeholder, hasLabel });
     }
 
+    let submitText = '';
+    const submitBtn = form.querySelector('button[type=submit], input[type=submit]') ||
+      form.querySelector('button:not([type=button]):not([type=reset])');
+    if (submitBtn) {
+      submitText = (submitBtn.tagName.toLowerCase() === 'input' ? submitBtn.getAttribute('value') : submitBtn.text) || '';
+      submitText = submitText.replace(/\s+/g, ' ').trim();
+    }
+
     forms.push({
       action,
       method,
+      id: form.getAttribute('id') || null,
+      name: form.getAttribute('name') || null,
       inputs,
       fieldCount: nonHiddenCount,
       hasSubmit,
+      submitText,
+      outerHtml: form.outerHTML,
     });
   }
 
@@ -323,7 +336,13 @@ export function extractPage({ url, html, responseBody = null, status = 200, head
     navLinksCount,
     domNodeCount,
     maxDomDepth,
+    unknown_artifacts: retainUnknownArtifacts({
+      domRoot: root,
+      jsonLd,
+      protocolPayloads: [{ headers }],
+    }),
   };
+  page.unknown_rate = page.unknown_artifacts.unknown_rate;
 
   // Keep representation identity explicit. These hashes deliberately do not
   // share a generic `contentHash`: raw response bytes, extracted text,

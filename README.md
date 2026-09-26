@@ -21,9 +21,9 @@ generator, not a Lighthouse wrapper, not an "AI visibility score".
   objectives, interventions, optional connections, reviewers, review policies,
   governed exceptions, semantic review items, sampling plans, and audit schedules — all
   JSON-Schema validated with referential integrity and history-preserving saves.
-- **181 detectors** across 19 namespaces (TECH, CRAWL, ARCH, PAGE, ANS,
-  SCHEMA, CWV, GEO, AEO, CLAIM, EVD, LIFE, AGENT, MEAS, EXP, CONF, SEC, LINK,
-  CRO), each with remediation, verification, severity, and determinism declared.
+- **186 detectors** across 19 namespaces (AGENT, ANS, ARCH, CLAIM, CRAWL,
+  CRO, CWV, ENTITY, EVD, EXT, GEO, HREFLANG, LIFE, LINK, MEAS, PAGE, RECO,
+  SCHEMA, TECH), each with remediation, verification, severity, and determinism declared.
 - **Evidence packages** for every run: manifest, findings, report, captured
   robots/sitemaps/headers/raw JSON-LD, a schema-validated normalized entity
   graph with unresolved references and parse failures, link graph, and
@@ -242,7 +242,7 @@ reports never widen subset evidence into a site-wide claim.
 | --- | --- |
 | `skill/` | Canonical agent skill: SKILL.md, command contracts, rubrics, anti-patterns, policies, templates |
 | `src/` | CLI, commands, registries, detectors, crawler/extractor, evidence, reporting |
-| `schemas/` | JSON Schemas: 29 registries plus findings, runs, observations, release governance, remediation verification, the CLI output envelope, config, and prompt results |
+| `schemas/` | 104 JSON Schemas: 29 registries plus domain modules, SERP observations, SERP changes, cross-provider divergence, collection budgets, agent journeys, agent readiness levels, repeatability reports, event registries, attribution continuity reports, consent differentials, commerce consistency reports, dependency graphs, autonomous content boundaries, findings, determinations, conditions, runs, observations, replayed derivations, release governance, remediation verification, the CLI output envelope, config, and prompt results |
 | `tests/` | Unit + integration suites; positive/negative fixtures; labeled golden benchmark corpus |
 | `docs/` | ADR, traceability matrix, known limitations |
 | `dist/` | Generated distribution packages (run `npm run build:dist`) |

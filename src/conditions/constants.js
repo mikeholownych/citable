@@ -1,0 +1,78 @@
+/**
+ * Condition, determination, and transition constants.
+ */
+
+export const DETERMINATION_STATUS = Object.freeze({
+  PASS: "PASS",
+  FAIL: "FAIL",
+  WARNING: "WARNING",
+  INDETERMINATE: "INDETERMINATE",
+  NOT_APPLICABLE: "NOT_APPLICABLE",
+  NOT_TESTED: "NOT_TESTED",
+  ERROR: "ERROR",
+});
+
+export const VALID_DETERMINATION_STATUSES = new Set(Object.values(DETERMINATION_STATUS));
+
+export const TRANSITION_TYPES = Object.freeze({
+  NEW_FAILURE: "NEW_FAILURE",
+  REGRESSION: "REGRESSION",
+  RESOLVED: "RESOLVED",
+  UNCHANGED_FAILURE: "UNCHANGED_FAILURE",
+  NEWLY_APPLICABLE: "NEWLY_APPLICABLE",
+  NO_LONGER_APPLICABLE: "NO_LONGER_APPLICABLE",
+});
+
+export const COLLECTOR_FAILURES = Object.freeze({
+  DNS_FAILED: "DNS_FAILED",
+  TIMEOUT: "TIMEOUT",
+  BLOCKED: "BLOCKED",
+  CAPTCHA: "CAPTCHA",
+  RATE_LIMITED: "RATE_LIMITED",
+  PARSER_FAILED: "PARSER_FAILED",
+});
+
+export const VALID_COLLECTOR_FAILURES = new Set(Object.values(COLLECTOR_FAILURES));
+
+export const SITE_PROFILES = Object.freeze({
+  CONTENT_ONLY: "content_only",
+  ECOMMERCE: "ecommerce",
+  SAAS: "saas",
+  LEADGEN: "leadgen",
+  PUBLISHER: "publisher",
+  LOCAL: "local",
+  API_DOCS: "api-docs",
+});
+
+export const NORMATIVE_SOURCE_CLASSES = Object.freeze({
+  STANDARD: "STANDARD",
+  RFC: "RFC",
+  SPECIFICATION: "SPECIFICATION",
+  VENDOR_REQUIREMENT: "VENDOR_REQUIREMENT",
+  VENDOR_GUIDANCE: "VENDOR_GUIDANCE",
+  COMMUNITY_CONVENTION: "COMMUNITY_CONVENTION",
+  RESEARCH: "RESEARCH",
+  HEURISTIC: "HEURISTIC",
+  INTERNAL_RULE: "INTERNAL_RULE",
+});
+
+export const SOURCE_MATURITY = Object.freeze({
+  PROPOSED: "PROPOSED",
+  DRAFT: "DRAFT",
+  CANDIDATE: "CANDIDATE",
+  STABLE: "STABLE",
+  MATURE: "MATURE",
+  DEPRECATED: "DEPRECATED",
+});
+
+export const EVALUATION_METHODS = Object.freeze({
+  DETERMINISTIC: "deterministic",
+  HEURISTIC: "heuristic",
+  HYBRID: "hybrid",
+});
+
+export const REVALIDATION_VERDICTS = Object.freeze({
+  FAIL_TO_PASS: "fail_to_pass",
+  NEW_CONDITION_EVALUATION: "new_condition_evaluation",
+});
+

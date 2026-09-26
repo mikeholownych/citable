@@ -11,6 +11,8 @@ import { extractModified } from '../detectors/lifeMeas.js';
 import { buildEntityGraph } from '../observations/entityGraph.js';
 import { buildSourceIdentityChain } from '../observations/sourceIdentity.js';
 import { pageArtifactRecord } from '../evidence/hashes.js';
+import { reconcileFindingIdentities } from '../evidence/findingIdentity.js';
+import { computeApplicabilityScore } from '../conditions/scoring.js';
 
 /** `citable audit [scope]` — run detectors and produce an evidence package. */
 export async function audit(root, {
@@ -70,10 +72,21 @@ export async function audit(root, {
     }
   }
 
-  const { findings, detectorsRun, detectorsSkipped, errors } = runDetectors(detectors, ctx);
+  const { findings, determinations, detectorsRun, detectorsSkipped, errors, siteProfile } = runDetectors(detectors, ctx);
   run.manifest.detectors_run = detectorsRun;
   run.manifest.detectors_skipped = detectorsSkipped;
   run.manifest.errors.push(...errors);
+
+  // Write determinations artifact (Wave 1: B-010)
+  if (determinations && determinations.length) {
+    for (const d of determinations) {
+      const { valid, errors: dErrors } = validateAgainst('determination.schema.json', d);
+      if (!valid) {
+        run.manifest.errors.push(`determination ${d.determination_id}: ${dErrors.join('; ')}`);
+      }
+    }
+    run.writeArtifact('determinations.json', determinations);
+  }
 
   // Seal the ledger after detector evaluation so the same artifact records
   // evaluated resources while retaining the pre-detector persistence proof.
@@ -96,6 +109,9 @@ export async function audit(root, {
     }
   }
 
+  // Reconcile finding identities across runs to preserve first_seen and compute persistence
+  reconcileFindingIdentities(root, findings, { runId: run.runId, timestamp: run.manifest.timestamp });
+
   // Validate every finding against the data contract; a contract breach fails the run.
   const invalid = [];
   for (const f of findings) {
@@ -117,6 +133,15 @@ export async function audit(root, {
     targetOrigin: ctx.site?.baseUrl ? new URL(ctx.site.baseUrl).origin : null,
     coverage,
   });
+
+  // Applicability-scoped scoring (Wave 1: B-013)
+  const applicabilityScoring = computeApplicabilityScore(determinations || [], { siteProfile });
+  summary.applicability_scoring = applicabilityScoring;
+  summary.determinations = {
+    total: determinations ? determinations.length : 0,
+    by_status: applicabilityScoring.counts,
+  };
+
   run.writeArtifact('summary.json', summary);
   run.writeArtifact('inputs.json', {
     target: run.manifest.target, scope: scope ?? 'all',

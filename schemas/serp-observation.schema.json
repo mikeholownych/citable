@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/serp-observation.schema.json",
+  "title": "SerpObservation",
+  "description": "Canonical observation envelope and normalized element model for search engine result pages (B-050, B-051, B-052, B-053).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "observation_id",
+    "context",
+    "provider",
+    "collection_status",
+    "timestamps",
+    "elements",
+    "raw_evidence_checksum"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^serp_obs_[a-f0-9]{12,64}$"
+    },
+    "context": {
+      "type": "object",
+      "description": "B-050: Explicit observation context envelope. Unique address by query x engine x surface x location x language x device x timestamp.",
+      "required": [
+        "query_id",
+        "query_text",
+        "query_normalized",
+        "engine",
+        "search_surface",
+        "location",
+        "language",
+        "device"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "query_id": {
+          "type": "string"
+        },
+        "query_text": {
+          "type": "string"
+        },
+        "query_normalized": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string",
+          "enum": ["google", "bing", "yahoo", "duckduckgo", "yandex", "baidu", "custom"]
+        },
+        "search_surface": {
+          "type": "string",
+          "enum": [
+            "organic",
+            "ai_overview",
+            "ai_mode",
+            "local",
+            "maps",
+            "images",
+            "news",
+            "shopping",
+            "video"
+          ]
+        },
+        "location": {
+          "type": "object",
+          "required": ["country"],
+          "additionalProperties": false,
+          "properties": {
+            "country": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            "region": {
+              "type": ["string", "null"]
+            },
+            "city": {
+              "type": ["string", "null"]
+            },
+            "coordinates": {
+              "type": ["object", "null"],
+              "required": ["latitude", "longitude"],
+              "additionalProperties": false,
+              "properties": {
+                "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+                "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+                "radius_km": { "type": "number", "minimum": 0 }
+              }
+            },
+            "uule": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+        },
+        "device": {
+          "type": "string",
+          "enum": ["desktop", "mobile", "tablet"]
+        },
+        "os": {
+          "type": ["string", "null"]
+        },
+        "search_domain": {
+          "type": ["string", "null"]
+        },
+        "personalization_mode": {
+          "type": ["string", "null"],
+          "enum": ["none", "incognito", "authenticated", null]
+        }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "required": ["name", "adapter_version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "adapter_version": {
+          "type": "string"
+        },
+        "provider_request_id": {
+          "type": ["string", "null"]
+        },
+        "response_latency_ms": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "cost_minor_units": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "collection_status": {
+      "type": "string",
+      "enum": ["SUCCESS", "PARTIAL", "COLLECTION_FAILED", "TIMEOUT", "BLOCKED", "INDETERMINATE"]
+    },
+    "failure_reason": {
+      "type": ["string", "null"]
+    },
+    "timestamps": {
+      "type": "object",
+      "required": ["requested_at", "observed_at", "normalized_at"],
+      "additionalProperties": false,
+      "properties": {
+        "requested_at": { "type": "string", "format": "date-time" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "provider_completed_at": { "type": ["string", "null"], "format": "date-time" },
+        "normalized_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "description": "B-052: Each visible element is an independent normalized entity. Unrecognized features record UNKNOWN_FEATURE and retain raw evidence.",
+      "items": {
+        "type": "object",
+        "required": [
+          "element_id",
+          "feature_type",
+          "rank_absolute",
+          "rank_group"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "element_id": {
+            "type": "string"
+          },
+          "feature_type": {
+            "type": "string",
+            "enum": [
+              "ORGANIC",
+              "AI_OVERVIEW",
+              "AI_MODE_RESPONSE",
+              "FEATURED_SNIPPET",
+              "PEOPLE_ALSO_ASK",
+              "LOCAL_PACK",
+              "KNOWLEDGE_PANEL",
+              "VIDEO",
+              "IMAGE",
+              "NEWS",
+              "SHOPPING",
+              "SITELINKS",
+              "DIRECT_ANSWER",
+              "UNKNOWN_FEATURE"
+            ]
+          },
+          "rank_absolute": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rank_group": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "url": {
+            "type": ["string", "null"]
+          },
+          "domain": {
+            "type": ["string", "null"]
+          },
+          "title": {
+            "type": ["string", "null"]
+          },
+          "snippet": {
+            "type": ["string", "null"]
+          },
+          "display_url": {
+            "type": ["string", "null"]
+          },
+          "pixel_metrics": {
+            "type": ["object", "null"],
+            "required": ["top", "left", "width", "height", "is_above_fold"],
+            "additionalProperties": false,
+            "properties": {
+              "top": { "type": "number" },
+              "left": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" },
+              "is_above_fold": { "type": "boolean" }
+            }
+          },
+          "raw_evidence": {
+            "type": ["object", "string", "null"],
+            "description": "Preserved raw provider evidence. Required when feature_type is UNKNOWN_FEATURE."
+          }
+        }
+      }
+    },
+    "ai_overview": {
+      "type": ["object", "null"],
+      "description": "B-053: AI Overview and AI Mode as first-class result types.",
+      "required": [
+        "response_present",
+        "response_text_hash",
+        "citations",
+        "mentions",
+        "follow_up_queries"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "response_present": {
+          "type": "boolean"
+        },
+        "response_text_hash": {
+          "type": ["string", "null"]
+        },
+        "text_blocks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["index", "url", "domain"],
+            "additionalProperties": false,
+            "properties": {
+              "index": { "type": "integer", "minimum": 1 },
+              "url": { "type": "string" },
+              "domain": { "type": "string" },
+              "title": { "type": ["string", "null"] },
+              "snippet": { "type": ["string", "null"] },
+              "position_in_ai_block": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "mentions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["entity", "url_linked"],
+            "additionalProperties": false,
+            "properties": {
+              "entity": { "type": "string" },
+              "brand": { "type": ["string", "null"] },
+              "url_linked": { "type": "boolean" },
+              "url": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "follow_up_queries": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "raw_evidence_checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 byte digest of raw provider payload."
+    }
+  }
+}

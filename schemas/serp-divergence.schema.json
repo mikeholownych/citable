@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/serp-divergence.schema.json",
+  "title": "SerpCrossProviderDivergence",
+  "description": "Validation record measuring empirical divergence between independent SERP providers for collection reliability evidence (B-056).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "validation_id",
+    "query_id",
+    "providers",
+    "metrics",
+    "feature_agreement",
+    "divergent_elements",
+    "evaluated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "validation_id": {
+      "type": "string",
+      "pattern": "^serp_div_[a-f0-9]{12,64}$"
+    },
+    "query_id": {
+      "type": "string"
+    },
+    "providers": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["provider_name", "observation_id"],
+        "additionalProperties": false,
+        "properties": {
+          "provider_name": { "type": "string" },
+          "observation_id": { "type": "string" },
+          "total_elements": { "type": "integer", "minimum": 0 },
+          "organic_count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "spearman_rank_correlation",
+        "top_10_jaccard_similarity",
+        "domain_overlap_ratio",
+        "divergence_score"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spearman_rank_correlation": {
+          "type": ["number", "null"],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "top_10_jaccard_similarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "domain_overlap_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "divergence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Composite divergence index: 0 = perfect identity, 1 = complete disagreement."
+        }
+      }
+    },
+    "feature_agreement": {
+      "type": "object",
+      "description": "Agreement matrix for presence of key SERP features between providers.",
+      "required": [
+        "ai_overview",
+        "featured_snippet",
+        "people_also_ask",
+        "local_pack"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ai_overview": { "type": "boolean" },
+        "featured_snippet": { "type": "boolean" },
+        "people_also_ask": { "type": "boolean" },
+        "local_pack": { "type": "boolean" }
+      }
+    },
+    "divergent_elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "observed_in_provider", "missing_in_provider", "feature_type"],
+        "additionalProperties": false,
+        "properties": {
+          "url": { "type": "string" },
+          "observed_in_provider": { "type": "string" },
+          "missing_in_provider": { "type": "string" },
+          "feature_type": { "type": "string" },
+          "rank": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

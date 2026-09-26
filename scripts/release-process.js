@@ -76,6 +76,25 @@ export function prepareRelease(root, version, date = new Date().toISOString().sl
   return { previousVersion, version, date };
 }
 
+import { checkTraceabilityMatrix } from './generate-traceability.js';
+import { ALL_DETECTORS } from '../src/detectors/index.js';
+
+export function countTests(dir) {
+  let count = 0;
+  if (!fs.existsSync(dir)) return 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      count += countTests(full);
+    } else if (entry.name.endsWith('.test.js')) {
+      const content = fs.readFileSync(full, 'utf8');
+      const matches = content.match(/(?:^|\s)(?:test|it)\s*\(/g);
+      if (matches) count += matches.length;
+    }
+  }
+  return count;
+}
+
 export function validateRelease(root, version) {
   parseVersion(version);
   const packageJson = readJson(path.join(root, 'package.json'));
@@ -91,7 +110,67 @@ export function validateRelease(root, version) {
   if (changelogSection(changelog, '## Unreleased')) failures.push('Unreleased changelog must be empty after preparation');
   if (!roadmap.includes(`## Current State (v${version})`)) failures.push('roadmap version is inconsistent');
   if (!skill.includes(`version: ${version}`)) failures.push('skill version is inconsistent');
-  if (failures.length) throw new Error(`release version mismatch: ${failures.join('; ')}`);
+
+  // Documentation counters & drift gates
+  const actualNs = [...new Set(ALL_DETECTORS.map((d) => d.namespace))].sort();
+  const readmePath = path.join(root, 'README.md');
+  if (fs.existsSync(readmePath)) {
+    const readme = fs.readFileSync(readmePath, 'utf8');
+    const nsMatch = readme.match(/\*\*(\d+)\s+detectors\*\*\s+across\s+(\d+)\s+namespaces\s*\(([^)]+)\)/i);
+    if (nsMatch) {
+      const count = Number.parseInt(nsMatch[1], 10);
+      const nsCount = Number.parseInt(nsMatch[2], 10);
+      const namespaces = nsMatch[3].replace(/\s+/g, ' ').split(',').map((s) => s.trim()).filter(Boolean).sort();
+      if (count !== ALL_DETECTORS.length) failures.push(`README detector count is ${count}, expected ${ALL_DETECTORS.length}`);
+      if (nsCount !== actualNs.length) failures.push(`README namespace count is ${nsCount}, expected ${actualNs.length}`);
+      if (JSON.stringify(namespaces) !== JSON.stringify(actualNs)) {
+        failures.push(`README namespace list does not match tree: [${namespaces.join(', ')}] vs [${actualNs.join(', ')}]`);
+      }
+    }
+    const schemaMatch = readme.match(/\|\s*`schemas\/`\s*\|\s*(\d+)\s+JSON\s+Schemas/i);
+    const schemasDir = path.join(root, 'schemas');
+    if (schemaMatch && fs.existsSync(schemasDir)) {
+      const actualSchemaCount = fs.readdirSync(schemasDir).filter((f) => f.endsWith('.json')).length;
+      const count = Number.parseInt(schemaMatch[1], 10);
+      if (count !== actualSchemaCount) failures.push(`README schema count is ${count}, expected ${actualSchemaCount}`);
+    }
+  }
+
+  // ROADMAP counters
+  const roadmapDetectorMatch = roadmap.match(/\|\s*Detectors\s*\|\s*(\d+)\s+across\s+(\d+)\s+namespaces\s*\|/i);
+  if (roadmapDetectorMatch) {
+    const count = Number.parseInt(roadmapDetectorMatch[1], 10);
+    const nsCount = Number.parseInt(roadmapDetectorMatch[2], 10);
+    if (count !== ALL_DETECTORS.length) failures.push(`ROADMAP detector count is ${count}, expected ${ALL_DETECTORS.length}`);
+    if (nsCount !== actualNs.length) failures.push(`ROADMAP namespace count is ${nsCount}, expected ${actualNs.length}`);
+  }
+
+  const roadmapSchemaMatch = roadmap.match(/\|\s*Schemas\s*\|\s*(\d+)\s+schema\s+definitions\s*\|/i);
+  const schemasDir = path.join(root, 'schemas');
+  if (roadmapSchemaMatch && fs.existsSync(schemasDir)) {
+    const actualSchemaCount = fs.readdirSync(schemasDir).filter((f) => f.endsWith('.json')).length;
+    const count = Number.parseInt(roadmapSchemaMatch[1], 10);
+    if (count !== actualSchemaCount) failures.push(`ROADMAP schema count is ${count}, expected ${actualSchemaCount}`);
+  }
+
+  const roadmapTestMatch = roadmap.match(/\|\s*Tests\s*\|\s*(\d+)\s+pass/i);
+  const testsDir = path.join(root, 'tests');
+  if (roadmapTestMatch && fs.existsSync(testsDir)) {
+    const expectedTests = Number.parseInt(roadmapTestMatch[1], 10);
+    const actualTests = countTests(testsDir);
+    if (expectedTests !== actualTests) {
+      failures.push(`ROADMAP test counter is ${expectedTests}, expected ${actualTests}`);
+    }
+  }
+
+  // Traceability matrix drift
+  const matrixPath = path.join(root, 'docs', 'architecture', 'traceability-matrix.md');
+  if (fs.existsSync(matrixPath)) {
+    const matrixCheck = checkTraceabilityMatrix(root);
+    if (!matrixCheck.ok) failures.push(matrixCheck.error);
+  }
+
+  if (failures.length) throw new Error(`release validation failed: ${failures.join('; ')}`);
   return true;
 }
 
@@ -106,11 +185,14 @@ export function releaseNotes(root, version) {
 }
 
 function usage() {
-  return 'usage: node scripts/release-process.js <prepare|validate|notes> <version> [output-file]';
+  return 'usage: node scripts/release-process.js <prepare|validate|notes> [version] [output-file]';
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [command, version, output] = process.argv.slice(2);
+  const [command, versionArg, output] = process.argv.slice(2);
+  const root = process.cwd();
+  const packageJson = fs.existsSync(path.join(root, 'package.json')) ? readJson(path.join(root, 'package.json')) : null;
+  const version = versionArg || (command === 'validate' && packageJson ? packageJson.version : null);
   if (!command || !version) throw new Error(usage());
   if (command === 'prepare') prepareRelease(process.cwd(), version);
   else if (command === 'validate') validateRelease(process.cwd(), version);

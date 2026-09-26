@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/webeffect-consent-differential.schema.json",
+  "title": "WebEffectConsentDifferential",
+  "description": "Technical observation comparing network activity across consent states without legal compliance assertion (B-073).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "observation_id",
+    "site_url",
+    "epistemic_boundary",
+    "observed_states",
+    "technical_contradictions",
+    "observed_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^cns_diff_[a-f0-9]{8,32}$"
+    },
+    "site_url": {
+      "type": "string"
+    },
+    "epistemic_boundary": {
+      "type": "object",
+      "required": [
+        "is_technical_observation",
+        "is_legal_compliance_determination",
+        "boundary_notice"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "is_technical_observation": { "type": "boolean", "enum": [true] },
+        "is_legal_compliance_determination": { "type": "boolean", "enum": [false] },
+        "boundary_notice": { "type": "string" }
+      }
+    },
+    "observed_states": {
+      "type": "object",
+      "required": [
+        "before_consent",
+        "after_reject",
+        "after_accept",
+        "after_withdrawal"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "before_consent": { "$ref": "#/definitions/ConsentStateSummary" },
+        "after_reject": { "$ref": "#/definitions/ConsentStateSummary" },
+        "after_accept": { "$ref": "#/definitions/ConsentStateSummary" },
+        "after_withdrawal": { "$ref": "#/definitions/ConsentStateSummary" }
+      }
+    },
+    "technical_contradictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "state",
+          "tracker_domain",
+          "tracker_category",
+          "finding_type",
+          "observed_activity"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["before_consent", "after_reject", "after_withdrawal"]
+          },
+          "tracker_domain": { "type": "string" },
+          "tracker_category": {
+            "type": "string",
+            "enum": ["advertising", "marketing", "analytics", "unclassified"]
+          },
+          "finding_type": {
+            "type": "string",
+            "enum": [
+              "TRACKER_ACTIVE_BEFORE_CONSENT",
+              "TRACKER_ACTIVE_AFTER_REJECT",
+              "TRACKER_ACTIVE_AFTER_WITHDRAWAL",
+              "UNCONSENTED_PII_TRANSMISSION"
+            ]
+          },
+          "observed_activity": { "type": "string" }
+        }
+      }
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "definitions": {
+    "ConsentStateSummary": {
+      "type": "object",
+      "required": [
+        "total_requests",
+        "third_party_requests",
+        "active_trackers",
+        "cookies_set"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "total_requests": { "type": "integer", "minimum": 0 },
+        "third_party_requests": { "type": "integer", "minimum": 0 },
+        "active_trackers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "cookies_set": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

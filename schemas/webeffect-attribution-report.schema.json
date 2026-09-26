@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/webeffect-attribution-report.schema.json",
+  "title": "WebEffectAttributionReport",
+  "description": "Validation report tracing attribution continuity across journeys and localizing loss points (B-072).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "report_id",
+    "journey_id",
+    "attribution_intact",
+    "tracked_parameters",
+    "loss_points",
+    "trace_steps",
+    "evaluated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^attr_rep_[a-f0-9]{8,32}$"
+    },
+    "journey_id": {
+      "type": "string"
+    },
+    "attribution_intact": {
+      "type": "boolean"
+    },
+    "tracked_parameters": {
+      "type": "object",
+      "required": ["utm_parameters", "click_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "utm_parameters": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "click_ids": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "initial_referrer": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "loss_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step_index",
+          "loss_type",
+          "from_url",
+          "to_url",
+          "lost_parameters",
+          "impact"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "step_index": { "type": "integer", "minimum": 1 },
+          "loss_type": {
+            "type": "string",
+            "enum": [
+              "LOSS_POINT_INTERNAL_LINK",
+              "LOSS_POINT_SUBDOMAIN",
+              "LOSS_POINT_GATEWAY_RETURN",
+              "LOSS_POINT_REDIRECT",
+              "LOSS_POINT_STORAGE_PURGE"
+            ]
+          },
+          "from_url": { "type": "string" },
+          "to_url": { "type": "string" },
+          "lost_parameters": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "impact": { "type": "string" }
+        }
+      }
+    },
+    "trace_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_index", "stage", "url", "parameters_present"],
+        "additionalProperties": false,
+        "properties": {
+          "step_index": { "type": "integer", "minimum": 1 },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "acquisition",
+              "landing",
+              "session_navigation",
+              "subdomain_transition",
+              "checkout_handoff",
+              "checkout_return",
+              "conversion"
+            ]
+          },
+          "url": { "type": "string" },
+          "parameters_present": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

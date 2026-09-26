@@ -263,6 +263,8 @@ test('default and explicit sequential concurrency produce identical same-fixture
     if (copy.status) {
       delete copy.status.first_seen;
       delete copy.status.last_seen;
+      delete copy.status.occurrence_count;
+      delete copy.status.persistence;
     }
     return copy;
   };

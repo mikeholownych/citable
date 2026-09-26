@@ -15,6 +15,85 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Added — External evidence, representation, and autonomous-content boundary (Wave 9: ER-10, ER-12, ER-13)
+
+- Added passive backlink and referring-domain observations (`createPassiveBacklinkObservation`, `compareBacklinkObservations`,
+  `backlinksForTarget`, `referringDomainsForTarget`), preserving source, target, link anchor/rel tokens, and retrieval state
+  while strictly rejecting acquisition, exchange, outreach, or link-quality conclusions (`ER-10`).
+- Added machine-consumable evidence interface (`EvidenceInterface`, `createEvidenceInterface`), exposing structured operations
+  for observations, evidence verification, coverage, conditions, comparisons, datasets, claims, prompt sets, and lineage
+  with explicit epistemic state (`ER-12`).
+- Added autonomous-content evidence boundary (`verifyContentEvidenceBoundary`), evaluating proposed claims against verified
+  evidence, enforcing that Citable strictly does not generate content or authorize publication without explicit downstream
+  authority, and gating publication fail-closed (`ER-13`).
+
+
+### Changed — Product boundary decoupling (Wave 8: B-080 through B-089)
+
+- Decoupled autonomous outreach and backlink acquisition capabilities (`B-080` through `B-089`) into a dedicated standalone product package (`products/outreach/` / `@nebulacomponents/citable-outreach`) consuming the shared evidence substrate with its own execution-authorization model, preventing state-changing outreach from being bundled into `@nebulacomponents/citable`.
+
+
+### Added — Website effectiveness domains (Wave 7: B-070 through B-075)
+
+- Added canonical event registry and semantic event validation (`CanonicalEventRegistry`), strictly enforcing
+  that events fire only on declared business triggers and prohibiting page load from satisfying named conversion
+  events (`B-070`).
+- Added duplicate and double-fire detection (`detectEventDuplicates`), distinguishing duplicate purchases by transaction ID,
+  rapid double fires, SPA route re-fires, and tag-manager concurrency from working implementations (`B-071`).
+- Added attribution continuity validation (`validateAttributionContinuity`), tracing UTMs, referrer, and click IDs across
+  acquisition, session navigation, subdomain transitions, and checkout returns, and localizing loss points (`B-072`).
+- Added consent state differential observation (`observeConsentStateDifferential`), comparing network activity across
+  states (before consent, after reject, after accept, after withdrawal) with strict epistemic separation prohibiting
+  technical observations from being reported as legal compliance (`B-073`).
+- Added commerce fact consistency validation (`validateCommerceConsistency`), comparing price, currency, availability,
+  and variant across visible page, structured data, API, cart, and checkout, producing high-severity findings for
+  cross-representation contradictions (`B-074`).
+- Added third-party dependency graph modeling (`buildThirdPartyDependencyGraph`), inventorying external scripts with purpose,
+  blocking state, performance cost, failure effect, and privacy effect (`B-075`).
+
+### Added — Agent readiness maturity and grounded journeys (Wave 6B: B-065, B-066, B-067)
+
+- Added grounded task-oriented agent journey execution and evaluation (`executeGroundedJourney`),
+  resolving to `SUCCESS`, `PARTIAL`, `FAILED`, `INDETERMINATE`, or `BLOCKED`; every extracted answer cites
+  source URL and element, strictly distinguishing direct evidence from model inference (`B-065`).
+- Added published maturity levels 0-5 and gating engine (`evaluateReadinessLevel`), strictly enforcing
+  that `Agent Native` (Level 5) and `Agent Operable` (Level 4) are unreachable by accumulating points
+  while an unresolved CRITICAL finding exists (`B-066`).
+- Added repeatability testing for probabilistic agent determinations (`evaluateDeterminationRepeatability`),
+  reporting standardized ambiguity codes (`BUSINESS_IDENTITY_AMBIGUOUS`) and hallucination susceptibility
+  (`SUPPORTED`, `UNSUPPORTED`, `CONTRADICTED`) rather than returning arbitrary single-run answers (`B-067`).
+
+### Added — SERP intelligence domain and collection authorization (Wave 5: B-050 through B-056)
+
+- Added canonical SERP observation context envelope (`createSerpContext`, `areSerpContextsComparable`)
+  strictly enforcing query, engine, surface, location granularity, language, and device comparability,
+  preventing silent cross-device and cross-location comparisons (`B-050`).
+- Added provider adapter interface (`BaseSerpAdapter`) and concrete adapters (`DataForSeoSerpAdapter`,
+  `BrightDataSerpAdapter`) normalizing vendor payloads into canonical `serp-observation.schema.json` (`B-051`).
+- Added normalized SERP element model retaining unrecognized features as `UNKNOWN_FEATURE` with raw evidence,
+  prohibiting silent mapping to `ORGANIC` (`B-052`).
+- Added first-class AI Overview and AI Mode models (`extractAiOverviewModel`, `classifyDomainAiRelationship`),
+  separately measuring `CITED`, `MENTIONED_ONLY`, `LINKED_NOT_CITED`, and `NEITHER`, and prohibiting treatment of
+  AI citation positions as organic rank (`B-053`).
+- Added SERP change detection (`detectSerpChanges`) with comparability and collection validity guards, ensuring
+  failed collections never read as ranking losses or exits (`B-054`).
+- Added collection scheduler budget manager (`SerpBudgetManager`) in `core/authorize`, failing closed on
+  per-project, per-provider, and per-query limits, and bounding adaptive scheduling multipliers (`B-055`).
+- Added cross-provider validation sampling (`measureProviderDisagreement`) measuring Spearman rank correlation,
+  top-10 Jaccard similarity, feature agreement, and divergence evidence (`B-056`).
+
+### Added — Domain module contract and namespace migration (Wave 4: B-040, B-041, B-042)
+
+- Added domain module schema and registry interface (`defineDomainModule`, `domainRegistry`)
+  allowing domains to register conditions, observation kinds, collectors, and report
+  projections through a single contract without modifying core files (`B-040`).
+- Migrated all 19 namespaces (`AGENT`, `ANS`, `ARCH`, `CLAIM`, `CRAWL`, `CRO`, `CWV`,
+  `ENTITY`, `EVD`, `EXT`, `GEO`, `HREFLANG`, `LIFE`, `LINK`, `MEAS`, `PAGE`, `RECO`,
+  `SCHEMA`, `TECH`) into domain modules (`B-041`).
+- Added per-module gating supporting domain disablement (`disabled_domains`) and profile
+  gating: disabled domains produce `NOT_TESTED` determinations without affecting determinations
+  in other domains (`B-042`).
+
 ## 1.23.0 — 2026-09-23
 
 ### Added — Passive backlink evidence and external artifact provenance

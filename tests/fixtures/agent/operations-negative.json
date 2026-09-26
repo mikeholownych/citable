@@ -1,0 +1,30 @@
+[
+  {
+    "name": "get_user_profile",
+    "description": "Retrieve current user profile data",
+    "method": "GET",
+    "path": "/api/users/me"
+  },
+  {
+    "name": "delete_user_account",
+    "description": "Permanently close user account after explicit user confirmation",
+    "method": "DELETE",
+    "path": "/api/users/delete-account",
+    "requires_confirmation": true,
+    "idempotent": true,
+    "authorization": {
+      "scopes": ["admin", "account:write"]
+    }
+  },
+  {
+    "name": "purchase_subscription",
+    "description": "Charge payment method for subscription renewal",
+    "method": "POST",
+    "path": "/api/billing/charge",
+    "requires_confirmation": true,
+    "idempotency_key": true,
+    "authorization": {
+      "scopes": ["billing:write"]
+    }
+  }
+]

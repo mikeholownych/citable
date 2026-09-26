@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "citable://schemas/serp-change-report.schema.json",
+  "title": "SerpChangeReport",
+  "description": "Schema for SERP change detection with explicit comparability guard and collection validity verification (B-054).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "report_id",
+    "baseline_observation_id",
+    "current_observation_id",
+    "comparability_verified",
+    "status",
+    "target_scope",
+    "changes",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^serp_chg_[a-f0-9]{12,64}$"
+    },
+    "baseline_observation_id": {
+      "type": "string"
+    },
+    "current_observation_id": {
+      "type": "string"
+    },
+    "comparability_verified": {
+      "type": "boolean",
+      "description": "True only if baseline and current context match along query, engine, surface, location granularity, language, and device."
+    },
+    "comparability_details": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "query_matched": { "type": "boolean" },
+        "engine_matched": { "type": "boolean" },
+        "surface_matched": { "type": "boolean" },
+        "location_matched": { "type": "boolean" },
+        "language_matched": { "type": "boolean" },
+        "device_matched": { "type": "boolean" },
+        "mismatch_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "REFUSED_INCOMPARABLE", "REFUSED_COLLECTION_FAILED"]
+    },
+    "refusal_reason": {
+      "type": ["string", "null"]
+    },
+    "target_scope": {
+      "type": "object",
+      "required": ["scope_type", "identifier"],
+      "additionalProperties": false,
+      "properties": {
+        "scope_type": {
+          "type": "string",
+          "enum": ["domain", "url", "serp_wide"]
+        },
+        "identifier": {
+          "type": "string"
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_type",
+          "feature_type"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "ENTRY",
+              "EXIT",
+              "RANK_GAIN",
+              "RANK_LOSS",
+              "FEATURE_APPEARED",
+              "FEATURE_DISAPPEARED",
+              "CITATION_GAIN",
+              "CITATION_LOSS",
+              "VISIBILITY_CHANGE"
+            ]
+          },
+          "feature_type": {
+            "type": "string"
+          },
+          "url": {
+            "type": ["string", "null"]
+          },
+          "domain": {
+            "type": ["string", "null"]
+          },
+          "baseline_rank": {
+            "type": ["integer", "null"]
+          },
+          "current_rank": {
+            "type": ["integer", "null"]
+          },
+          "rank_delta": {
+            "type": ["integer", "null"],
+            "description": "Positive value indicates rank gain (improvement toward 1), negative indicates rank loss."
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
