@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "receipt_id": "RECEIPT-03E930EB895B0CFF3AC8",
+  "release_id": "RELEASE-v1.24.0",
+  "manifest_hash": "695c91902ba36ef8136b814a1e8cbe426a857d6ce82c0dc74f6d859d494b271f",
+  "surface_id": "nebula-llms-txt",
+  "url": "https://nebulacomponents.com/resources/citable/llms.txt",
+  "projection_id": "llms-txt",
+  "verification_method": "exact_response_body",
+  "verification_header": null,
+  "expected_projection_hash": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+  "observed_projection_hash": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+  "response_hash": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+  "http": {
+    "status": 200,
+    "final_url": "https://nebulacomponents.com/resources/citable/llms.txt",
+    "redirect_chain": [],
+    "headers": {
+      "age": "49",
+      "alt-svc": "h3=\":443\"; ma=86400",
+      "cache-control": "public, max-age=0, s-maxage=300, stale-while-revalidate=60, must-revalidate, no-store",
+      "cf-cache-status": "HIT",
+      "cf-ray": "a41249d6ade1abca-YYZ",
+      "connection": "keep-alive",
+      "content-encoding": "br",
+      "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://static.cloudflareinsights.com https://searchable-tracker.searchable.workers.dev https://in.heycatch.ai https://news.google.com https://static.opinly.ai; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://indieascent.com https://nicklaunches.com https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com https://getvisibai.com https://static.peerpush.com https://maidensail.com https://launchnest.io; font-src 'self' data:; connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://www.google.com https://us.posthog.com https://us.i.posthog.com https://cloudflareinsights.com https://searchable-tracker.searchable.workers.dev https://tracker.searchableanalytics.com https://in.heycatch.ai https://news.google.com https://static.opinly.ai; frame-src https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https://buy.stripe.com; frame-ancestors 'self'",
+      "content-type": "text/plain; charset=UTF-8",
+      "date": "Sat, 26 Sep 2026 12:31:55 GMT",
+      "etag": "W/\"1fb-1a0dd57d0f8\"",
+      "last-modified": "Sat, 26 Sep 2026 10:51:55 GMT",
+      "link": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\", </.well-known/api-catalog>; rel=\"https://www.rfc-editor.org/rfc/rfc9727#section-3\", </.well-known/agent-skills/index.json>; rel=\"describedby\"; type=\"application/json\", </openapi.json>; rel=\"describedby\"; type=\"application/json\", </.well-known/acp.json>; rel=\"https://agenticcommerce.dev/rel/discovery\", </.well-known/ucp>; rel=\"https://ucp.dev/rel/discovery\", </.well-known/http-message-signatures-directory>; rel=\"https://ietf.org/rel/jwks\", </auth.md>; rel=\"https://workos.com/auth-md\"",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "permissions-policy": "camera=(), microphone=(), geolocation=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Eq8xmMrztSBEnAe3y0GeBVarT6pjk2SfVe6QPgsVfKfVinxMzkdL6NsUtIkoQuDwkkiMTqk6p87mw4wEvSdeMCapzkW5f2DjgXt9DR4Uwxp6QIx1faRrLbQF0He3%2BZRs6GthYLUtAg%3D%3D\"}]}",
+      "server": "cloudflare",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-nebula-country": "CA",
+      "x-nebula-revision": "77f373e3cea90706e28c1c33d743c4b75975ed2f",
+      "x-request-id": "994894c3-5eb5-49fe-96c8-0c47040affce"
+    }
+  },
+  "collector": {
+    "identity": "citable-release-operator",
+    "version": "citable/1.24.0",
+    "method": "node-fetch-direct",
+    "request_identity": "publisher",
+    "region": "operator-local"
+  },
+  "collected_at": "2026-09-26T12:31:55.936Z",
+  "expires_at": "2026-09-27T12:31:55.936Z",
+  "authority": {
+    "source_authority": "owner_controlled",
+    "collection_authority": "synthetic_probe",
+    "authenticity_status": "checksum_protected_only",
+    "representativeness": "single_observation",
+    "limitations": [
+      "Publisher-collected execution evidence; not independent attestation."
+    ]
+  },
+  "verification_status": "verified",
+  "limitations": [
+    "Direct publisher probe without redirect following; controlled surfaces must answer at their declared URL.",
+    "Receipt verifies one publisher-controlled retrieval at one time and region."
+  ],
+  "receipt_hash": "c2f8fad8c433afbdf765ac984e6fcee5dc564742e142fba8e34c8e57bc4539b0"
+}
