@@ -6,8 +6,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { init } from '../../src/commands/init.js';
 import { compatibilityCommand, verifyPage } from '../../src/commands/compatibility.js';
+import { readJson } from '../../src/shared/io.js';
 
 const FIX = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../fixtures');
+
+const ROOT_PKG = readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../package.json'));
+const ENGINES = ROOT_PKG.engines?.node || '>=0';
+const EXPECTED_MAJOR = Number(ENGINES.match(/>=\s*(\d+)/)?.[1] ?? 0);
+const EXPECTED_PASSED = Number.parseInt(process.versions.node.split('.')[0], 10) >= EXPECTED_MAJOR;
 
 function project({ withSite = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'citable-compat-'));
@@ -25,12 +31,11 @@ test('compatibility reports node engine, optional adapters, and never guesses br
   const r = await compatibilityCommand(dir);
   assert.equal(typeof r.ok, 'boolean');
   assert.equal(r.node, process.versions.node);
-  assert.equal(r.engines, '>=24.0.0');
+  assert.equal(r.engines, ENGINES);
 
   const nodeCheck = r.checks.find((c) => c.check_id === 'NODE-ENGINE');
-  const expectedPassed = Number.parseInt(process.versions.node.split('.')[0], 10) >= 24;
-  assert.equal(nodeCheck.passed, expectedPassed);
-  assert.equal(nodeCheck.severity, expectedPassed ? 'pass' : 'blocker');
+  assert.equal(nodeCheck.passed, EXPECTED_PASSED);
+  assert.equal(nodeCheck.severity, EXPECTED_PASSED ? 'pass' : 'blocker');
 
   for (const name of ['playwright', 'lighthouse', 'chrome-launcher', 'tesseract.js']) {
     assert.ok(r.adapters[name], `${name} must be reported`);
