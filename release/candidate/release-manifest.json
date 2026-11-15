@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "release_id": "RELEASE-v1.24.0",
+  "version": "1.24.0",
+  "commit": "0bc2887004a0b65fcc2898dc80edc07ce1d4fa90",
+  "generated_at": "2026-09-26T09:14:37.747Z",
+  "toolchain": {
+    "node": "v24.21.0",
+    "citable": "1.24.0"
+  },
+  "facts": {
+    "detectors": 186,
+    "namespaces": 19,
+    "registries": 29,
+    "providers": 12,
+    "distribution_files_per_provider": 148
+  },
+  "projections": [
+    {
+      "projection_id": "package-json",
+      "path": "package.json",
+      "sha256": "18f99d0857aaf3843cce23bbdd47a6930499a9bfb34511ccfd4808242829a54a",
+      "bytes": 3288,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "package-lock",
+      "path": "package-lock.json",
+      "sha256": "373ce4b2cd1828372d797886a141e8c8cf09c74faebc151a2c3070ee465e3d7f",
+      "bytes": 18336,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "skill-metadata",
+      "path": "skill/SKILL.md",
+      "sha256": "fa2bdaa1e16b01ae3c31155cd8f4fd3ece315c7cef3b39a1989917e524b18aca",
+      "bytes": 24937,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "npm-readme",
+      "path": "README.md",
+      "sha256": "e5ff821454ce2da27cf02c95adbda7aba5994e730f11814570d166146e5978d2",
+      "bytes": 16649,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "changelog",
+      "path": "CHANGELOG.md",
+      "sha256": "c909002795980fde5bbf7aa21e0ab0c1dad27fd8ef7e15765eab20898ff1fd1d",
+      "bytes": 80584,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "roadmap",
+      "path": "docs/ROADMAP.md",
+      "sha256": "8325bc34a2242bd9732ceb8f8036ad7dfb6c2e31ac74a0770c61c828fd6c87c4",
+      "bytes": 32490,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "controlled-surfaces",
+      "path": "release/surfaces.json",
+      "sha256": "b4d44d48ca3696ba8cdd0951e5a3ef5d66a6cfb72c0ccd15eda7c8432f40bf1e",
+      "bytes": 654,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "distribution-manifest",
+      "path": "dist/universal/manifest.json",
+      "sha256": "9bc8418c69bb754a50ebaa38823215cf16399eab1d7225928c419a860c989869",
+      "bytes": 250133,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "resource-data",
+      "path": "release/resource-data.json",
+      "sha256": "8c5a1351a80b6333ecae9300f5041bce01bb98901526ccf9e7152c66b7262211",
+      "bytes": 537,
+      "authority": "control_plane"
+    },
+    {
+      "projection_id": "llms-txt",
+      "path": "release/llms.txt",
+      "sha256": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+      "bytes": 507,
+      "authority": "control_plane"
+    }
+  ],
+  "controlled_surfaces": [
+    {
+      "surface_id": "nebula-citable-resource",
+      "url": "https://nebulacomponents.com/resources/citable",
+      "projection_id": "resource-data",
+      "verification_method": "response_header",
+      "verification_header": "x-citable-projection-sha256",
+      "required_for_finalization": true
+    },
+    {
+      "surface_id": "nebula-llms-txt",
+      "url": "https://nebulacomponents.com/resources/citable/llms.txt",
+      "projection_id": "llms-txt",
+      "verification_method": "exact_response_body",
+      "verification_header": null,
+      "required_for_finalization": true
+    }
+  ],
+  "manifest_hash": "695c91902ba36ef8136b814a1e8cbe426a857d6ce82c0dc74f6d859d494b271f"
+}

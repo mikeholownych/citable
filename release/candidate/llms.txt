@@ -1,0 +1,13 @@
+# Citable
+
+Citable is the evidence and change-control layer for defensible search and AI citation readiness.
+
+- Version: 1.24.0
+- Release commit: 0bc2887004a0b65fcc2898dc80edc07ce1d4fa90
+- Detectors: 186 across 19 namespaces
+- Schema-validated registries: 29
+- Agent providers: 12
+- Canonical repository: https://github.com/mikeholownych/citable
+- npm: https://www.npmjs.com/package/@nebulacomponents/citable
+
+Citable does not guarantee crawling, indexing, ranking, citation, recommendation, or conversion.

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "handoff_id": "HANDOFF-CITABLE-TO-NEBULA-1790411574123",
+  "created_at": "2026-09-26T08:32:54.123Z",
+  "status": "RELEASE_FINALIZED",
+  "citable_release_identity": {
+    "package_name": "@nebulacomponents/citable",
+    "target_version": "1.24.0",
+    "baseline_version": "1.23.0",
+    "source_commit": "0bc2887004a0b65fcc2898dc80edc07ce1d4fa90",
+    "source_tree": "0bc2887004a0b65fcc2898dc80edc07ce1d4fa90",
+    "candidate_manifest_hash": "695c91902ba36ef8136b814a1e8cbe426a857d6ce82c0dc74f6d859d494b271f",
+    "expected_release_tag": "v1.24.0",
+    "package_scope": "@nebulacomponents",
+    "outreach_package_status": "DECOUPLED_STANDALONE_PRODUCTS_OUTREACH"
+  },
+  "published_artifact_contract": {
+    "registry": "https://registry.npmjs.org",
+    "package_tarball_pattern": "https://registry.npmjs.org/@nebulacomponents/citable/-/citable-1.24.0.tgz",
+    "provenance_predicate": "https://slsa.dev/provenance/v1",
+    "signing_environment": "npm-publish"
+  },
+  "required_nebula_resources": [
+    {
+      "surface_id": "nebula-citable-resource",
+      "target_url": "https://nebulacomponents.com/resources/citable",
+      "projection_file": "release/resource-data.json",
+      "projection_sha256": "8c5a1351a80b6333ecae9300f5041bce01bb98901526ccf9e7152c66b7262211",
+      "verification_method": "response_header",
+      "verification_header": "x-citable-projection-sha256",
+      "required_for_finalization": true
+    },
+    {
+      "surface_id": "nebula-llms-txt",
+      "target_url": "https://nebulacomponents.com/resources/citable/llms.txt",
+      "projection_file": "release/llms.txt",
+      "projection_sha256": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+      "verification_method": "exact_response_body",
+      "verification_header": null,
+      "required_for_finalization": true
+    }
+  ],
+  "required_compatibility_and_integration_checks": [
+    "Verify node >= 24.0.0 compatibility in consuming environment",
+    "Verify import of @nebulacomponents/citable without native dependency failure",
+    "Verify domain module registry initializes 19 namespaces without NOT_APPLICABLE error",
+    "Verify no outreach execution or communication classes exist in @nebulacomponents/citable export",
+    "Verify machine evidence interface createEvidenceInterface() exports EPISTEMIC_STATES",
+    "Verify autonomous-content boundary verifyContentEvidenceBoundary() refuses generation without downstream authority"
+  ],
+  "nebula_deployment_and_adoption_authorization": {
+    "authority_required_for_npm_publish": false,
+    "authority_required_for_citable_release_finalization": true,
+    "soak_period_policy": "CALC_001 evidence accumulation active; Nebula production stabilized",
+    "adoption_gate": "Separate Nebula adoption decision required before production deployment or continuous improvement loop mutation"
+  },
+  "expected_publication_receipts": [
+    {
+      "receipt_id_pattern": "RECEIPT-<surface_id>-<hash>",
+      "receipt_file": "deployment-receipt-nebula-citable-resource.json",
+      "surface_id": "nebula-citable-resource",
+      "observation_required": {
+        "url": "https://nebulacomponents.com/resources/citable",
+        "observed_projection_sha256": "8c5a1351a80b6333ecae9300f5041bce01bb98901526ccf9e7152c66b7262211",
+        "status_code": 200,
+        "collector": "NebulaDeploymentObserver",
+        "collector_version": "1.0.0"
+      }
+    },
+    {
+      "receipt_id_pattern": "RECEIPT-<surface_id>-<hash>",
+      "receipt_file": "deployment-receipt-nebula-llms-txt.json",
+      "surface_id": "nebula-llms-txt",
+      "observation_required": {
+        "url": "https://nebulacomponents.com/resources/citable/llms.txt",
+        "observed_projection_sha256": "3d27adba79fb7a42d747b8ff0626975f27df045b5ffd6c389dff30ad41409386",
+        "status_code": 200,
+        "collector": "NebulaDeploymentObserver",
+        "collector_version": "1.0.0"
+      }
+    }
+  ],
+  "evidence_required_for_finalization": [
+    "release-manifest.json cryptographically bound to finalized commit",
+    "release-state.json transitioned from published_unfinalized to finalized",
+    "deployment-receipt-nebula-citable-resource.json matching manifest projection",
+    "deployment-receipt-nebula-llms-txt.json matching manifest projection",
+    "Immutable npm publication receipt with SLSA provenance"
+  ],
+  "failure_and_rollback_conditions": [
+    "If projection SHA256 header or body diverges from manifest, fail closed and refuse finalization",
+    "If receipt observation exceeds 24 hour max dwell time, receipt expires and requires refresh",
+    "For Citable operations, authoritative remote is origin; nebula-origin is reserved for the separate Nebula repository"
+  ]
+}
