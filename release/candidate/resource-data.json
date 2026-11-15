@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "product": "Citable",
+  "version": "1.24.0",
+  "commit": "0bc2887004a0b65fcc2898dc80edc07ce1d4fa90",
+  "facts": {
+    "detectors": 186,
+    "namespaces": 19,
+    "registries": 29,
+    "providers": 12,
+    "distribution_files_per_provider": 148
+  },
+  "boundary": "Citable does not guarantee crawling, indexing, ranking, citation, recommendation, or conversion.",
+  "canonical_repository": "https://github.com/mikeholownych/citable",
+  "npm_package": "https://www.npmjs.com/package/@nebulacomponents/citable"
+}

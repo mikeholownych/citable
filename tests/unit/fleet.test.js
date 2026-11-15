@@ -32,7 +32,13 @@ test("fleetSummary reports property counts, environments, and active status", as
 
 test("fleetAudit filters by environment and calculates health summary", async () => {
   const root = tmpProject("registries-good");
-  const res = await fleetAudit(root, { environment: "production" });
+  const mockFetcher = async (url) => {
+    if (url.endsWith('/robots.txt')) {
+      return { status: 200, headers: { 'content-type': 'text/plain' }, body: 'User-agent: *\nAllow: /\n' };
+    }
+    return { status: 200, headers: { 'content-type': 'text/html' }, body: '<!doctype html><html lang="en"><head><title>Nebula Test</title></head><body><h1>Nebula</h1></body></html>' };
+  };
+  const res = await fleetAudit(root, { environment: "production", fetcher: mockFetcher, maxPages: 1 });
 
   assert.equal(res.fleet_size, 1);
   assert.equal(res.properties[0].property_id, "PROP-NEBULA-PROD");

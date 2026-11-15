@@ -715,7 +715,13 @@ ${r.issues.map((iss) => `    - ${iss}`).join('\n') || '    none'}
           const r = await fleetSummary(root);
           out(args, `Fleet Summary (${r.total_properties} properties, ${r.active_properties} active)\n` + r.properties.map((p) => `  [${p.environment.toUpperCase()}] ${p.name} (${p.primary_domain})`).join('\n'), r);
         } else if (sub === 'audit') {
-          const r = await fleetAudit(root, { propertyId: args.property, environment: args.env, scope: args.scope });
+          const r = await fleetAudit(root, {
+            propertyId: args.property,
+            environment: args.env,
+            scope: args.scope,
+            maxPages: args.maxPages,
+            timeBudgetSeconds: args.timeBudgetSeconds,
+          });
           out(args, `Fleet Audit: ${r.fleet_size} properties audited (health: ${r.fleet_health.toUpperCase()})\nTotal findings: ${r.total_findings} (critical: ${r.total_critical}, high: ${r.total_high})`, r);
         } else {
           throw new Error('usage: citable fleet [summary|audit] [--property <id>] [--env <environment>]');
@@ -1301,7 +1307,7 @@ ${r.findings.map((f) => `  [${f.guardrail_id}] (${f.severity}) ${f.summary}`).jo
       }
       case 'prioritize': {
         const r = await prioritizeCommand(argv.slice(1), root);
-        out(args, JSON.stringify(r, null, 2), r);
+        out(args, r.formatted || JSON.stringify(r, null, 2), r);
         break;
       }
       case 'competitive-intel': {

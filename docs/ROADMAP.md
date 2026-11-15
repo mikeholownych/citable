@@ -9,7 +9,7 @@ guarantee retrieval, ranking, citation, or model prioritization.
 | Metric | Value |
 |--------|-------|
 | Detectors | 186 across 19 namespaces |
-| Tests | 989 pass across 38 test suites |
+| Tests | 989 pass across 34 test suites |
 | Registries | 29 schema-validated |
 | Schemas | 104 schema definitions |
 | Providers | 12 agent hosts |
@@ -21,7 +21,7 @@ support suitability, and observed citation behavior. `action-plan` converts
 immutable findings into owned, ordered remediation work without mutating the
 audited property or claiming that a recommendation was implemented.
 
-The current development branch builds 123 packaged skill files per provider
+The current development branch builds 148 packaged skill files per provider
 after the artifact-interchange and agent-profile contracts are generated from
 canonical `skill/` sources. Claude additionally receives a separately
 manifested four-profile discovery payload.
