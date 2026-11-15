@@ -15,6 +15,13 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+### Fixed
+
+- Isolated `fleet.test.js` from live public network crawling by passing a mock fetcher and bounded crawl options to `fleetAudit`.
+- Added `maxPages`, `timeBudgetSeconds`, and `fetcher` options passthrough to `fleetAudit` and the `citable fleet audit` CLI command.
+- Formatted `citable prioritize matrix` CLI table output when human-readable output is requested.
+- Upgraded `fast-uri` to 3.1.9, resolving transitive CVE reported by `npm audit`.
+
 ## 1.24.0 — 2026-09-26
 
 ### Added — External evidence, representation, and autonomous-content boundary (Wave 9: ER-10, ER-12, ER-13)
