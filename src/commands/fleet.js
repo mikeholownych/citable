@@ -36,7 +36,14 @@ export async function fleetSummary(root) {
 /**
  * Runs fleet-wide audit across registered fleet properties.
  */
-export async function fleetAudit(root, { propertyId = null, environment = null, scope = null } = {}) {
+export async function fleetAudit(root, {
+  propertyId = null,
+  environment = null,
+  scope = null,
+  maxPages = null,
+  timeBudgetSeconds = null,
+  fetcher = null,
+} = {}) {
   const { registries } = loadRegistries(root);
   const fleet = registries?.fleet?.entries || [];
 
@@ -68,6 +75,9 @@ export async function fleetAudit(root, { propertyId = null, environment = null, 
           target: propTarget || prop.base_url,
           baseUrl: prop.base_url,
           scope,
+          maxPages,
+          timeBudgetSeconds,
+          fetcher,
         });
       }
     } catch (err) {
