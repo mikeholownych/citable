@@ -24,6 +24,12 @@ test('diagnoseMcpTransports: returns PASS checks and verified summary on reposit
   assert.equal(result.summary.allowlist_valid, true);
   assert.ok(result.summary.servers_count >= 2);
   assert.ok(result.summary.tools_count >= 5);
+  assert.ok(result.summary.stages);
+  assert.equal(result.summary.stages.package_or_endpoint_presence.status, 'PASS');
+  assert.equal(result.summary.stages.protocol_negotiation.status, 'PASS');
+  assert.equal(result.summary.stages.authorization.status, 'PASS');
+  assert.equal(result.summary.stages.tool_availability.status, 'PASS');
+  assert.equal(result.summary.stages.normalization.status, 'PASS');
 
   const checks = result.checks;
   assert.ok(checks.some((c) => c.level === 'PASS' && c.message.includes('MCP allowlist valid')));

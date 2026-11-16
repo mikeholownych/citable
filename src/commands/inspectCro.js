@@ -4,6 +4,11 @@ import { registryPageFor, safePath } from '../detectors/framework.js';
 import { selectDetectors } from '../detectors/index.js';
 import { runDetectors } from '../detectors/framework.js';
 import { calculateVisualSaliency } from '../analysis/saliency.js';
+import {
+  calculateKeystrokeEffort,
+  simulateAutofillCompatibility,
+  analyzeInlineValidationErgonomics,
+} from '../analysis/formFriction.js';
 
 /**
  * `citable inspect cro <page>` — evaluate page conversion readiness, CTA visibility, form friction, and trust badges.
@@ -47,15 +52,9 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
   });
 
   // Keystroke Effort Index (KEI) across all forms
-  const totalInputs = forms.reduce((sum, f) => sum + (f.fieldCount || 0), 0);
-  const inputsWithAutocomplete = forms.reduce((sum, f) => sum + f.inputs.filter((inp) => Boolean(inp.autocomplete)).length, 0);
-  const manualKeystrokes = totalInputs * 14; // Average 14 keystrokes + focus taps per field
-  const autofillKeystrokes = totalInputs > 0 && inputsWithAutocomplete > 0
-    ? (totalInputs - inputsWithAutocomplete) * 14 + 1
-    : manualKeystrokes;
-  const keystrokeReductionPct = manualKeystrokes > 0
-    ? Math.round(((manualKeystrokes - autofillKeystrokes) / manualKeystrokes) * 100)
-    : 0;
+  const keystrokeEffort = calculateKeystrokeEffort(forms);
+  const autofillCompatibility = simulateAutofillCompatibility(forms, page.rawHtml);
+  const inlineValidation = analyzeInlineValidationErgonomics(page.rawHtml);
 
   // Express checkout readiness: payment wallets and authentication tracked separately.
   // Apple Pay / Google Pay / PayPal are payment methods; WebAuthn/passkeys are account
@@ -102,14 +101,9 @@ export async function inspectCro(root, pageRef, { target, baseUrl, refDate } = {
     analytics_tags: page.analyticsTags || [],
     nav_links_count: page.navLinksCount || 0,
     saliency,
-    keystroke_effort: {
-      total_inputs: totalInputs,
-      inputs_with_autocomplete: inputsWithAutocomplete,
-      autofill_coverage_pct: totalInputs > 0 ? Math.round((inputsWithAutocomplete / totalInputs) * 100) : 100,
-      manual_keystrokes_required: manualKeystrokes,
-      autofill_keystrokes_required: autofillKeystrokes,
-      keystroke_reduction_pct: keystrokeReductionPct,
-    },
+    keystroke_effort: keystrokeEffort,
+    autofill_compatibility: autofillCompatibility,
+    inline_validation_ergonomics: inlineValidation,
     express_checkout_readiness: {
       payment_wallet_readiness: {
         supported: walletCtas.length > 0 || walletViaBadgeOrHtml,

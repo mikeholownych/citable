@@ -203,3 +203,30 @@ test('remediateCommand --write is gated: writes valid patch with rollback snapsh
   assert.equal(missing.written, false);
   assert.equal(missing.write_refused, true);
 });
+
+test('remediateCommand --component with target applies drop-in component AST codemod', async (t) => {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'citable-comp-codemod-'));
+  t.after(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
+  const file = path.join(tmp, 'HeroBanner.jsx');
+  const original = 'export const HeroBanner = () => (\n  <div className="hero">\n    <button className="bg-blue-600 px-4 py-2">Sign Up Now</button>\n  </div>\n);\n';
+  await fs.writeFile(file, original);
+
+  // Dry run
+  const dry = await remediateCommand(tmp, { component: 'hero-cta', target: 'HeroBanner.jsx' });
+  assert.equal(dry.ok, true);
+  assert.equal(dry.written, false);
+  assert.equal(dry.changed, true);
+  assert.ok(dry.diff.includes('<NebulaHeroCTA primaryText="Sign Up Now" />'));
+
+  // Write mode
+  const writtenRes = await remediateCommand(tmp, { component: 'hero-cta', target: 'HeroBanner.jsx', write: true });
+  assert.equal(writtenRes.written, true);
+  const updated = await fs.readFile(file, 'utf8');
+  assert.ok(updated.includes('NebulaHeroCTA'));
+  assert.ok(updated.includes("import { NebulaHeroCTA } from '@nebulacomponents/react';"));
+
+  // Idempotent second pass refuses rewrite
+  const second = await remediateCommand(tmp, { component: 'hero-cta', target: 'HeroBanner.jsx', write: true });
+  assert.equal(second.written, false);
+  assert.equal(second.write_refused, true);
+});

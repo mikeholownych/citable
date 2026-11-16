@@ -1174,10 +1174,20 @@ export async function runtimeCapabilities(options = {}) {
       id: 'mcp_transport',
       state: pilotAvailable ? 'ready' : 'missing_dependency',
       requirements: ['node:child_process', 'node:readline', 'pilotServer.js'],
+      stages: [
+        'package_or_endpoint_presence',
+        'protocol_negotiation',
+        'authorization',
+        'tool_availability',
+        'property_access',
+        'collection',
+        'normalization',
+      ],
       limitations: pilotAvailable
         ? [
             'MCP transport is read-only and restricted to explicit allowlisted servers and tools',
             'remote endpoints require HTTPS and must not resolve to private or loopback ranges',
+            'endpoint presence does not confer authorization, property access, or collection completeness',
           ]
         : ['MCP stdio pilotServer.js script was not found'],
     });

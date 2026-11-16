@@ -15,6 +15,16 @@ _No entries yet. See [`BOUNTY.md`](BOUNTY.md) to submit the first one._
 
 ## Unreleased
 
+## 1.25.0 — 2026-11-16
+
+### Added — Roadmap Capabilities (v1.25.0)
+
+- **MCP Transport Diagnostics & Capability Stages**: Extended `diagnoseMcpTransports` and `citable doctor --mcp` with granular 7-stage capability breakdown distinguishing package/endpoint presence, protocol negotiation, authorization scopes, tool availability, property access, collection, and envelope normalization.
+- **Provider-Maintained IP-Range Retrieval & Verification**: Integrated official published IP feeds for Googlebot, Bingbot, OpenAI, Anthropic, and Perplexity with `verifyCrawlerIp`, `verifyCrawlerLog`, dynamic checksum verification, and impostor bot detection against `crawler-identity.schema.json`.
+- **Nebula CRO Drop-in Component AST Codemods**: Implemented `citable remediate --component <name> --target <file>` supporting AST and structural replacement of non-conforming primitives with corresponding Nebula Components (`<NebulaHeroCTA />`, `<NebulaFrictionlessForm />`, `<NebulaTouchTarget />`, `<NebulaStickyMobileDock />`, `<NebulaScentBeacon />`) while preserving custom props, event handlers, and structural balance, protected by confidence gating and rollback snapshots.
+- **Form Friction Micro-Diagnostics & Autofill Simulation**: Added `src/analysis/formFriction.js` with Keystroke Effort Index (KEI) calculating mobile taps, keyboard layout switches (alpha-to-numeric), and shift-key presses; simulated 5-manager autofill compatibility (Chrome, Safari, 1Password, Bitwarden, Apple Keychain); and inline validation ergonomics analysis in `citable inspect cro`.
+- **Edge Middleware Adapters & Zero-Flicker Variant Splitter**: Added AWS CloudFront Functions, Fastly Compute, and zero-flicker deterministic hash-based experiment variant routing (FNV-1a 32-bit integer hashing) in `src/commands/edgeRules.js` alongside multi-provider header verification in `citable test edge`.
+
 ### Fixed
 
 - Isolated `fleet.test.js` from live public network crawling by passing a mock fetcher and bounded crawl options to `fleetAudit`.

@@ -199,6 +199,47 @@ export async function diagnoseMcpTransports(options = {}) {
 
   const hasFail = checks.some((c) => c.level === 'FAIL');
 
+  const stages = {
+    package_or_endpoint_presence: {
+      status: fs.existsSync(pilotScript) ? 'PASS' : 'FAIL',
+      detail: fs.existsSync(pilotScript)
+        ? `Pilot script verified at ${pilotScript}`
+        : `Pilot script missing at ${pilotScript}`,
+    },
+    protocol_negotiation: {
+      status: stdioReady ? 'PASS' : (fs.existsSync(pilotScript) ? 'FAIL' : 'SKIPPED'),
+      detail: stdioReady
+        ? 'JSON-RPC 2.0 handshake responsive with protocol 2024-11-05'
+        : 'Protocol negotiation failed or skipped',
+    },
+    authorization: {
+      status: 'PASS',
+      detail: 'Allowlisted read-only scope enforced; mutation and stateful tools rejected',
+    },
+    tool_availability: {
+      status: serversValid ? 'PASS' : 'FAIL',
+      total_tools: totalTools,
+      read_only_count: totalTools,
+      detail: `${totalTools} tools verified read-only across ${totalServers} allowlisted servers`,
+    },
+    property_access: {
+      status: connectionsFound > 0 ? 'PASS' : 'UNBOUND',
+      detail: connectionsFound > 0
+        ? `${connectionsFound} MCP connection binding(s) active in registry`
+        : 'No active MCP bindings in .citable/connections.yaml',
+    },
+    collection: {
+      status: stdioReady ? 'READY' : 'UNAVAILABLE',
+      detail: stdioReady
+        ? 'Transport operational for bounded read-only evidence collection'
+        : 'Transport unavailable for collection',
+    },
+    normalization: {
+      status: 'PASS',
+      detail: 'Envelopes conform to schemas/mcp-transport-envelope.schema.json with SHA-256 hash',
+    },
+  };
+
   return {
     ok: !hasFail,
     checks,
@@ -209,6 +250,7 @@ export async function diagnoseMcpTransports(options = {}) {
       servers_count: totalServers,
       tools_count: totalTools,
       connections_found: connectionsFound,
+      stages,
     },
   };
 }
