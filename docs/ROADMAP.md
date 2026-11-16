@@ -4,12 +4,12 @@
 reports observable readiness and controlled citation outcomes; it does not
 guarantee retrieval, ranking, citation, or model prioritization.
 
-## Current State (v1.24.0)
+## Current State (v1.25.0)
 
 | Metric | Value |
 |--------|-------|
 | Detectors | 186 across 19 namespaces |
-| Tests | 989 pass across 34 test suites |
+| Tests | 999 pass across 34 test suites |
 | Registries | 29 schema-validated |
 | Schemas | 104 schema definitions |
 | Providers | 12 agent hosts |
