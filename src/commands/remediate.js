@@ -237,10 +237,14 @@ export function validatePatchedSource(patched, framework, original = null) {
   for (const [name, open, close] of [['brace', '{', '}'], ['paren', '(', ')'], ['bracket', '[', ']']]) {
     const after = balanceCounts(patched, open, close);
     const before = original !== null ? balanceCounts(original, open, close) : after;
-    const disturbed = original !== null && (before.open !== after.open || before.close !== after.close);
+    const beforeDelta = before.open - before.close;
+    const afterDelta = after.open - after.close;
+    const disturbed = original !== null
+      ? (beforeDelta !== afterDelta || (beforeDelta === 0 && after.open !== after.close))
+      : (after.open !== after.close);
     push(`balanced-${name}s`, !disturbed,
       original !== null
-        ? disturbed ? `patch changed ${name} balance (${before.open}/${before.close} → ${after.open}/${after.close})` : `balance unchanged (${after.open}/${after.close})`
+        ? disturbed ? `patch changed ${name} balance (${before.open}/${before.close} → ${after.open}/${after.close})` : `balance preserved (${after.open}/${after.close})`
         : `open: ${after.open}, close: ${after.close}`);
   }
 
@@ -373,6 +377,117 @@ function createRollbackSnapshot(root, targetPath, originalContent, meta) {
 }
 
 /**
+ * Component AST codemod for drop-in Nebula Component replacements.
+ * Replaces non-conforming primitives with corresponding Nebula Component primitives
+ * while preserving existing event handlers and attributes.
+ */
+export function applyComponentCodemod(sourceCode, componentId, { format = 'react', framework = 'jsx' } = {}) {
+  const normId = (componentId || '').toLowerCase().trim();
+  let patched = sourceCode;
+  let matchCount = 0;
+
+  if (normId === 'hero-cta') {
+    if (framework === 'jsx' || framework === 'react' || framework === 'html') {
+      const buttonRx = /<button([^>]*?)className=["']([^"']*)["']([^>]*)>([\s\S]*?)<\/button>/i;
+      const m = sourceCode.match(buttonRx);
+      if (m && !sourceCode.includes('<NebulaHeroCTA')) {
+        const fullMatch = m[0];
+        const pre = m[1];
+        const post = m[3];
+        const text = m[4].trim();
+
+        const onClickMatch = (pre + ' ' + post).match(/onClick=\{([^}]+)\}/);
+        const onClickProp = onClickMatch ? ` onPrimaryClick={${onClickMatch[1]}}` : '';
+
+        const replacement = `<NebulaHeroCTA primaryText="${text || 'Get Started Free'}"${onClickProp} />`;
+        patched = sourceCode.replace(fullMatch, replacement);
+        if (!sourceCode.includes('@nebulacomponents/react')) {
+          patched = `import { NebulaHeroCTA } from '@nebulacomponents/react';\n` + patched;
+        }
+        matchCount = 1;
+      }
+    }
+  } else if (normId === 'frictionless-form') {
+    if (framework === 'jsx' || framework === 'react' || framework === 'html') {
+      patched = patched.replace(/<input([^>]*?)(\/>|>)/gi, (match, attrs, close) => {
+        if (/autocomplete\s*=/i.test(match)) return match;
+        matchCount++;
+        let type = 'text';
+        const typeMatch = match.match(/type=["']([^"']+)["']/i);
+        if (typeMatch) type = typeMatch[1].toLowerCase();
+        let auto = 'on';
+        if (type === 'email') auto = 'email';
+        else if (type === 'tel') auto = 'tel';
+        else if (/name/i.test(match)) auto = 'name';
+        const attrsClean = attrs.replace(/\s+$/, '');
+        const normClose = close === '/>' ? ' />' : '>';
+        return `<input${attrsClean} autoComplete="${auto}"${normClose}`;
+      });
+      if (matchCount > 0 && !patched.includes('@nebulacomponents/react') && !patched.includes('NebulaFrictionlessForm')) {
+        patched = `import { NebulaFrictionlessForm } from '@nebulacomponents/react';\n` + patched;
+      }
+    }
+  } else if (normId === 'touch-target') {
+    patched = patched.replace(/<button([^>]*?)className=["']([^"']*)["']([^>]*)>/gi, (match, pre, cls, post) => {
+      if (!cls.includes('min-h-') && !cls.includes('h-')) {
+        matchCount++;
+        return `<button${pre}className="${cls} min-h-[48px] min-w-[48px]"${post}>`;
+      }
+      return match;
+    });
+    if (matchCount > 0 && !patched.includes('NebulaTouchTarget') && !patched.includes('@nebulacomponents/react')) {
+      patched = `import { NebulaTouchTarget } from '@nebulacomponents/react';\n` + patched;
+    }
+  } else if (normId === 'sticky-dock') {
+    if (!sourceCode.includes('<NebulaStickyMobileDock')) {
+      const insertPoint = /<\/div>\s*\n\s*\);\s*$/m;
+      if (insertPoint.test(sourceCode)) {
+        patched = sourceCode.replace(insertPoint, '  <NebulaStickyMobileDock primaryText="Get Started" primaryHref="/signup" />\n    </div>\n  );');
+        matchCount = 1;
+      } else if (sourceCode.includes('</div>')) {
+        const lastIdx = sourceCode.lastIndexOf('</div>');
+        patched = sourceCode.slice(0, lastIdx) + '  <NebulaStickyMobileDock primaryText="Get Started" primaryHref="/signup" />\n' + sourceCode.slice(lastIdx);
+        matchCount = 1;
+      }
+      if (matchCount > 0 && !patched.includes('NebulaStickyMobileDock') && !patched.includes('@nebulacomponents/react')) {
+        patched = `import { NebulaStickyMobileDock } from '@nebulacomponents/react';\n` + patched;
+      }
+    }
+  } else if (normId === 'scent-beacon') {
+    if (!sourceCode.includes('<NebulaScentBeacon')) {
+      const mainMatch = /<main[^>]*>/i.exec(sourceCode);
+      if (mainMatch) {
+        const idx = mainMatch.index + mainMatch[0].length;
+        patched = sourceCode.slice(0, idx) + '\n      <NebulaScentBeacon />' + sourceCode.slice(idx);
+        matchCount = 1;
+      } else {
+        const divMatch = /<div[^>]*>/i.exec(sourceCode);
+        if (divMatch) {
+          const idx = divMatch.index + divMatch[0].length;
+          patched = sourceCode.slice(0, idx) + '\n      <NebulaScentBeacon />' + sourceCode.slice(idx);
+          matchCount = 1;
+        }
+      }
+      if (matchCount > 0 && !patched.includes('NebulaScentBeacon') && !patched.includes('@nebulacomponents/react')) {
+        patched = `import { NebulaScentBeacon } from '@nebulacomponents/react';\n` + patched;
+      }
+    }
+  }
+
+  const changed = patched !== sourceCode;
+  const secondPass = changed ? applyComponentCodemod(patched, componentId, { format, framework }).patched : patched;
+  const idempotent = secondPass === patched;
+
+  return {
+    patched,
+    changed,
+    idempotent,
+    matchCount,
+    patcherClass: 'component-ast-replacement',
+  };
+}
+
+/**
  * Remediation command. Dry run by default: returns framework detection,
  * unified diff, static validation, and confidence without touching disk.
  * `write: true` is gated on validation success and confidence threshold and
@@ -445,6 +560,73 @@ export async function remediateCommand(root, options = {}) {
   if (component) {
     const comp = getComponent(component, format);
     if (!comp) throw new Error(`Unknown component "${component}". Available: ${listComponents().map((c) => c.id).join(', ')}`);
+
+    if (target) {
+      const fullPath = path.resolve(root, target);
+      if (!fs.existsSync(fullPath)) {
+        return {
+          ok: false,
+          component: comp.name,
+          target,
+          error: `target file not found: ${target}`,
+          written: false,
+          write_refused: true,
+          refusal_reason: 'target file not found',
+        };
+      }
+
+      const original = fs.readFileSync(fullPath, 'utf8');
+      const frameworkInfo = detectFramework(fullPath, original);
+      const patch = applyComponentCodemod(original, component, { format, framework: frameworkInfo.framework });
+      const validation = validatePatchedSource(patch.patched, frameworkInfo.framework, original);
+      const confidence = computeConfidence({ frameworkInfo, patch, validation });
+      const diff = patch.changed ? unifiedDiff(original, patch.patched, target) : null;
+
+      const refusal = { write_refused: true, refusal_reason: null };
+      if (!patch.changed) refusal.refusal_reason = 'no match for component replacement; target appears already remediated or incompatible';
+      else if (!patch.idempotent) refusal.refusal_reason = 'patcher is not idempotent on this source; refusing automated write';
+      else if (!validation.ok) refusal.refusal_reason = `static validation failed: ${validation.reason}`;
+      else if (confidence.score < MIN_WRITE_CONFIDENCE) {
+        refusal.refusal_reason = `confidence ${confidence.score} below write threshold ${MIN_WRITE_CONFIDENCE}`
+          + (confidence.cap_reason ? ` (${confidence.cap_reason})` : '');
+      } else {
+        refusal.write_refused = false;
+      }
+
+      const result = {
+        ok: true,
+        component: comp.name,
+        component_id: comp.id,
+        target,
+        written: false,
+        changed: patch.changed,
+        patcher_class: patch.patcherClass,
+        idempotent: patch.idempotent,
+        match_count: patch.matchCount,
+        framework: frameworkInfo,
+        validation,
+        confidence,
+        diff,
+        scaffold_command: `npx nebulacomponents add ${component} --format ${format}`,
+        write_policy: {
+          min_confidence: MIN_WRITE_CONFIDENCE,
+          note: 'a written patch is a candidate change, not a verified repair; run citable verify remediation <run-id> to re-run the detector',
+        },
+        ...refusal,
+      };
+
+      if (write && !refusal.write_refused) {
+        const snapshot = createRollbackSnapshot(root, fullPath, original, {
+          component_id: comp.id,
+          patched_sha256: sha256(patch.patched),
+          confidence: confidence.score,
+        });
+        fs.writeFileSync(fullPath, patch.patched, 'utf8');
+        return { ...result, written: true, rollback: snapshot };
+      }
+      return result;
+    }
+
     return {
       ok: true,
       component: comp.name,

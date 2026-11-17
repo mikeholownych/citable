@@ -1,6 +1,7 @@
 import net from 'node:net';
 import { sha256 } from '../shared/io.js';
 import { validateAgainst } from '../shared/schemaValidator.js';
+import { OFFICIAL_PROVIDER_RANGES, identifyCrawlerProvider } from '../crawler/ipRanges.js';
 
 function cidrMembership(sourceIp, cidrs) {
   if (!sourceIp) return 'not_tested';
@@ -16,7 +17,29 @@ function cidrMembership(sourceIp, cidrs) {
 }
 
 export function crawlerIdentity(row, { ranges = {}, rangeSources = {}, collector = 'owner_import' } = {}) {
-  const ua = row.user_agent, cidrs = ranges[ua] || [], source = rangeSources[ua] || {};
+  const ua = row.user_agent;
+  const identifiedProviderKey = identifyCrawlerProvider(ua);
+  const officialDef = identifiedProviderKey ? OFFICIAL_PROVIDER_RANGES[identifiedProviderKey] : null;
+
+  let cidrs = ranges[ua];
+  if (!cidrs && officialDef && ranges[ua] === undefined) {
+    cidrs = officialDef.cidrs;
+  }
+  cidrs = cidrs || [];
+
+  let source = rangeSources[ua];
+  if (!source && officialDef && ranges[ua] === undefined && rangeSources[ua] === undefined) {
+    const snapshotStr = JSON.stringify(officialDef.cidrs);
+    source = {
+      provider: officialDef.name,
+      authority: 'provider_published',
+      url: officialDef.url,
+      retrieved_at: '2026-11-01T00:00:00Z',
+      source_snapshot: snapshotStr,
+      checksum: sha256(snapshotStr),
+    };
+  }
+  source = source || {};
   const sourceSnapshot = source.source_snapshot;
   const expectedChecksum = sourceSnapshot == null ? null : sha256(typeof sourceSnapshot === 'string' ? sourceSnapshot : JSON.stringify(sourceSnapshot));
   const rangeSource = {

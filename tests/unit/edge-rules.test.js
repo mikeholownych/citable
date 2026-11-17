@@ -46,13 +46,28 @@ test("exportEdgeRules generates Cloudflare redirects, WAF expressions, and worke
   const shopifyRes = await exportEdgeRules(root, { format: "shopify-snippet" });
   assert.equal(shopifyRes.format, "shopify-snippet");
   assert.ok(shopifyRes.content.includes("autocomplete"));
+
+  const awsRes = await exportEdgeRules(root, { format: "aws-cloudfront" });
+  assert.equal(awsRes.format, "aws-cloudfront");
+  assert.ok(awsRes.content.includes("CloudFront"));
+  assert.ok(awsRes.content.includes("/llms.txt"));
+
+  const fastlyRes = await exportEdgeRules(root, { format: "fastly-compute" });
+  assert.equal(fastlyRes.format, "fastly-compute");
+  assert.ok(fastlyRes.content.includes("Fastly"));
+  assert.ok(fastlyRes.content.includes("handleRequest"));
+
+  const splitRes = await exportEdgeRules(root, { format: "edge-variant-split" });
+  assert.equal(splitRes.format, "edge-variant-split");
+  assert.ok(splitRes.content.includes("getExperimentVariant"));
+  assert.ok(splitRes.content.includes("fnv1a32"));
 });
 
-test("testEdgeRules validates Cloudflare headers and catches edge challenges", async () => {
+test("testEdgeRules validates Cloudflare, AWS CloudFront, and Fastly headers", async () => {
   const root = tmpProject("registries-good");
 
-  // Clean edge response
-  const cleanRes = await testEdgeRules(root, {
+  // Clean Cloudflare edge response
+  const cleanCf = await testEdgeRules(root, {
     provider: "cloudflare",
     baseUrl: "https://nebulacomponents.com",
     headers: {
@@ -60,8 +75,32 @@ test("testEdgeRules validates Cloudflare headers and catches edge challenges", a
       "x-content-type-options": "nosniff",
     },
   });
-  assert.equal(cleanRes.status, "healthy");
-  assert.equal(cleanRes.passed_checks, 3);
+  assert.equal(cleanCf.status, "healthy");
+  assert.equal(cleanCf.passed_checks, 3);
+
+  // Clean AWS CloudFront response
+  const cleanAws = await testEdgeRules(root, {
+    provider: "aws",
+    baseUrl: "https://nebulacomponents.com",
+    headers: {
+      "x-amz-cf-id": "AbCdEf1234==",
+      "x-content-type-options": "nosniff",
+    },
+  });
+  assert.equal(cleanAws.status, "healthy");
+  assert.equal(cleanAws.passed_checks, 3);
+
+  // Clean Fastly response
+  const cleanFastly = await testEdgeRules(root, {
+    provider: "fastly",
+    baseUrl: "https://nebulacomponents.com",
+    headers: {
+      "x-served-by": "cache-iad-12345",
+      "x-content-type-options": "nosniff",
+    },
+  });
+  assert.equal(cleanFastly.status, "healthy");
+  assert.equal(cleanFastly.passed_checks, 3);
 
   // Challenged response
   const challengedRes = await testEdgeRules(root, {

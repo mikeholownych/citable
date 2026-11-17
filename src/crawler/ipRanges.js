@@ -159,3 +159,60 @@ export async function fetchProviderIpRanges(providerKey, { fetchImpl = globalThi
     throw err;
   }
 }
+
+/**
+ * Verifies a batch of crawler log rows or server access logs against
+ * official published IP ranges and flags impostor bots.
+ */
+export function verifyCrawlerLog(logEntries, options = {}) {
+  const entries = Array.isArray(logEntries) ? logEntries : [];
+  const results = [];
+  const impostors = [];
+  const breakdown = {};
+
+  for (const entry of entries) {
+    const ua = entry.user_agent || entry.userAgent || '';
+    const ip = entry.source_ip || entry.ip || '';
+    const verification = verifyCrawlerIp(ip, ua, options);
+    const item = {
+      ip,
+      user_agent: ua,
+      path: entry.path || '/',
+      timestamp: entry.timestamp || null,
+      verification,
+    };
+    results.push(item);
+
+    if (verification.knownProvider) {
+      const pKey = verification.providerKey;
+      breakdown[pKey] = breakdown[pKey] || { name: verification.provider, total: 0, matched: 0, unmatched: 0 };
+      breakdown[pKey].total++;
+      if (verification.matched) {
+        breakdown[pKey].matched++;
+      } else {
+        breakdown[pKey].unmatched++;
+        impostors.push({
+          ip,
+          user_agent: ua,
+          claimed_provider: verification.provider,
+          reason: `Declared ${verification.provider} user-agent but IP ${ip} does not match published CIDR ranges`,
+        });
+      }
+    }
+  }
+
+  const total = results.length;
+  const verified = results.filter((r) => r.verification.matched).length;
+  const known = results.filter((r) => r.verification.knownProvider).length;
+
+  return {
+    total_evaluated: total,
+    known_provider_requests: known,
+    verified_requests: verified,
+    impostor_requests: impostors.length,
+    unrecognized_requests: total - known,
+    breakdown,
+    impostors,
+    results,
+  };
+}
